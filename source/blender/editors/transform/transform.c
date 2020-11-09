@@ -640,9 +640,6 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       if (t->spacetype != SPACE_VIEW3D) {
         return false;
       }
-      if (!(t->tsnap.mode & ~(SCE_SNAP_MODE_GRID | SCE_SNAP_MODE_INCREMENT))) {
-        return false;
-      }
       break;
     }
   }
@@ -822,7 +819,9 @@ int transformEvent(TransInfo *t, const wmEvent *event)
       t->state = TRANS_RUNNING;
     }
 
-    applyMouseInput(t, &t->mouse, t->mval, t->values);
+    if (!(t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE))) {
+      applyMouseInput(t, &t->mouse, t->mval, t->values);
+    }
 
     /* Snapping mouse move events. */
     t->redraw |= handleSnapping(t, event);
@@ -837,7 +836,12 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         handled = true;
         break;
       case TFM_MODAL_CONFIRM:
-        t->state = TRANS_CONFIRM;
+        if (t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) {
+          tranform_snap_editbasepoint_confirm(t);
+        }
+        else {
+          t->state = TRANS_CONFIRM;
+        }
         handled = true;
         break;
       case TFM_MODAL_TRANSLATE:
@@ -1119,7 +1123,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         }
         break;
       case TFM_MODAL_EDIT_SNAPWITH:
-        tranform_snap_snapwith_init(t);
+        tranform_snap_editbasepoint_set_mode(t);
         break;
       /* Those two are only handled in transform's own handler, see T44634! */
       case TFM_MODAL_EDGESLIDE_UP:
@@ -1219,15 +1223,9 @@ int transformEvent(TransInfo *t, const wmEvent *event)
       default: {
         /* Disable modifiers. */
         int modifiers = t->modifiers;
-        modifiers &= ~(MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE | MOD_EDIT_SNAPWITH);
+        modifiers &= ~(MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE);
         if (modifiers != t->modifiers) {
-          if (t->modifiers & (MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE)) {
-            postSelectConstraint(t);
-          }
-          else {
-            BLI_assert(t->modifiers & MOD_EDIT_SNAPWITH);
-            tranform_snap_snapwith_end(t);
-          }
+          postSelectConstraint(t);
           t->modifiers = modifiers;
           t->redraw |= TREDRAW_HARD;
           handled = true;
@@ -1536,6 +1534,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     }
   }
 
+#ifdef USE_SAVE_SCE_SNAP
   if (t->flag & T_MODAL) {
     /* do we check for parameter? */
     if (transformModeUseSnap(t)) {
@@ -1549,7 +1548,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
         WM_msg_publish_rna_prop(t->mbus, &t->scene->id, ts, ToolSettings, use_snap);
       }
     }
-  }
+#endif
 
   if ((prop = RNA_struct_find_property(op->ptr, "use_proportional_edit"))) {
     RNA_property_boolean_set(op->ptr, prop, use_prop_edit);
@@ -1929,8 +1928,8 @@ void transformApply(bContext *C, TransInfo *t)
 
   if ((t->redraw & TREDRAW_HARD) || (t->draw_handle_apply == NULL && (t->redraw & TREDRAW_SOFT))) {
     selectConstraint(t);
-    if (t->modifiers & MOD_EDIT_SNAPWITH) {
-      tranform_snap_snapwith_update(t);
+    if (t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) {
+      tranform_snap_editbasepoint_update(t);
     }
     else if (t->transform) {
       t->transform(t, t->mval); /* calls recalcData() */

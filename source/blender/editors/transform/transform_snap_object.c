@@ -369,6 +369,7 @@ static SnapObjectData *snap_object_data_editmesh_get(SnapObjectContext *sctx,
 typedef void (*IterSnapObjsCallback)(SnapObjectContext *sctx,
                                      Object *ob,
                                      float obmat[4][4],
+                                     const eSnapSelect snap_select,
                                      bool use_obedit,
                                      bool use_backface_culling,
                                      bool is_object_active,
@@ -395,7 +396,7 @@ static void iter_snap_objects(SnapObjectContext *sctx,
       continue;
     }
 
-    if (snap_select == SNAP_ALL || base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
+    if (ELEM(snap_select, SNAP_ALL, SNAP_SELECTED_ONLY) || base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
       /* pass */
     }
     else if (base->flag_legacy & BA_SNAP_FIX_DEPS_FIASCO) {
@@ -403,13 +404,19 @@ static void iter_snap_objects(SnapObjectContext *sctx,
     }
 
     const bool is_object_active = (base == base_act);
-    if (snap_select == SNAP_NOT_SELECTED) {
-      if ((base->flag & BASE_SELECTED) || (base->flag_legacy & BA_WAS_SEL)) {
+    if (snap_select == SNAP_NOT_ACTIVE) {
+      if (is_object_active) {
         continue;
       }
     }
-    else if (snap_select == SNAP_NOT_ACTIVE) {
-      if (is_object_active) {
+    else if (ELEM(snap_select, SNAP_NOT_SELECTED, SNAP_SELECTED_ONLY)) {
+      bool is_selected = (base->flag & BASE_SELECTED) || (base->flag_legacy & BA_WAS_SEL);
+      if (is_selected) {
+        if (snap_select == SNAP_NOT_SELECTED) {
+          continue;
+        }
+      }
+      else if (snap_select == SNAP_SELECTED_ONLY) {
         continue;
       }
     }
@@ -422,6 +429,7 @@ static void iter_snap_objects(SnapObjectContext *sctx,
         sob_callback(sctx,
                      dupli_ob->ob,
                      dupli_ob->mat,
+                     snap_select,
                      use_object_edit_cage,
                      use_backface_culling,
                      is_object_active,
@@ -433,6 +441,7 @@ static void iter_snap_objects(SnapObjectContext *sctx,
     sob_callback(sctx,
                  obj_eval,
                  obj_eval->obmat,
+                 snap_select,
                  use_object_edit_cage,
                  use_backface_culling,
                  is_object_active,
@@ -966,6 +975,7 @@ struct RaycastObjUserData {
 static void raycast_obj_fn(SnapObjectContext *sctx,
                            Object *ob,
                            float obmat[4][4],
+                           const eSnapSelect UNUSED(snap_select),
                            bool use_obedit,
                            bool use_backface_culling,
                            bool is_object_active,
@@ -1771,6 +1781,7 @@ static short snap_mesh_edge_verts_mixed(SnapObjectContext *sctx,
 static short snapArmature(SnapData *snapdata,
                           Object *ob,
                           const float obmat[4][4],
+                          const eSnapSelect snap_select,
                           bool use_obedit,
                           /* read/write args */
                           float *dist_px,
@@ -1815,68 +1826,33 @@ static short snapArmature(SnapData *snapdata,
   if (arm->edbo) {
     LISTBASE_FOREACH (EditBone *, eBone, arm->edbo) {
       if (eBone->layer & arm->layer) {
-        /* skip hidden or moving (selected) bones */
-        if ((eBone->flag & (BONE_HIDDEN_A | BONE_ROOTSEL | BONE_TIPSEL)) == 0) {
-          bool has_vert_snap = false;
-
-          if (snapdata->snap_to_flag & SCE_SNAP_MODE_VERTEX) {
-            has_vert_snap = test_projected_vert_dist(&neasrest_precalc,
-                                                     clip_planes_local,
-                                                     snapdata->clip_plane_len,
-                                                     is_persp,
-                                                     eBone->head,
-                                                     &dist_px_sq,
-                                                     r_loc);
-            has_vert_snap |= test_projected_vert_dist(&neasrest_precalc,
-                                                      clip_planes_local,
-                                                      snapdata->clip_plane_len,
-                                                      is_persp,
-                                                      eBone->tail,
-                                                      &dist_px_sq,
-                                                      r_loc);
-
-            if (has_vert_snap) {
-              retval = SCE_SNAP_MODE_VERTEX;
-            }
-          }
-          if (!has_vert_snap && snapdata->snap_to_flag & SCE_SNAP_MODE_EDGE) {
-            if (test_projected_edge_dist(&neasrest_precalc,
-                                         clip_planes_local,
-                                         snapdata->clip_plane_len,
-                                         is_persp,
-                                         eBone->head,
-                                         eBone->tail,
-                                         &dist_px_sq,
-                                         r_loc)) {
-              retval = SCE_SNAP_MODE_EDGE;
-            }
-          }
+        if (eBone->flag & BONE_HIDDEN_A) {
+          /* Skip hidden bones. */
+          continue;
         }
-      }
-    }
-  }
-  else if (ob->pose && ob->pose->chanbase.first) {
-    LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-      Bone *bone = pchan->bone;
-      /* skip hidden bones */
-      if (bone && !(bone->flag & (BONE_HIDDEN_P | BONE_HIDDEN_PG))) {
+
+        const bool is_selected = (eBone->flag & (BONE_ROOTSEL | BONE_TIPSEL)) != 0;
+        if (is_selected && snap_select == SNAP_NOT_SELECTED) {
+          continue;
+        }
+        if (!is_selected && snap_select == SNAP_SELECTED_ONLY) {
+          continue;
+        }
         bool has_vert_snap = false;
-        const float *head_vec = pchan->pose_head;
-        const float *tail_vec = pchan->pose_tail;
 
         if (snapdata->snap_to_flag & SCE_SNAP_MODE_VERTEX) {
           has_vert_snap = test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
                                                    snapdata->clip_plane_len,
                                                    is_persp,
-                                                   head_vec,
+                                                   eBone->head,
                                                    &dist_px_sq,
                                                    r_loc);
           has_vert_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                     clip_planes_local,
                                                     snapdata->clip_plane_len,
                                                     is_persp,
-                                                    tail_vec,
+                                                    eBone->tail,
                                                     &dist_px_sq,
                                                     r_loc);
 
@@ -1889,12 +1865,57 @@ static short snapArmature(SnapData *snapdata,
                                        clip_planes_local,
                                        snapdata->clip_plane_len,
                                        is_persp,
-                                       head_vec,
-                                       tail_vec,
+                                       eBone->head,
+                                       eBone->tail,
                                        &dist_px_sq,
                                        r_loc)) {
             retval = SCE_SNAP_MODE_EDGE;
           }
+        }
+      }
+    }
+  }
+  else if (ob->pose && ob->pose->chanbase.first) {
+    LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+      Bone *bone = pchan->bone;
+      /* skip hidden bones */
+      if (bone && !(bone->flag & (BONE_HIDDEN_P | BONE_HIDDEN_PG))) {
+        continue;
+      }
+      bool has_vert_snap = false;
+      const float *head_vec = pchan->pose_head;
+      const float *tail_vec = pchan->pose_tail;
+
+      if (snapdata->snap_to_flag & SCE_SNAP_MODE_VERTEX) {
+        has_vert_snap = test_projected_vert_dist(&neasrest_precalc,
+                                                 clip_planes_local,
+                                                 snapdata->clip_plane_len,
+                                                 is_persp,
+                                                 head_vec,
+                                                 &dist_px_sq,
+                                                 r_loc);
+        has_vert_snap |= test_projected_vert_dist(&neasrest_precalc,
+                                                  clip_planes_local,
+                                                  snapdata->clip_plane_len,
+                                                  is_persp,
+                                                  tail_vec,
+                                                  &dist_px_sq,
+                                                  r_loc);
+
+        if (has_vert_snap) {
+          retval = SCE_SNAP_MODE_VERTEX;
+        }
+      }
+      if (!has_vert_snap && snapdata->snap_to_flag & SCE_SNAP_MODE_EDGE) {
+        if (test_projected_edge_dist(&neasrest_precalc,
+                                     clip_planes_local,
+                                     snapdata->clip_plane_len,
+                                     is_persp,
+                                     head_vec,
+                                     tail_vec,
+                                     &dist_px_sq,
+                                     r_loc)) {
+          retval = SCE_SNAP_MODE_EDGE;
         }
       }
     }
@@ -1916,6 +1937,7 @@ static short snapArmature(SnapData *snapdata,
 static short snapCurve(SnapData *snapdata,
                        Object *ob,
                        const float obmat[4][4],
+                       const eSnapSelect snap_select,
                        bool use_obedit,
                        /* read/write args */
                        float *dist_px,
@@ -1970,16 +1992,27 @@ static short snapCurve(SnapData *snapdata,
   }
 
   bool is_persp = snapdata->view_proj == VIEW_PROJ_PERSP;
+  bool skip_selected = snap_select == SNAP_NOT_SELECTED;
+  bool skip_unselected = snap_select == SNAP_SELECTED_ONLY;
 
   for (Nurb *nu = (use_obedit ? cu->editnurb->nurbs.first : cu->nurb.first); nu; nu = nu->next) {
     for (int u = 0; u < nu->pntsu; u++) {
       if (snapdata->snap_to_flag & SCE_SNAP_MODE_VERTEX) {
         if (use_obedit) {
           if (nu->bezt) {
-            /* don't snap to selected (moving) or hidden */
-            if (nu->bezt[u].f2 & SELECT || nu->bezt[u].hide != 0) {
+            if (nu->bezt[u].hide) {
+              /* Skip hidden. */
               continue;
             }
+
+            bool is_selected = (nu->bezt[u].f2 & SELECT) != 0;
+            if (is_selected && skip_selected) {
+              continue;
+            }
+            if (!is_selected && skip_unselected) {
+              continue;
+            }
+
             has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                  clip_planes_local,
                                                  clip_plane_len,
@@ -1989,8 +2022,9 @@ static short snapCurve(SnapData *snapdata,
                                                  r_loc);
             /* Don't snap if handle is selected (moving),
              * or if it is aligning to a moving handle. */
-            if (!(nu->bezt[u].f1 & SELECT) &&
-                !(nu->bezt[u].h1 & HD_ALIGN && nu->bezt[u].f3 & SELECT)) {
+            is_selected = (!(nu->bezt[u].f1 & SELECT) &&
+                           !(nu->bezt[u].h1 & HD_ALIGN && nu->bezt[u].f3 & SELECT)) != 0;
+            if (!(is_selected && skip_selected) && !(!is_selected && skip_unselected)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
                                                    clip_plane_len,
@@ -1999,8 +2033,10 @@ static short snapCurve(SnapData *snapdata,
                                                    &dist_px_sq,
                                                    r_loc);
             }
-            if (!(nu->bezt[u].f3 & SELECT) &&
-                !(nu->bezt[u].h2 & HD_ALIGN && nu->bezt[u].f1 & SELECT)) {
+
+            is_selected = (!(nu->bezt[u].f3 & SELECT) &&
+                           !(nu->bezt[u].h2 & HD_ALIGN && nu->bezt[u].f1 & SELECT)) != 0;
+            if (!(is_selected && skip_selected) && !(!is_selected && skip_unselected)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
                                                    clip_plane_len,
@@ -2011,10 +2047,19 @@ static short snapCurve(SnapData *snapdata,
             }
           }
           else {
-            /* don't snap to selected (moving) or hidden */
-            if (nu->bp[u].f1 & SELECT || nu->bp[u].hide != 0) {
+            if (nu->bp[u].hide) {
+              /* Skip hidden. */
               continue;
             }
+
+            bool is_selected = (nu->bp[u].f1 & SELECT) != 0;
+            if (is_selected && skip_selected) {
+              continue;
+            }
+            if (!is_selected && skip_unselected) {
+              continue;
+            }
+
             has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                  clip_planes_local,
                                                  clip_plane_len,
@@ -2663,6 +2708,7 @@ struct SnapObjUserData {
 static void snap_obj_fn(SnapObjectContext *sctx,
                         Object *ob,
                         float obmat[4][4],
+                        const eSnapSelect snap_select,
                         bool use_obedit,
                         bool use_backface_culling,
                         bool UNUSED(is_object_active),
@@ -2714,12 +2760,26 @@ static void snap_obj_fn(SnapObjectContext *sctx,
       break;
     }
     case OB_ARMATURE:
-      retval = snapArmature(
-          dt->snapdata, ob, obmat, use_obedit, dt->dist_px, dt->r_loc, dt->r_no, dt->r_index);
+      retval = snapArmature(dt->snapdata,
+                            ob,
+                            obmat,
+                            snap_select,
+                            use_obedit,
+                            dt->dist_px,
+                            dt->r_loc,
+                            dt->r_no,
+                            dt->r_index);
       break;
     case OB_CURVE:
-      retval = snapCurve(
-          dt->snapdata, ob, obmat, use_obedit, dt->dist_px, dt->r_loc, dt->r_no, dt->r_index);
+      retval = snapCurve(dt->snapdata,
+                         ob,
+                         obmat,
+                         snap_select,
+                         use_obedit,
+                         dt->dist_px,
+                         dt->r_loc,
+                         dt->r_no,
+                         dt->r_index);
       break; /* Use ATTR_FALLTHROUGH if we want to snap to the generated mesh. */
     case OB_SURF:
     case OB_FONT: {
@@ -2871,6 +2931,15 @@ void ED_transform_snap_object_context_destroy(SnapObjectContext *sctx)
   MEM_freeN(sctx);
 }
 
+static void transform_snap_object_context_cache_clear(SnapObjectContext *sctx)
+{
+  BLI_ghash_clear(sctx->cache.object_map, NULL, snap_object_data_free);
+  if (sctx->cache.data_to_object_map != NULL) {
+    BLI_ghash_clear(sctx->cache.data_to_object_map, NULL, NULL);
+  }
+  BLI_memarena_clear(sctx->cache.mem_arena);
+}
+
 void ED_transform_snap_object_context_set_editmesh_callbacks(
     SnapObjectContext *sctx,
     bool (*test_vert_fn)(BMVert *, void *user_data),
@@ -2878,11 +2947,27 @@ void ED_transform_snap_object_context_set_editmesh_callbacks(
     bool (*test_face_fn)(BMFace *, void *user_data),
     void *user_data)
 {
-  sctx->callbacks.edit_mesh.test_vert_fn = test_vert_fn;
-  sctx->callbacks.edit_mesh.test_edge_fn = test_edge_fn;
-  sctx->callbacks.edit_mesh.test_face_fn = test_face_fn;
+  bool is_cache_dirty = false;
+  if (sctx->callbacks.edit_mesh.test_vert_fn != test_vert_fn) {
+    sctx->callbacks.edit_mesh.test_vert_fn = test_vert_fn;
+    is_cache_dirty = true;
+  }
+  if (sctx->callbacks.edit_mesh.test_edge_fn != test_edge_fn) {
+    sctx->callbacks.edit_mesh.test_edge_fn = test_edge_fn;
+    is_cache_dirty = true;
+  }
+  if (sctx->callbacks.edit_mesh.test_face_fn != test_face_fn) {
+    sctx->callbacks.edit_mesh.test_face_fn = test_face_fn;
+    is_cache_dirty = true;
+  }
+  if (sctx->callbacks.edit_mesh.user_data != user_data) {
+    sctx->callbacks.edit_mesh.user_data = user_data;
+    is_cache_dirty = true;
+  }
 
-  sctx->callbacks.edit_mesh.user_data = user_data;
+  if (is_cache_dirty) {
+    transform_snap_object_context_cache_clear(sctx);
+  }
 }
 
 bool ED_transform_snap_object_project_ray_ex(SnapObjectContext *sctx,

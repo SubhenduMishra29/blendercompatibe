@@ -389,7 +389,7 @@ static void applyTranslation(TransInfo *t, const int UNUSED(mval[2]))
 
     float incr_dir[3];
     mul_v3_m3v3(incr_dir, t->spacemtx_inv, global_dir);
-    if (transform_snap_increment(t, incr_dir)) {
+    if (!(activeSnap(t) && validSnap(t)) && transform_snap_increment(t, incr_dir)) {
       mul_v3_m3v3(incr_dir, t->spacemtx, incr_dir);
 
       /* Test for mixed snap with grid. */
@@ -439,6 +439,7 @@ void initTranslation(TransInfo *t)
 
   t->transform = applyTranslation;
   t->tsnap.applySnap = ApplySnapTranslation;
+  t->tsnap.updateBasePoint = transform_snap_translate_update_baseboint_fn;
   t->tsnap.distance = transform_snap_distance_len_squared_fn;
 
   initMouseInputMode(t, &t->mouse, INPUT_VECTOR);

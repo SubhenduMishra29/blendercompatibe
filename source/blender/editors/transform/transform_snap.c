@@ -128,7 +128,7 @@ bool validSnap(const TransInfo *t)
 
 bool activeSnap(const TransInfo *t)
 {
-  if (t->modifiers & MOD_EDIT_SNAPWITH) {
+  if (t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) {
     return true;
   }
   return ((t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) == MOD_SNAP) ||
@@ -137,6 +137,10 @@ bool activeSnap(const TransInfo *t)
 
 bool transformModeUseSnap(const TransInfo *t)
 {
+  if (t->modifiers & MOD_FORCE_SNAP) {
+    return true;
+  }
+
   ToolSettings *ts = t->settings;
   if (t->mode == TFM_TRANSLATION) {
     return (ts->snap_transform_mode_flag & SCE_SNAP_TRANSFORM_MODE_TRANSLATE) != 0;
@@ -180,7 +184,8 @@ void drawSnapping(const struct bContext *C, TransInfo *t)
   activeCol[3] = 192;
 
   if (t->spacetype == SPACE_VIEW3D) {
-    bool draw_target = (t->modifiers & MOD_EDIT_SNAPWITH) ||
+    bool draw_target = (t->modifiers &
+                        (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) ||
                        (t->tsnap.status & TARGET_INIT) &&
                            (t->scene->toolsettings->snap_mode & SCE_SNAP_MODE_EDGE_PERPENDICULAR);
 
@@ -625,16 +630,6 @@ static void initSnappingMode(TransInfo *t)
       t->tsnap.use_backface_culling = snap_use_backface_culling(t);
       t->tsnap.object_context = ED_transform_snap_object_context_create_view3d(
           t->scene, 0, t->region, t->view);
-
-      if (t->data_type == TC_MESH_VERTS) {
-        /* Ignore elements being transformed. */
-        ED_transform_snap_object_context_set_editmesh_callbacks(
-            t->tsnap.object_context,
-            (bool (*)(BMVert *, void *))BM_elem_cb_check_hflag_disabled,
-            bm_edge_is_snap_target,
-            bm_face_is_snap_target,
-            POINTER_FROM_UINT((BM_ELEM_SELECT | BM_ELEM_HIDDEN)));
-      }
     }
   }
 }
@@ -1133,13 +1128,44 @@ static void TargetSnapCustom(TransInfo *t)
 short snapObjectsTransform(
     TransInfo *t, const float mval[2], float *dist_px, float r_loc[3], float r_no[3])
 {
+  char snap_select;
   float *target = (t->tsnap.status & TARGET_INIT) ? t->tsnap.snapTarget : t->center_global;
+  if (t->modifiers & MOD_EDIT_BASEPOINT_IN_SCENE) {
+    snap_select = SNAP_ALL;
+    if (t->data_type == TC_MESH_VERTS) {
+      ED_transform_snap_object_context_set_editmesh_callbacks(
+          t->tsnap.object_context, NULL, NULL, NULL, NULL);
+    }
+  }
+  else if (t->modifiers & MOD_EDIT_BASEPOINT_IN_OBJECT) {
+    snap_select = SNAP_SELECTED_ONLY;
+    if (t->data_type == TC_MESH_VERTS) {
+      ED_transform_snap_object_context_set_editmesh_callbacks(
+          t->tsnap.object_context,
+          (bool (*)(BMVert *, void *))BM_elem_cb_check_hflag_enabled,
+          (bool (*)(BMEdge *, void *))BM_elem_cb_check_hflag_enabled,
+          (bool (*)(BMFace *, void *))BM_elem_cb_check_hflag_enabled,
+          POINTER_FROM_UINT(BM_ELEM_SELECT));
+    }
+  }
+  else {
+    snap_select = t->tsnap.modeSelect;
+    if (t->data_type == TC_MESH_VERTS) {
+      /* Ignore elements being transformed. */
+      ED_transform_snap_object_context_set_editmesh_callbacks(
+          t->tsnap.object_context,
+          (bool (*)(BMVert *, void *))BM_elem_cb_check_hflag_disabled,
+          bm_edge_is_snap_target,
+          bm_face_is_snap_target,
+          POINTER_FROM_UINT((BM_ELEM_SELECT | BM_ELEM_HIDDEN)));
+    }
+  }
   return ED_transform_snap_object_project_view3d_ex(
       t->tsnap.object_context,
       t->depsgraph,
-      t->settings->snap_mode,
+      t->tsnap.mode,
       &(const struct SnapObjectParams){
-          .snap_select = t->modifiers & MOD_EDIT_SNAPWITH ? SNAP_ALL : t->tsnap.modeSelect,
+          .snap_select = snap_select,
           .use_object_edit_cage = (t->flag & T_EDIT) != 0,
           .use_occlusion_test = t->settings->snap_mode != SCE_SNAP_MODE_FACE,
           .use_backface_culling = t->tsnap.use_backface_culling,
@@ -1555,17 +1581,36 @@ bool transform_snap_increment(TransInfo *t, float *val)
   return true;
 }
 
-void tranform_snap_snapwith_init(TransInfo *t)
+void tranform_snap_editbasepoint_set_mode(TransInfo *t)
 {
-  t->modifiers |= MOD_EDIT_SNAPWITH;
-  t->tsnap.targetSnap = TargetSnapCustom;
-  t->tsnap.targetSnap(t);
-  restoreTransObjects(t);
+  if (!(t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE))) {
+    /* Init. */
+    t->modifiers |= MOD_EDIT_BASEPOINT_IN_OBJECT;
+    t->tsnap.targetSnap = TargetSnapCustom;
+    t->tsnap.targetSnap(t);
+    if ((t->tsnap.mode & ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)) == 0) {
+      /* Init basic snap modes. */
+      t->tsnap.mode |= SCE_SNAP_MODE_FACE | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_VERTEX;
+    }
+  }
+  else if (t->modifiers & MOD_EDIT_BASEPOINT_IN_SCENE) {
+    /* Cancel. */
+    t->modifiers &= ~(MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE);
+    initSnappingMode(t);
+    setSnappingCallback(t);
+  }
+  else {
+    /* Set scene snap mode. */
+    BLI_assert(t->modifiers | MOD_EDIT_BASEPOINT_IN_OBJECT);
+    t->modifiers |= MOD_EDIT_BASEPOINT_IN_SCENE;
+    restoreTransObjects(t);
+    t->redraw |= TREDRAW_SOFT;
+  }
 }
 
-void tranform_snap_snapwith_update(TransInfo *t)
+void tranform_snap_editbasepoint_update(TransInfo *t)
 {
-  BLI_assert(t->modifiers & MOD_EDIT_SNAPWITH);
+  BLI_assert(t->modifiers & MOD_EDIT_BASEPOINT_IN_OBJECT);
   double current = PIL_check_seconds_timer();
 
   /* Time base quirky code to go around findnearest slowness */
@@ -1575,20 +1620,39 @@ void tranform_snap_snapwith_update(TransInfo *t)
     t->tsnap.last = current;
   }
 
-  if (validSnap(t)) {
-    copy_v3_v3(t->tsnap.snapTarget, t->tsnap.snapPoint);
-    t->redraw |= TREDRAW_SOFT;
-  }
+  t->redraw |= TREDRAW_SOFT;
 }
 
-void tranform_snap_snapwith_end(TransInfo *t)
+void tranform_snap_editbasepoint_confirm(TransInfo *t)
 {
-  BLI_assert(t->modifiers & MOD_EDIT_SNAPWITH);
-  t->modifiers &= ~MOD_EDIT_SNAPWITH;
+  BLI_assert(t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE));
+  float new_base_point[3];
+  getSnapPoint(t, new_base_point);
 
-  /* Force a reinit with a current #t->mval. */
-  initMouseInput(t, &t->mouse, t->center2d, t->mval, false);
+  if (!(t->modifiers & MOD_EDIT_BASEPOINT_IN_SCENE)) {
+    if (t->tsnap.updateBasePoint) {
+      t->tsnap.updateBasePoint(t, new_base_point, new_base_point);
+    }
+  }
+  else {
+    /* Force a reinit with a current #t->mval. */
+    initMouseInput(t, &t->mouse, t->center2d, t->mval, false);
+    applyMouseInput(t, &t->mouse, t->mval, t->values);
+  }
+
+  copy_v3_v3(t->tsnap.snapTarget, new_base_point);
+  t->modifiers &= ~(MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE);
+
+  float values_modal_offset[3];
+  copy_v3_v3(values_modal_offset, t->values);
   applyMouseInput(t, &t->mouse, t->mval, t->values);
+  sub_v3_v3(values_modal_offset, t->values);
+  add_v3_v3(t->values_modal_offset, values_modal_offset);
+
+  if (!activeSnap(t)) {
+    /* It is expected that the user wants to keep the snap active. */
+    t->modifiers |= MOD_FORCE_SNAP;
+  }
 }
 
 /** \} */
@@ -1602,6 +1666,15 @@ float transform_snap_distance_len_squared_fn(TransInfo *UNUSED(t),
                                              const float p2[3])
 {
   return len_squared_v3v3(p1, p2);
+}
+
+void transform_snap_translate_update_baseboint_fn(TransInfo *t,
+                                                  const float new_base_point[3],
+                                                  float r_base_point_final[3])
+{
+  mul_v3_m3v3(r_base_point_final, t->spacemtx_inv, new_base_point);
+  sub_v3_v3(r_base_point_final, t->values_final);
+  mul_m3_v3(t->spacemtx, r_base_point_final);
 }
 
 /** \} */

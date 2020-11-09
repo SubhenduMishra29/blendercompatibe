@@ -59,9 +59,9 @@ bool transformModeUseSnap(const TransInfo *t);
 bool transform_snap_increment(TransInfo *t, float *val);
 bool transform_snap_grid(TransInfo *t, float *val);
 
-void tranform_snap_snapwith_init(TransInfo *t);
-void tranform_snap_snapwith_update(TransInfo *t);
-void tranform_snap_snapwith_end(TransInfo *t);
+void tranform_snap_editbasepoint_set_mode(TransInfo *t);
+void tranform_snap_editbasepoint_update(TransInfo *t);
+void tranform_snap_editbasepoint_confirm(TransInfo *t);
 
 void snapSequenceBounds(TransInfo *t, const int mval[2]);
 
@@ -85,3 +85,4 @@ eRedrawFlag updateSelectedSnapPoint(TransInfo *t);
 void removeSnapPoint(TransInfo *t);
 
 float transform_snap_distance_len_squared_fn(TransInfo *t, const float p1[3], const float p2[3]);
+void transform_snap_translate_update_baseboint_fn(TransInfo *t, const float new_base_point[3]);

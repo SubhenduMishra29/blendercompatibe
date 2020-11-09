@@ -101,6 +101,38 @@ static void ApplySnapRotation(TransInfo *t, float *value)
   *value = dist;
 }
 
+static void rotate_get_axis(TransInfo *t, float r_axis[3], bool *r_flip_angle)
+{
+  *r_flip_angle = false;
+  if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
+    t->con.applyRot(t, NULL, NULL, r_axis, NULL);
+  }
+  else {
+    copy_v3_v3(r_axis, t->spacemtx[t->orient_axis]);
+    if (!(t->flag & T_INPUT_IS_VALUES_FINAL) && (dot_v3v3(r_axis, t->viewinv[2]) > 0.0f)) {
+      /* The input is obtained according to the position of the mouse.
+       * Flip to better match the movement. */
+      *r_flip_angle = true;
+    }
+  }
+}
+
+static void rotate_update_baseboint_fn(TransInfo *t,
+                                       const float new_base_point[3],
+                                       float r_base_point_final[3])
+{
+  float mat[3][3];
+  float angle = -t->values_final[0];
+  {
+    float axis_final[3];
+    bool dummy;
+    rotate_get_axis(t, axis_final, &dummy);
+    axis_angle_normalized_to_mat3(mat, axis_final, angle);
+  }
+
+  mul_v3_m3v3(r_base_point_final, mat, new_base_point);
+}
+
 static float large_rotation_limit(float angle)
 {
   /* Limit rotation to 1001 turns max
@@ -195,27 +227,26 @@ static void applyRotation(TransInfo *t, const int UNUSED(mval[2]))
   char str[UI_MAX_DRAW_STR];
   float axis_final[3];
   float final = t->values[0];
-
-  if ((t->con.mode & CON_APPLY) && t->con.applyRot) {
-    t->con.applyRot(t, NULL, NULL, axis_final, NULL);
-  }
-  else {
-    copy_v3_v3(axis_final, t->spacemtx[t->orient_axis]);
-    if (!(t->flag & T_INPUT_IS_VALUES_FINAL) && (dot_v3v3(axis_final, t->viewinv[2]) > 0.0f)) {
-      /* The input is obtained according to the position of the mouse.
-       * Flip to better match the movement. */
-      final *= -1;
-    }
-  }
-
+  bool invert_angle;
+  rotate_get_axis(t, axis_final, &invert_angle);
   if (applyNumInput(&t->num, &final)) {
     /* We have to limit the amount of turns to a reasonable number here,
      * to avoid things getting *very* slow, see how applyRotationValue() handles those... */
     final = large_rotation_limit(final);
   }
   else {
-    transform_snap_increment(t, &final);
+    if (invert_angle) {
+      /* The input is obtained according to the position of the mouse.
+       * Flip to better match the movement. */
+      final *= -1;
+    }
     applySnapping(t, &final);
+    if (!(activeSnap(t) && validSnap(t))) {
+      transform_snap_increment(t, &final);
+    }
+    else if (invert_angle) {
+      final *= -1;
+    }
   }
 
   t->values_final[0] = final;
@@ -235,6 +266,7 @@ void initRotation(TransInfo *t)
   t->mode = TFM_ROTATION;
   t->transform = applyRotation;
   t->tsnap.applySnap = ApplySnapRotation;
+  t->tsnap.updateBasePoint = rotate_update_baseboint_fn;
   t->tsnap.distance = RotationBetween;
 
   setInputPostFct(&t->mouse, postInputRotation);

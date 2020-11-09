@@ -75,6 +75,19 @@ static void ApplySnapResize(TransInfo *t, float vec[3])
   }
 }
 
+static void resize_update_baseboint_fn(TransInfo *t,
+                                       const float new_base_point[3],
+                                       float r_base_point_final[3])
+{
+  float mat[3][3];
+  size_to_mat3(mat, t->values_final);
+  invert_m3(mat);
+
+  mul_v3_m3v3(r_base_point_final, t->spacemtx_inv, new_base_point);
+  mul_m3_v3(mat, r_base_point_final);
+  mul_m3_v3(t->spacemtx, r_base_point_final);
+}
+
 static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
 {
   float mat[3][3];
@@ -166,6 +179,7 @@ void initResize(TransInfo *t)
   t->mode = TFM_RESIZE;
   t->transform = applyResize;
   t->tsnap.applySnap = ApplySnapResize;
+  t->tsnap.updateBasePoint = resize_update_baseboint_fn;
   t->tsnap.distance = ResizeBetween;
 
   initMouseInputMode(t, &t->mouse, INPUT_SPRING_FLIP);

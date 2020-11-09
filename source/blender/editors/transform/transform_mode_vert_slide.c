@@ -633,6 +633,7 @@ void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use_clamp)
   t->transform = applyVertSlide;
   t->handleEvent = handleEventVertSlide;
   t->tsnap.applySnap = vert_slide_snap_apply;
+  t->tsnap.updateBasePoint = transform_snap_translate_update_baseboint_fn;
   t->tsnap.distance = transform_snap_distance_len_squared_fn;
 
   {
