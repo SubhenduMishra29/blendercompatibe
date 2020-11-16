@@ -636,6 +636,15 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       }
       break;
     }
+    case TFM_MODAL_EDIT_SNAPWITH: {
+      if (t->spacetype != SPACE_VIEW3D) {
+        return false;
+      }
+      if (!(t->tsnap.mode & ~(SCE_SNAP_MODE_GRID | SCE_SNAP_MODE_INCREMENT))) {
+        return false;
+      }
+      break;
+    }
   }
   return true;
 }
@@ -685,6 +694,7 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
       {TFM_MODAL_RESIZE, "RESIZE", 0, "Resize", ""},
       {TFM_MODAL_AUTOCONSTRAINT, "AUTOCONSTRAIN", 0, "Automatic Constraint", ""},
       {TFM_MODAL_AUTOCONSTRAINTPLANE, "AUTOCONSTRAINPLANE", 0, "Automatic Constraint Plane", ""},
+      {TFM_MODAL_EDIT_SNAPWITH, "EDIT_SNAPWITH", 0, "Edit snap with", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1108,6 +1118,9 @@ int transformEvent(TransInfo *t, const wmEvent *event)
           handled = true;
         }
         break;
+      case TFM_MODAL_EDIT_SNAPWITH:
+        tranform_snap_snapwith_init(t);
+        break;
       /* Those two are only handled in transform's own handler, see T44634! */
       case TFM_MODAL_EDGESLIDE_UP:
       case TFM_MODAL_EDGESLIDE_DOWN:
@@ -1206,11 +1219,14 @@ int transformEvent(TransInfo *t, const wmEvent *event)
       default: {
         /* Disable modifiers. */
         int modifiers = t->modifiers;
-        modifiers &= ~MOD_CONSTRAINT_SELECT;
-        modifiers &= ~MOD_CONSTRAINT_PLANE;
+        modifiers &= ~(MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE | MOD_EDIT_SNAPWITH);
         if (modifiers != t->modifiers) {
           if (t->modifiers & (MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE)) {
             postSelectConstraint(t);
+          }
+          else {
+            BLI_assert(t->modifiers & MOD_EDIT_SNAPWITH);
+            tranform_snap_snapwith_end(t);
           }
           t->modifiers = modifiers;
           t->redraw |= TREDRAW_HARD;
@@ -1913,14 +1929,18 @@ void transformApply(bContext *C, TransInfo *t)
 
   if ((t->redraw & TREDRAW_HARD) || (t->draw_handle_apply == NULL && (t->redraw & TREDRAW_SOFT))) {
     selectConstraint(t);
-    if (t->transform) {
-      t->transform(t, t->mval); /* calls recalcData() */
-      viewRedrawForce(C, t);
+    if (t->modifiers & MOD_EDIT_SNAPWITH) {
+      tranform_snap_snapwith_update(t);
     }
-    t->redraw = TREDRAW_NOTHING;
+    else if (t->transform) {
+      t->transform(t, t->mval); /* calls recalcData() */
+      t->redraw |= TREDRAW_SOFT;
+    }
   }
-  else if (t->redraw & TREDRAW_SOFT) {
+
+  if (t->redraw & TREDRAW_SOFT) {
     viewRedrawForce(C, t);
+    t->redraw = TREDRAW_NOTHING;
   }
 
   /* If auto confirm is on, break after one pass */

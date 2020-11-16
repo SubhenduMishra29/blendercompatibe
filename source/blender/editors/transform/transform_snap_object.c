@@ -395,7 +395,7 @@ static void iter_snap_objects(SnapObjectContext *sctx,
       continue;
     }
 
-    if (base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
+    if (snap_select == SNAP_ALL || base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
       /* pass */
     }
     else if (base->flag_legacy & BA_SNAP_FIX_DEPS_FIASCO) {

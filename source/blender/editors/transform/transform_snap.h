@@ -59,6 +59,10 @@ bool transformModeUseSnap(const TransInfo *t);
 bool transform_snap_increment(TransInfo *t, float *val);
 bool transform_snap_grid(TransInfo *t, float *val);
 
+void tranform_snap_snapwith_init(TransInfo *t);
+void tranform_snap_snapwith_update(TransInfo *t);
+void tranform_snap_snapwith_end(TransInfo *t);
+
 void snapSequenceBounds(TransInfo *t, const int mval[2]);
 
 bool activeSnap(const TransInfo *t);

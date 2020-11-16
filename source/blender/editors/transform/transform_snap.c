@@ -128,6 +128,9 @@ bool validSnap(const TransInfo *t)
 
 bool activeSnap(const TransInfo *t)
 {
+  if (t->modifiers & MOD_EDIT_SNAPWITH) {
+    return true;
+  }
   return ((t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) == MOD_SNAP) ||
          ((t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) == MOD_SNAP_INVERT);
 }
@@ -177,8 +180,9 @@ void drawSnapping(const struct bContext *C, TransInfo *t)
   activeCol[3] = 192;
 
   if (t->spacetype == SPACE_VIEW3D) {
-    bool draw_target = (t->tsnap.status & TARGET_INIT) &&
-                       (t->scene->toolsettings->snap_mode & SCE_SNAP_MODE_EDGE_PERPENDICULAR);
+    bool draw_target = (t->modifiers & MOD_EDIT_SNAPWITH) ||
+                       (t->tsnap.status & TARGET_INIT) &&
+                           (t->scene->toolsettings->snap_mode & SCE_SNAP_MODE_EDGE_PERPENDICULAR);
 
     if (draw_target || validSnap(t)) {
       const float *loc_cur = NULL;
@@ -1115,6 +1119,11 @@ static void TargetSnapClosest(TransInfo *t)
   }
 }
 
+static void TargetSnapCustom(TransInfo *t)
+{
+  t->tsnap.status |= TARGET_INIT;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1130,7 +1139,7 @@ short snapObjectsTransform(
       t->depsgraph,
       t->settings->snap_mode,
       &(const struct SnapObjectParams){
-          .snap_select = t->tsnap.modeSelect,
+          .snap_select = t->modifiers & MOD_EDIT_SNAPWITH ? SNAP_ALL : t->tsnap.modeSelect,
           .use_object_edit_cage = (t->flag & T_EDIT) != 0,
           .use_occlusion_test = t->settings->snap_mode != SCE_SNAP_MODE_FACE,
           .use_backface_culling = t->tsnap.use_backface_culling,
@@ -1544,6 +1553,42 @@ bool transform_snap_increment(TransInfo *t, float *val)
 
   snap_increment_apply(t, t->idx_max, increment_dist, val);
   return true;
+}
+
+void tranform_snap_snapwith_init(TransInfo *t)
+{
+  t->modifiers |= MOD_EDIT_SNAPWITH;
+  t->tsnap.targetSnap = TargetSnapCustom;
+  t->tsnap.targetSnap(t);
+  restoreTransObjects(t);
+}
+
+void tranform_snap_snapwith_update(TransInfo *t)
+{
+  BLI_assert(t->modifiers & MOD_EDIT_SNAPWITH);
+  double current = PIL_check_seconds_timer();
+
+  /* Time base quirky code to go around findnearest slowness */
+  /* TODO: add exception for object mode, no need to slow it down then. */
+  if (current - t->tsnap.last >= 0.01) {
+    t->tsnap.calcSnap(t, NULL);
+    t->tsnap.last = current;
+  }
+
+  if (validSnap(t)) {
+    copy_v3_v3(t->tsnap.snapTarget, t->tsnap.snapPoint);
+    t->redraw |= TREDRAW_SOFT;
+  }
+}
+
+void tranform_snap_snapwith_end(TransInfo *t)
+{
+  BLI_assert(t->modifiers & MOD_EDIT_SNAPWITH);
+  t->modifiers &= ~MOD_EDIT_SNAPWITH;
+
+  /* Force a reinit with a current #t->mval. */
+  initMouseInput(t, &t->mouse, t->center2d, t->mval, false);
+  applyMouseInput(t, &t->mouse, t->mval, t->values);
 }
 
 /** \} */
