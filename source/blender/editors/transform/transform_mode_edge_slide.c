@@ -1512,7 +1512,6 @@ void initEdgeSlide_ex(
   t->transform = applyEdgeSlide;
   t->handleEvent = handleEventEdgeSlide;
   t->tsnap.applySnap = edge_slide_snap_apply;
-  t->tsnap.updateBasePoint = transform_snap_translate_update_baseboint_fn;
   t->tsnap.distance = transform_snap_distance_len_squared_fn;
 
   {

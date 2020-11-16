@@ -128,7 +128,7 @@ bool validSnap(const TransInfo *t)
 
 bool activeSnap(const TransInfo *t)
 {
-  if (t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) {
+  if (t->modifiers & MOD_EDIT_BASEPOINT) {
     return true;
   }
   return ((t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) == MOD_SNAP) ||
@@ -184,8 +184,7 @@ void drawSnapping(const struct bContext *C, TransInfo *t)
   activeCol[3] = 192;
 
   if (t->spacetype == SPACE_VIEW3D) {
-    bool draw_target = (t->modifiers &
-                        (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) ||
+    bool draw_target = (t->modifiers & MOD_EDIT_BASEPOINT) ||
                        (t->tsnap.status & TARGET_INIT) &&
                            (t->scene->toolsettings->snap_mode & SCE_SNAP_MODE_EDGE_PERPENDICULAR);
 
@@ -1130,22 +1129,11 @@ short snapObjectsTransform(
 {
   char snap_select;
   float *target = (t->tsnap.status & TARGET_INIT) ? t->tsnap.snapTarget : t->center_global;
-  if (t->modifiers & MOD_EDIT_BASEPOINT_IN_SCENE) {
+  if (t->modifiers & MOD_EDIT_BASEPOINT) {
     snap_select = SNAP_ALL;
     if (t->data_type == TC_MESH_VERTS) {
       ED_transform_snap_object_context_set_editmesh_callbacks(
           t->tsnap.object_context, NULL, NULL, NULL, NULL);
-    }
-  }
-  else if (t->modifiers & MOD_EDIT_BASEPOINT_IN_OBJECT) {
-    snap_select = SNAP_SELECTED_ONLY;
-    if (t->data_type == TC_MESH_VERTS) {
-      ED_transform_snap_object_context_set_editmesh_callbacks(
-          t->tsnap.object_context,
-          (bool (*)(BMVert *, void *))BM_elem_cb_check_hflag_enabled,
-          (bool (*)(BMEdge *, void *))BM_elem_cb_check_hflag_enabled,
-          (bool (*)(BMFace *, void *))BM_elem_cb_check_hflag_enabled,
-          POINTER_FROM_UINT(BM_ELEM_SELECT));
     }
   }
   else {
@@ -1581,36 +1569,32 @@ bool transform_snap_increment(TransInfo *t, float *val)
   return true;
 }
 
-void tranform_snap_editbasepoint_set_mode(TransInfo *t)
+void tranform_snap_editbasepoint_toggle(TransInfo *t)
 {
-  if (!(t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE))) {
+  if (!(t->modifiers & MOD_EDIT_BASEPOINT)) {
     /* Init. */
-    t->modifiers |= MOD_EDIT_BASEPOINT_IN_OBJECT;
+    t->modifiers |= MOD_EDIT_BASEPOINT;
     t->tsnap.targetSnap = TargetSnapCustom;
     t->tsnap.targetSnap(t);
     if ((t->tsnap.mode & ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)) == 0) {
       /* Init basic snap modes. */
+      t->tsnap.mode &= ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID);
       t->tsnap.mode |= SCE_SNAP_MODE_FACE | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_VERTEX;
     }
-  }
-  else if (t->modifiers & MOD_EDIT_BASEPOINT_IN_SCENE) {
-    /* Cancel. */
-    t->modifiers &= ~(MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE);
-    initSnappingMode(t);
-    setSnappingCallback(t);
-  }
-  else {
-    /* Set scene snap mode. */
-    BLI_assert(t->modifiers | MOD_EDIT_BASEPOINT_IN_OBJECT);
-    t->modifiers |= MOD_EDIT_BASEPOINT_IN_SCENE;
     restoreTransObjects(t);
     t->redraw |= TREDRAW_SOFT;
+  }
+  else if (t->modifiers & MOD_EDIT_BASEPOINT) {
+    /* Cancel. */
+    t->modifiers &= ~MOD_EDIT_BASEPOINT;
+    initSnappingMode(t);
+    setSnappingCallback(t);
   }
 }
 
 void tranform_snap_editbasepoint_update(TransInfo *t)
 {
-  BLI_assert(t->modifiers & MOD_EDIT_BASEPOINT_IN_OBJECT);
+  BLI_assert(t->modifiers & MOD_EDIT_BASEPOINT);
   double current = PIL_check_seconds_timer();
 
   /* Time base quirky code to go around findnearest slowness */
@@ -1625,23 +1609,16 @@ void tranform_snap_editbasepoint_update(TransInfo *t)
 
 void tranform_snap_editbasepoint_confirm(TransInfo *t)
 {
-  BLI_assert(t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE));
+  BLI_assert(t->modifiers & MOD_EDIT_BASEPOINT);
   float new_base_point[3];
   getSnapPoint(t, new_base_point);
 
-  if (!(t->modifiers & MOD_EDIT_BASEPOINT_IN_SCENE)) {
-    if (t->tsnap.updateBasePoint) {
-      t->tsnap.updateBasePoint(t, new_base_point, new_base_point);
-    }
-  }
-  else {
-    /* Force a reinit with a current #t->mval. */
-    initMouseInput(t, &t->mouse, t->center2d, t->mval, false);
-    applyMouseInput(t, &t->mouse, t->mval, t->values);
-  }
+  /* Force a reinit with a current #t->mval. */
+  initMouseInput(t, &t->mouse, t->center2d, t->mval, false);
+  applyMouseInput(t, &t->mouse, t->mval, t->values);
 
   copy_v3_v3(t->tsnap.snapTarget, new_base_point);
-  t->modifiers &= ~(MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE);
+  t->modifiers &= ~MOD_EDIT_BASEPOINT;
 
   float values_modal_offset[3];
   copy_v3_v3(values_modal_offset, t->values);
@@ -1666,15 +1643,6 @@ float transform_snap_distance_len_squared_fn(TransInfo *UNUSED(t),
                                              const float p2[3])
 {
   return len_squared_v3v3(p1, p2);
-}
-
-void transform_snap_translate_update_baseboint_fn(TransInfo *t,
-                                                  const float new_base_point[3],
-                                                  float r_base_point_final[3])
-{
-  mul_v3_m3v3(r_base_point_final, t->spacemtx_inv, new_base_point);
-  sub_v3_v3(r_base_point_final, t->values_final);
-  mul_m3_v3(t->spacemtx, r_base_point_final);
 }
 
 /** \} */

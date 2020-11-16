@@ -117,22 +117,6 @@ static void rotate_get_axis(TransInfo *t, float r_axis[3], bool *r_flip_angle)
   }
 }
 
-static void rotate_update_baseboint_fn(TransInfo *t,
-                                       const float new_base_point[3],
-                                       float r_base_point_final[3])
-{
-  float mat[3][3];
-  float angle = -t->values_final[0];
-  {
-    float axis_final[3];
-    bool dummy;
-    rotate_get_axis(t, axis_final, &dummy);
-    axis_angle_normalized_to_mat3(mat, axis_final, angle);
-  }
-
-  mul_v3_m3v3(r_base_point_final, mat, new_base_point);
-}
-
 static float large_rotation_limit(float angle)
 {
   /* Limit rotation to 1001 turns max
@@ -266,7 +250,6 @@ void initRotation(TransInfo *t)
   t->mode = TFM_ROTATION;
   t->transform = applyRotation;
   t->tsnap.applySnap = ApplySnapRotation;
-  t->tsnap.updateBasePoint = rotate_update_baseboint_fn;
   t->tsnap.distance = RotationBetween;
 
   setInputPostFct(&t->mouse, postInputRotation);

@@ -161,8 +161,7 @@ typedef enum {
   MOD_SNAP = 1 << 3,
   MOD_SNAP_INVERT = 1 << 4,
   MOD_FORCE_SNAP = MOD_SNAP | (1 << 5),
-  MOD_EDIT_BASEPOINT_IN_OBJECT = 1 << 6,
-  MOD_EDIT_BASEPOINT_IN_SCENE = 1 << 7,
+  MOD_EDIT_BASEPOINT = 1 << 6,
 } eTransModifiers;
 
 /** #TransInfo.helpline */
@@ -230,7 +229,6 @@ typedef struct TransSnap {
   void (*applySnap)(struct TransInfo *, float *);
   void (*calcSnap)(struct TransInfo *, float *);
   void (*targetSnap)(struct TransInfo *);
-  void (*updateBasePoint)(struct TransInfo *, const float *, float *);
   /**
    * Get the transform distance between two points (used by Closest snap)
    *

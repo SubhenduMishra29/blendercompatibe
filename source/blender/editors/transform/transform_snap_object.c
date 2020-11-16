@@ -396,7 +396,7 @@ static void iter_snap_objects(SnapObjectContext *sctx,
       continue;
     }
 
-    if (ELEM(snap_select, SNAP_ALL, SNAP_SELECTED_ONLY) || base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE) {
+    if ((snap_select == SNAP_ALL) || (base->flag_legacy & BA_TRANSFORM_LOCKED_IN_PLACE)) {
       /* pass */
     }
     else if (base->flag_legacy & BA_SNAP_FIX_DEPS_FIASCO) {
@@ -409,14 +409,8 @@ static void iter_snap_objects(SnapObjectContext *sctx,
         continue;
       }
     }
-    else if (ELEM(snap_select, SNAP_NOT_SELECTED, SNAP_SELECTED_ONLY)) {
-      bool is_selected = (base->flag & BASE_SELECTED) || (base->flag_legacy & BA_WAS_SEL);
-      if (is_selected) {
-        if (snap_select == SNAP_NOT_SELECTED) {
-          continue;
-        }
-      }
-      else if (snap_select == SNAP_SELECTED_ONLY) {
+    else if (snap_select == SNAP_NOT_SELECTED) {
+      if ((base->flag & BASE_SELECTED) || (base->flag_legacy & BA_WAS_SEL)) {
         continue;
       }
     }
@@ -1835,9 +1829,6 @@ static short snapArmature(SnapData *snapdata,
         if (is_selected && snap_select == SNAP_NOT_SELECTED) {
           continue;
         }
-        if (!is_selected && snap_select == SNAP_SELECTED_ONLY) {
-          continue;
-        }
         bool has_vert_snap = false;
 
         if (snapdata->snap_to_flag & SCE_SNAP_MODE_VERTEX) {
@@ -1993,7 +1984,6 @@ static short snapCurve(SnapData *snapdata,
 
   bool is_persp = snapdata->view_proj == VIEW_PROJ_PERSP;
   bool skip_selected = snap_select == SNAP_NOT_SELECTED;
-  bool skip_unselected = snap_select == SNAP_SELECTED_ONLY;
 
   for (Nurb *nu = (use_obedit ? cu->editnurb->nurbs.first : cu->nurb.first); nu; nu = nu->next) {
     for (int u = 0; u < nu->pntsu; u++) {
@@ -2009,9 +1999,6 @@ static short snapCurve(SnapData *snapdata,
             if (is_selected && skip_selected) {
               continue;
             }
-            if (!is_selected && skip_unselected) {
-              continue;
-            }
 
             has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                  clip_planes_local,
@@ -2024,7 +2011,7 @@ static short snapCurve(SnapData *snapdata,
              * or if it is aligning to a moving handle. */
             is_selected = (!(nu->bezt[u].f1 & SELECT) &&
                            !(nu->bezt[u].h1 & HD_ALIGN && nu->bezt[u].f3 & SELECT)) != 0;
-            if (!(is_selected && skip_selected) && !(!is_selected && skip_unselected)) {
+            if (!(is_selected && skip_selected)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
                                                    clip_plane_len,
@@ -2036,7 +2023,7 @@ static short snapCurve(SnapData *snapdata,
 
             is_selected = (!(nu->bezt[u].f3 & SELECT) &&
                            !(nu->bezt[u].h2 & HD_ALIGN && nu->bezt[u].f1 & SELECT)) != 0;
-            if (!(is_selected && skip_selected) && !(!is_selected && skip_unselected)) {
+            if (!(is_selected && skip_selected)) {
               has_snap |= test_projected_vert_dist(&neasrest_precalc,
                                                    clip_planes_local,
                                                    clip_plane_len,
@@ -2054,9 +2041,6 @@ static short snapCurve(SnapData *snapdata,
 
             bool is_selected = (nu->bp[u].f1 & SELECT) != 0;
             if (is_selected && skip_selected) {
-              continue;
-            }
-            if (!is_selected && skip_unselected) {
               continue;
             }
 

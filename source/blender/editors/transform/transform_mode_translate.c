@@ -439,7 +439,6 @@ void initTranslation(TransInfo *t)
 
   t->transform = applyTranslation;
   t->tsnap.applySnap = ApplySnapTranslation;
-  t->tsnap.updateBasePoint = transform_snap_translate_update_baseboint_fn;
   t->tsnap.distance = transform_snap_distance_len_squared_fn;
 
   initMouseInputMode(t, &t->mouse, INPUT_VECTOR);

@@ -819,7 +819,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
       t->state = TRANS_RUNNING;
     }
 
-    if (!(t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE))) {
+    if (!(t->modifiers & MOD_EDIT_BASEPOINT)) {
       applyMouseInput(t, &t->mouse, t->mval, t->values);
     }
 
@@ -836,7 +836,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         handled = true;
         break;
       case TFM_MODAL_CONFIRM:
-        if (t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) {
+        if (t->modifiers & MOD_EDIT_BASEPOINT) {
           tranform_snap_editbasepoint_confirm(t);
         }
         else {
@@ -1123,7 +1123,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         }
         break;
       case TFM_MODAL_EDIT_SNAPWITH:
-        tranform_snap_editbasepoint_set_mode(t);
+        tranform_snap_editbasepoint_toggle(t);
         break;
       /* Those two are only handled in transform's own handler, see T44634! */
       case TFM_MODAL_EDGESLIDE_UP:
@@ -1548,6 +1548,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
         WM_msg_publish_rna_prop(t->mbus, &t->scene->id, ts, ToolSettings, use_snap);
       }
     }
+  }
 #endif
 
   if ((prop = RNA_struct_find_property(op->ptr, "use_proportional_edit"))) {
@@ -1928,7 +1929,7 @@ void transformApply(bContext *C, TransInfo *t)
 
   if ((t->redraw & TREDRAW_HARD) || (t->draw_handle_apply == NULL && (t->redraw & TREDRAW_SOFT))) {
     selectConstraint(t);
-    if (t->modifiers & (MOD_EDIT_BASEPOINT_IN_OBJECT | MOD_EDIT_BASEPOINT_IN_SCENE)) {
+    if (t->modifiers & MOD_EDIT_BASEPOINT) {
       tranform_snap_editbasepoint_update(t);
     }
     else if (t->transform) {
