@@ -566,6 +566,20 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
 static bool transform_modal_item_poll(const wmOperator *op, int value)
 {
   const TransInfo *t = op->customdata;
+  if (t->modifiers & MOD_EDIT_BASEPOINT) {
+    if (ELEM(value,
+             TFM_MODAL_CANCEL,
+             TFM_MODAL_CONFIRM,
+             TFM_MODAL_SNAP_INV_ON,
+             TFM_MODAL_SNAP_INV_OFF,
+             TFM_MODAL_ADD_SNAP,
+             TFM_MODAL_REMOVE_SNAP,
+             TFM_MODAL_EDIT_SNAPWITH)) {
+      return true;
+    }
+    return false;
+  }
+
   switch (value) {
     case TFM_MODAL_CANCEL: {
       /* TODO: Canceling with LMB is not possible when the operator is activated
@@ -805,27 +819,27 @@ int transformEvent(TransInfo *t, const wmEvent *event)
     handled = true;
   }
   else if (event->type == MOUSEMOVE) {
-    if (t->modifiers & (MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE)) {
-      t->con.mode |= CON_SELECT;
-    }
+    if (t->mval[0] != event->mval[0] || t->mval[1] != event->mval[1]) {
+      if (t->modifiers & (MOD_CONSTRAINT_SELECT | MOD_CONSTRAINT_PLANE)) {
+        t->con.mode |= CON_SELECT;
+      }
 
-    copy_v2_v2_int(t->mval, event->mval);
+      copy_v2_v2_int(t->mval, event->mval);
 
-    /* Use this for soft redraw. Might cause flicker in object mode */
-    // t->redraw |= TREDRAW_SOFT;
-    t->redraw |= TREDRAW_HARD;
+      /* Use this for soft redraw. Might cause flicker in object mode */
+      // t->redraw |= TREDRAW_SOFT;
+      t->redraw |= TREDRAW_HARD;
 
-    if (t->state == TRANS_STARTING) {
-      t->state = TRANS_RUNNING;
-    }
+      if (t->state == TRANS_STARTING) {
+        t->state = TRANS_RUNNING;
+      }
 
-    if (!(t->modifiers & MOD_EDIT_BASEPOINT)) {
       applyMouseInput(t, &t->mouse, t->mval, t->values);
-    }
 
-    /* Snapping mouse move events. */
-    t->redraw |= handleSnapping(t, event);
-    handled = true;
+      /* Snapping mouse move events. */
+      t->redraw |= handleSnapping(t, event);
+      handled = true;
+    }
   }
   /* handle modal keymap first */
   /* enforce redraw of transform when modifiers are used */
@@ -1534,10 +1548,9 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     }
   }
 
-#ifdef USE_SAVE_SCE_SNAP
   if (t->flag & T_MODAL) {
     /* do we check for parameter? */
-    if (transformModeUseSnap(t)) {
+    if (transformModeUseSnap(t) & !(t->modifiers & MOD_SNAP_TEMP)) {
       if (!(t->modifiers & MOD_SNAP) != !(ts->snap_flag & SCE_SNAP)) {
         if (t->modifiers & MOD_SNAP) {
           ts->snap_flag |= SCE_SNAP;
@@ -1549,7 +1562,6 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
       }
     }
   }
-#endif
 
   if ((prop = RNA_struct_find_property(op->ptr, "use_proportional_edit"))) {
     RNA_property_boolean_set(op->ptr, prop, use_prop_edit);
@@ -1934,11 +1946,10 @@ void transformApply(bContext *C, TransInfo *t)
     }
     else if (t->transform) {
       t->transform(t, t->mval); /* calls recalcData() */
-      t->redraw |= TREDRAW_SOFT;
     }
   }
 
-  if (t->redraw & TREDRAW_SOFT) {
+  if (t->redraw & (TREDRAW_HARD | TREDRAW_SOFT)) {
     viewRedrawForce(C, t);
     t->redraw = TREDRAW_NOTHING;
   }

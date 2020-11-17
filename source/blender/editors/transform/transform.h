@@ -160,7 +160,7 @@ typedef enum {
   MOD_PRECISION = 1 << 2,
   MOD_SNAP = 1 << 3,
   MOD_SNAP_INVERT = 1 << 4,
-  MOD_FORCE_SNAP = MOD_SNAP | (1 << 5),
+  MOD_SNAP_TEMP = MOD_SNAP | (1 << 5),
   MOD_EDIT_BASEPOINT = 1 << 6,
 } eTransModifiers;
 
@@ -191,7 +191,7 @@ typedef enum {
 
 /** #TransSnap.status */
 typedef enum {
-  SNAP_FORCED = 1 << 0,
+  CUSTOM_SNAPPOINT = 1 << 0,
   TARGET_INIT = 1 << 1,
   POINT_INIT = 1 << 2,
   MULTI_POINTS = 1 << 3,

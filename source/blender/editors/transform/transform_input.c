@@ -451,6 +451,10 @@ void setInputPostFct(MouseInput *mi, void (*post)(struct TransInfo *t, float val
 
 void applyMouseInput(TransInfo *t, MouseInput *mi, const int mval[2], float output[3])
 {
+  if (t->modifiers & MOD_EDIT_BASEPOINT) {
+    return;
+  }
+
   double mval_db[2];
 
   if (mi->use_virtual_mval) {
