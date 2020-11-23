@@ -574,7 +574,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
              TFM_MODAL_SNAP_INV_OFF,
              TFM_MODAL_ADD_SNAP,
              TFM_MODAL_REMOVE_SNAP,
-             TFM_MODAL_EDIT_SNAPWITH)) {
+             TFM_MODAL_EDIT_SNAP_POINT)) {
       return true;
     }
     return false;
@@ -650,7 +650,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       }
       break;
     }
-    case TFM_MODAL_EDIT_SNAPWITH: {
+    case TFM_MODAL_EDIT_SNAP_POINT: {
       if (t->spacetype != SPACE_VIEW3D) {
         return false;
       }
@@ -705,7 +705,7 @@ wmKeyMap *transform_modal_keymap(wmKeyConfig *keyconf)
       {TFM_MODAL_RESIZE, "RESIZE", 0, "Resize", ""},
       {TFM_MODAL_AUTOCONSTRAINT, "AUTOCONSTRAIN", 0, "Automatic Constraint", ""},
       {TFM_MODAL_AUTOCONSTRAINTPLANE, "AUTOCONSTRAINPLANE", 0, "Automatic Constraint Plane", ""},
-      {TFM_MODAL_EDIT_SNAPWITH, "EDIT_SNAPWITH", 0, "Edit snap with", ""},
+      {TFM_MODAL_EDIT_SNAP_POINT, "EDIT_SNAP_POINT", 0, "Edit Snap Point", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
@@ -1136,7 +1136,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
           handled = true;
         }
         break;
-      case TFM_MODAL_EDIT_SNAPWITH:
+      case TFM_MODAL_EDIT_SNAP_POINT:
         tranform_snap_editbasepoint_toggle(t);
         break;
       /* Those two are only handled in transform's own handler, see T44634! */

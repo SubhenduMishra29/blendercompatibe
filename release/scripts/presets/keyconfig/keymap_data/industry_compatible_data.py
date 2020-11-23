@@ -3944,7 +3944,7 @@ def km_transform_modal_map(_params):
         ("INSERTOFS_TOGGLE_DIR", {"type": 'T', "value": 'PRESS'}, None),
         ("AUTOCONSTRAIN", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         ("AUTOCONSTRAINPLANE", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "shift": True}, None),
-        ("EDIT_SNAPWITH", {"type": 'B', "value": 'PRESS'}, None),
+        ("EDIT_SNAP_POINT", {"type": 'B', "value": 'PRESS'}, None),
     ])
 
     return keymap
