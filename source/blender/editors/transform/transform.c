@@ -654,6 +654,13 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
       if (t->spacetype != SPACE_VIEW3D) {
         return false;
       }
+      if (!ELEM(t->mode,
+                TFM_TRANSLATION,
+                TFM_ROTATION,
+                TFM_RESIZE)) {
+        /* More modes can be added over time if this feature proves useful in them. */
+        return false;
+      }
       break;
     }
   }
