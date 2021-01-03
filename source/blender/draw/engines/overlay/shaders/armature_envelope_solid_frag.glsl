@@ -1,5 +1,4 @@
 
-uniform float alpha = 0.6;
 uniform bool isDistance;
 
 flat in vec3 finalStateColor;
@@ -12,16 +11,17 @@ layout(location = 1) out vec4 lineOutput;
 void main()
 {
   float n = normalize(normalView).z;
+  float a = wire_alpha(gl_FragCoord.z);
   if (isDistance) {
     n = 1.0 - clamp(-n, 0.0, 1.0);
-    fragColor = vec4(1.0, 1.0, 1.0, 0.2) * n;
+    fragColor = vec4(1.0, 1.0, 1.0, 0.33 * a) * n;
   }
   else {
     /* Smooth lighting factor. */
     const float s = 0.2; /* [0.0-0.5] range */
     float fac = clamp((n * (1.0 - s)) + s, 0.0, 1.0);
     fragColor.rgb = mix(finalStateColor, finalBoneColor, fac * fac);
-    fragColor.a = alpha;
+    fragColor.a = a;
   }
   lineOutput = vec4(0.0);
 }
