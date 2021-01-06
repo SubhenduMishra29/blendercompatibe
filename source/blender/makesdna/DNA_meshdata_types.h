@@ -102,6 +102,7 @@ typedef struct MPoly {
 enum {
   ME_SMOOTH = (1 << 0),
   ME_FACE_SEL = (1 << 1),
+  ME_HOLE = (1 << 2),
   /* ME_HIDE = (1 << 4), */
 };
 

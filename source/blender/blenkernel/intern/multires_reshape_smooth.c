@@ -1052,6 +1052,7 @@ static void converter_init(const MultiresReshapeSmoothContext *reshape_smooth_co
   converter->getNumFaceVertices = get_num_face_vertices;
   converter->getFaceVertices = get_face_vertices;
   converter->getFaceEdges = NULL;
+  converter->getFaceIsHole = NULL;
 
   converter->getEdgeVertices = get_edge_vertices;
   converter->getNumEdgeFaces = NULL;

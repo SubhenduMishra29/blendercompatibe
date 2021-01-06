@@ -2756,7 +2756,7 @@ void MESH_OT_vertices_smooth_laplacian(wmOperatorType *ot)
 /** \name Set Faces Smooth Shading Operator
  * \{ */
 
-static void mesh_set_smooth_faces(BMEditMesh *em, short smooth)
+static void mesh_set_faces_flag(BMEditMesh *em, char flag, short value)
 {
   BMIter iter;
   BMFace *efa;
@@ -2767,7 +2767,7 @@ static void mesh_set_smooth_faces(BMEditMesh *em, short smooth)
 
   BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
     if (BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
-      BM_elem_flag_set(efa, BM_ELEM_SMOOTH, smooth);
+      BM_elem_flag_set(efa, flag, value);
     }
   }
 }
@@ -2786,7 +2786,7 @@ static int edbm_faces_shade_smooth_exec(bContext *C, wmOperator *UNUSED(op))
       continue;
     }
 
-    mesh_set_smooth_faces(em, 1);
+    mesh_set_faces_flag(em, BM_ELEM_SMOOTH, 1);
     EDBM_update_generic(obedit->data, false, false);
   }
   MEM_freeN(objects);
@@ -2829,7 +2829,7 @@ static int edbm_faces_shade_flat_exec(bContext *C, wmOperator *UNUSED(op))
       continue;
     }
 
-    mesh_set_smooth_faces(em, 0);
+    mesh_set_faces_flag(em, BM_ELEM_SMOOTH, 0);
     EDBM_update_generic(obedit->data, false, false);
   }
   MEM_freeN(objects);
@@ -2846,6 +2846,92 @@ void MESH_OT_faces_shade_flat(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = edbm_faces_shade_flat_exec;
+  ot->poll = ED_operator_editmesh;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Mark Faces Hole Operator
+ * \{ */
+
+static int edbm_faces_mark_hole_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      view_layer, CTX_wm_view3d(C), &objects_len);
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+
+    if (em->bm->totfacesel == 0) {
+      continue;
+    }
+
+    mesh_set_faces_flag(em, BM_ELEM_HOLE, 1);
+    EDBM_update_generic(obedit->data, false, false);
+  }
+  MEM_freeN(objects);
+
+  return OPERATOR_FINISHED;
+}
+
+void MESH_OT_faces_mark_hole(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Mark Hole";
+  ot->description = "Mark as a subdivision hole";
+  ot->idname = "MESH_OT_faces_mark_hole";
+
+  /* api callbacks */
+  ot->exec = edbm_faces_mark_hole_exec;
+  ot->poll = ED_operator_editmesh;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Unmark Faces Hole Operator
+ * \{ */
+
+static int edbm_faces_unmark_hole_exec(bContext *C, wmOperator *UNUSED(op))
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      view_layer, CTX_wm_view3d(C), &objects_len);
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+
+    if (em->bm->totfacesel == 0) {
+      continue;
+    }
+
+    mesh_set_faces_flag(em, BM_ELEM_HOLE, 0);
+    EDBM_update_generic(obedit->data, false, false);
+  }
+  MEM_freeN(objects);
+
+  return OPERATOR_FINISHED;
+}
+
+void MESH_OT_faces_unmark_hole(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Unmark Hole";
+  ot->description = "Unmark as a subdivision hole";
+  ot->idname = "MESH_OT_faces_unmark_hole";
+
+  /* api callbacks */
+  ot->exec = edbm_faces_unmark_hole_exec;
   ot->poll = ED_operator_editmesh;
 
   /* flags */
@@ -8641,7 +8727,7 @@ static int normals_split_merge(bContext *C, const bool do_merge)
                                                BM_loop_normal_editdata_array_init(bm, true) :
                                                NULL;
 
-    mesh_set_smooth_faces(em, do_merge);
+    mesh_set_faces_flag(em, BM_ELEM_SMOOTH, do_merge);
 
     BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
       if (BM_elem_flag_test(e, BM_ELEM_SELECT)) {

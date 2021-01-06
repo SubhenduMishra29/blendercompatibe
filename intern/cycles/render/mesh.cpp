@@ -151,6 +151,7 @@ NODE_DEFINE(Mesh)
   SOCKET_INT_ARRAY(subd_num_corners, "Subdivision Face Corner Count", array<int>());
   SOCKET_INT_ARRAY(subd_shader, "Subdivision Face Shader", array<int>());
   SOCKET_BOOLEAN_ARRAY(subd_smooth, "Subdivision Face Smooth", array<bool>());
+  SOCKET_BOOLEAN_ARRAY(subd_hole, "Subdivision Face Hole", array<bool>());
   SOCKET_INT_ARRAY(subd_ptex_offset, "Subdivision Face PTex Offset", array<int>());
   SOCKET_INT(num_ngons, "NGons Number", 0);
 
@@ -252,6 +253,7 @@ void Mesh::resize_subd_faces(int numfaces, int num_ngons_, int numcorners)
   subd_num_corners.resize(numfaces);
   subd_shader.resize(numfaces);
   subd_smooth.resize(numfaces);
+  subd_hole.resize(numfaces);
   subd_ptex_offset.resize(numfaces);
   subd_face_corners.resize(numcorners);
   num_ngons = num_ngons_;
@@ -266,6 +268,7 @@ void Mesh::reserve_subd_faces(int numfaces, int num_ngons_, int numcorners)
   subd_num_corners.reserve(numfaces);
   subd_shader.reserve(numfaces);
   subd_smooth.reserve(numfaces);
+  subd_hole.reserve(numfaces);
   subd_ptex_offset.reserve(numfaces);
   subd_face_corners.reserve(numcorners);
   num_ngons = num_ngons_;
@@ -311,6 +314,7 @@ void Mesh::clear(bool preserve_shaders, bool preserve_voxel_data)
   subd_num_corners.clear();
   subd_shader.clear();
   subd_smooth.clear();
+  subd_hole.clear();
   subd_ptex_offset.clear();
   subd_face_corners.clear();
 
@@ -370,7 +374,7 @@ void Mesh::add_triangle(int v0, int v1, int v2, int shader_, bool smooth_)
   }
 }
 
-void Mesh::add_subd_face(int *corners, int num_corners, int shader_, bool smooth_)
+void Mesh::add_subd_face(int *corners, int num_corners, int shader_, bool smooth_, bool hole)
 {
   int start_corner = subd_face_corners.size();
 
@@ -390,6 +394,7 @@ void Mesh::add_subd_face(int *corners, int num_corners, int shader_, bool smooth
   subd_num_corners.push_back_reserved(num_corners);
   subd_shader.push_back_reserved(shader_);
   subd_smooth.push_back_reserved(smooth_);
+  subd_hole.push_back_reserved(hole);
   subd_ptex_offset.push_back_reserved(ptex_offset);
 
   tag_subd_face_corners_modified();
@@ -397,6 +402,7 @@ void Mesh::add_subd_face(int *corners, int num_corners, int shader_, bool smooth
   tag_subd_num_corners_modified();
   tag_subd_shader_modified();
   tag_subd_smooth_modified();
+  tag_subd_hole_modified();
   tag_subd_ptex_offset_modified();
 }
 
@@ -408,6 +414,7 @@ Mesh::SubdFace Mesh::get_subd_face(size_t index) const
   s.smooth = subd_smooth[index];
   s.ptex_offset = subd_ptex_offset[index];
   s.start_corner = subd_start_corner[index];
+  s.hole = subd_hole[index];
   return s;
 }
 
