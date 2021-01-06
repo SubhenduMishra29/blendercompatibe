@@ -80,7 +80,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
   int *mask = shdata->data_mask;
   mask[0] = 0xFF; /* Face Flag */
-  mask[1] = 0xFF; /* Edge Flag */
+  mask[1] = 0xFFFF; /* Edge Flag */
 
   const int flag = pd->edit_mesh.flag = v3d->overlay.edit_flag;
 

@@ -1027,6 +1027,14 @@ static void create_subd_mesh(Scene *scene,
     }
   }
 
+  for (BL::MeshVertexCreaseLayer &c : b_mesh.vertex_creases) {
+    for (int i = 0; i < c.data.length(); ++i) {
+      if (c.data[i].value() != 0.0f) {
+        mesh->add_vertex_crease(i, c.data[i].value());
+      }
+    }
+  }
+
   /* set subd params */
   PointerRNA cobj = RNA_pointer_get(&b_ob.ptr, "cycles");
   float subd_dicing_rate = max(0.1f, RNA_float_get(&cobj, "dicing_rate") * dicing_rate);

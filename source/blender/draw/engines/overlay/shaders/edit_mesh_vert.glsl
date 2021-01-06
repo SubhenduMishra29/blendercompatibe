@@ -1,7 +1,7 @@
 
 uniform sampler2D depthTex;
 uniform float alpha = 1.0;
-uniform ivec4 dataMask = ivec4(0xFF);
+uniform ivec4 dataMask = ivec4(0xFFFF);
 
 in ivec4 data;
 in vec3 pos;
@@ -57,16 +57,16 @@ void main()
   bool occluded = test_occlusion();
 
 #elif defined(EDGE)
+  float crease = float(m_data.z) / 65535.0;
 #  ifdef FLAT
   finalColor = EDIT_MESH_edge_color_inner(m_data.y);
   selectOverride = 1;
 #  else
-  finalColor = EDIT_MESH_edge_vertex_color(m_data.y);
+  finalColor = EDIT_MESH_edge_vertex_color(m_data.y, crease);
   selectOverride = (m_data.y & EDGE_SELECTED);
 #  endif
 
-  float crease = float(m_data.z) / 255.0;
-  float bweight = float(m_data.w) / 255.0;
+  float bweight = float(m_data.w) / 65535.0;
   finalColorOuter = EDIT_MESH_edge_color_outer(m_data.y, m_data.x, crease, bweight);
 
   if (finalColorOuter.a > 0.0) {

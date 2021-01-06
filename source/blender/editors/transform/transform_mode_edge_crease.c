@@ -106,9 +106,9 @@ static void applyCrease(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-void initCrease(TransInfo *t)
+static void initCrease_ex(TransInfo *t, int mode)
 {
-  t->mode = TFM_CREASE;
+  t->mode = mode;
   t->transform = applyCrease;
 
   initMouseInputMode(t, &t->mouse, INPUT_SPRING_DELTA);
@@ -123,5 +123,15 @@ void initCrease(TransInfo *t)
   t->num.unit_type[0] = B_UNIT_NONE;
 
   t->flag |= T_NO_CONSTRAINT | T_NO_PROJECT;
+}
+
+void initCrease(TransInfo *t)
+{
+  initCrease_ex(t, TFM_CREASE);
+}
+
+void initVertCrease(TransInfo *t)
+{
+  initCrease_ex(t, TFM_VERT_CREASE);
 }
 /** \} */

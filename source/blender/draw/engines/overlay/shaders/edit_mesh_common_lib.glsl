@@ -7,7 +7,8 @@ vec4 EDIT_MESH_edge_color_outer(int edge_flag, int face_flag, float crease, floa
   vec4 color = vec4(0.0);
   color = ((edge_flag & EDGE_FREESTYLE) != 0) ? colorEdgeFreestyle : color;
   color = ((edge_flag & EDGE_SHARP) != 0) ? colorEdgeSharp : color;
-  color = (crease > 0.0) ? vec4(colorEdgeCrease.rgb, crease) : color;
+  color = (crease > 0.0 && (edge_flag & (EDGE_CREASE)) != 0) ? vec4(colorEdgeCrease.rgb, crease) :
+                                                               color;
   color = (bweight > 0.0) ? vec4(colorEdgeBWeight.rgb, bweight) : color;
   color = ((edge_flag & EDGE_SEAM) != 0) ? colorEdgeSeam : color;
   return color;
@@ -24,13 +25,16 @@ vec4 EDIT_MESH_edge_color_inner(int edge_flag)
   return color;
 }
 
-vec4 EDIT_MESH_edge_vertex_color(int vertex_flag)
+vec4 EDIT_MESH_edge_vertex_color(int vertex_flag, float vertex_crease)
 {
   vec4 color = colorWireEdit;
   vec4 color_select = (selectEdges) ? colorEdgeSelect : mix(colorEdgeSelect, colorWireEdit, .45);
 
   bool edge_selected = (vertex_flag & (VERT_ACTIVE | VERT_SELECTED)) != 0;
   color = (edge_selected) ? color_select : color;
+  color = (vertex_crease > 0.0 && (vertex_flag & VERT_CREASE) != 0) ?
+              mix(vec4(colorEdgeCrease.rgb, vertex_crease), color, .45) :
+              color;
 
   color.a = (selectEdges || edge_selected) ? 1.0 : 0.7;
   return color;

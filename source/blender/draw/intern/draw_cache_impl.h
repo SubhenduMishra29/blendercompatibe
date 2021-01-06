@@ -233,7 +233,9 @@ enum {
   VFLAG_EDGE_SEAM = 1 << 5,
   VFLAG_EDGE_SHARP = 1 << 6,
   VFLAG_EDGE_FREESTYLE = 1 << 7,
-  /* Beware to not go over 1 << 7 (it's a byte flag). */
+  VFLAG_VERT_CREASE = 1 << 8,
+  VFLAG_EDGE_CREASE = 1 << 9,
+  /* Beware to not go over 1 << 15 (it's a 2 byte flag). */
   /* NOTE: Grease pencil edit curve use another type of data format that allows for this value. */
   VFLAG_VERT_GPENCIL_BEZT_HANDLE = 1 << 30,
 };

@@ -885,6 +885,7 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
     return;
   }
 
+  /* read egde creases */
   Int32ArraySamplePtr indices = sample.getCreaseIndices();
   Alembic::Abc::FloatArraySamplePtr sharpnesses = sample.getCreaseSharpnesses();
 
@@ -913,6 +914,28 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
     }
 
     mesh->cd_flag |= ME_CDFLAG_EDGE_CREASE;
+  }
+
+  /* read vertex creases */
+  indices = sample.getCornerIndices();
+  sharpnesses = sample.getCornerSharpnesses();
+
+  if (indices && sharpnesses && indices->size() == sharpnesses->size() && indices->size() != 0) {
+    float *data = (float *)CustomData_add_layer(
+        &mesh->vdata, CD_CREASE, CD_DEFAULT, nullptr, mesh->totvert);
+    int totvert = mesh->totvert;
+
+    for (int i = 0, v = indices->size(); i < v; ++i) {
+      const int idx = (*indices)[i];
+
+      if (idx >= totvert) {
+        continue;
+      }
+
+      data[idx] = (*sharpnesses)[i];
+    }
+
+    mesh->cd_flag |= ME_CDFLAG_VERT_CREASE;
   }
 
   if (m_settings->validate_meshes) {

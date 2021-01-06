@@ -2306,10 +2306,10 @@ const MeshExtract extract_weights = {
  * \{ */
 
 typedef struct EditLoopData {
-  uchar v_flag;
-  uchar e_flag;
-  uchar crease;
-  uchar bweight;
+  ushort v_flag;
+  ushort e_flag;
+  ushort crease;
+  ushort bweight;
 } EditLoopData;
 
 static void mesh_render_data_face_flag(const MeshRenderData *mr,
@@ -2382,14 +2382,15 @@ static void mesh_render_data_edge_flag(const MeshRenderData *mr, BMEdge *eed, Ed
   if (mr->crease_ofs != -1) {
     float crease = BM_ELEM_CD_GET_FLOAT(eed, mr->crease_ofs);
     if (crease > 0) {
-      eattr->crease = (uchar)(crease * 255.0f);
+      eattr->e_flag |= VFLAG_EDGE_CREASE;
+      eattr->crease = (ushort)(crease * 65535.0f);
     }
   }
   /* Use a byte for value range */
   if (mr->bweight_ofs != -1) {
     float bweight = BM_ELEM_CD_GET_FLOAT(eed, mr->bweight_ofs);
     if (bweight > 0) {
-      eattr->bweight = (uchar)(bweight * 255.0f);
+      eattr->bweight = (ushort)(bweight * 65535.0f);
     }
   }
 #ifdef WITH_FREESTYLE
@@ -2441,6 +2442,15 @@ static void mesh_render_data_vert_flag(const MeshRenderData *mr, BMVert *eve, Ed
   if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
     eattr->e_flag |= VFLAG_VERT_SELECTED;
   }
+
+  /* Use a byte for value range */
+  if (mr->vert_crease_ofs != -1) {
+    float crease = BM_ELEM_CD_GET_FLOAT(eve, mr->vert_crease_ofs);
+    if (crease > 0) {
+      eattr->e_flag |= VFLAG_VERT_CREASE;
+      eattr->crease = (ushort)(crease * 65535.0f);
+    }
+  }
 }
 
 static void *extract_edit_data_init(const MeshRenderData *mr,
@@ -2451,7 +2461,7 @@ static void *extract_edit_data_init(const MeshRenderData *mr,
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* WARNING: Adjust #EditLoopData struct accordingly. */
-    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U8, 4, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U16, 4, GPU_FETCH_INT);
     GPU_vertformat_alias_add(&format, "flag");
   }
   GPU_vertbuf_init_with_format(vbo, &format);
@@ -2597,7 +2607,7 @@ static void *extract_edituv_data_init(const MeshRenderData *mr,
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* WARNING: Adjust #EditLoopData struct accordingly. */
-    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U8, 4, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U16, 4, GPU_FETCH_INT);
     GPU_vertformat_alias_add(&format, "flag");
   }
 
