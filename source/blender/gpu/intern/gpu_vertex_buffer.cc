@@ -72,6 +72,11 @@ void VertBuf::clear()
   flag = GPU_VERTBUF_INVALID;
 }
 
+bool VertBuf::is_invalid() const
+{
+  return flag == GPU_VERTBUF_INVALID;
+}
+
 VertBuf *VertBuf::duplicate()
 {
   VertBuf *dst = GPUBackend::get()->vertbuf_alloc();

@@ -386,6 +386,11 @@ uint32_t *GPU_indexbuf_unmap(const GPUIndexBuf *elem, const uint32_t *mapped_buf
   return unwrap(elem)->unmap(mapped_buffer);
 }
 
+uint32_t GPU_indexbuf_get_index_len(GPUIndexBuf *elem)
+{
+  return unwrap(elem)->index_len_get();
+}
+
 void GPU_indexbuf_discard(GPUIndexBuf *elem)
 {
   delete unwrap(elem);

@@ -86,7 +86,8 @@ typedef struct Mesh_Runtime {
   void *batch_cache;
 
   struct SubdivCCG *subdiv_ccg;
-  void *_pad1;
+  /* Subdivision mesh for OpenGL rendering. */
+  void *subdivision_mesh;
   int subdiv_ccg_tot_level;
   char _pad2[4];
 

@@ -33,6 +33,7 @@ set(INC
   ../editors/space_view3d
   ../functions
   ../gpu
+  ../gpu/intern/
   ../imbuf
   ../makesdna
   ../makesrna
@@ -44,9 +45,11 @@ set(INC
   ../../../intern/atomic
   ../../../intern/glew-mx
   ../../../intern/guardedalloc
+  ../../../intern/opensubdiv
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
+  ${OPENSUBDIV_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -81,6 +84,7 @@ set(SRC
   intern/draw_manager_text.c
   intern/draw_manager_texture.c
   intern/draw_select_buffer.c
+  intern/draw_subdivision.cc
   intern/draw_view.c
   engines/basic/basic_engine.c
   engines/image/image_engine.c
@@ -179,6 +183,7 @@ set(SRC
   intern/draw_manager_profiling.h
   intern/draw_manager_testing.h
   intern/draw_manager_text.h
+  intern/draw_subdivision.h
   intern/draw_view.h
   intern/smaa_textures.h
   engines/basic/basic_engine.h

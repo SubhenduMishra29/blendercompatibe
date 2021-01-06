@@ -323,6 +323,16 @@ void GLBatch::draw(int v_first, int v_count, int i_first, int i_count)
     GLint base_index = el->index_base_;
     void *v_first_ofs = el->offset_ptr(v_first);
 
+    if (is_subdivision_batch) {
+      std::cerr << "Drawing a subdivision batch with indices (" << this << ")\n";
+      std::cerr << "-- v_first_ofs : " << v_first_ofs << '\n';
+      std::cerr << "-- base_index : " << base_index << '\n';
+      std::cerr << "-- index_type : " << index_type << '\n';
+      std::cerr << "-- v_count : " << v_count << '\n';
+      std::cerr << "-- i_count : " << i_count << '\n';
+      std::cerr << "-- elem->ibo_id : " << this->elem_()->ibo_id() << '\n';
+    }
+
     if (GLContext::base_instance_support) {
       glDrawElementsInstancedBaseVertexBaseInstance(
           gl_type, v_count, index_type, v_first_ofs, i_count, base_index, i_first);
@@ -333,6 +343,11 @@ void GLBatch::draw(int v_first, int v_count, int i_first, int i_count)
     }
   }
   else {
+    if (is_subdivision_batch) {
+      std::cerr << "Drawing a subdivision batch without indices (" << this << ")\n";
+      std::cerr << "-- v_count : " << v_count << '\n';
+      std::cerr << "-- i_count : " << i_count << '\n';
+    }
 #ifdef __APPLE__
     glDisable(GL_PRIMITIVE_RESTART);
 #endif

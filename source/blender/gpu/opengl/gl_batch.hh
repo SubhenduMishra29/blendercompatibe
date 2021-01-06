@@ -95,6 +95,9 @@ class GLBatch : public Batch {
   /** All vaos corresponding to all the GPUShaderInterface this batch was drawn with. */
   GLVaoCache vao_cache_;
 
+  /* For debug prints. */
+  bool is_subdivision_batch = false;
+
  public:
   void draw(int v_first, int v_count, int i_first, int i_count) override;
   void bind(int i_first);

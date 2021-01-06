@@ -47,6 +47,17 @@ class GLIndexBuf : public IndexBuf {
 
   const uint32_t *read() const override;
 
+  /* subdiv hack */
+  void set_ibo(GLuint id)
+  {
+    ibo_id_ = id;
+  }
+
+  GLuint ibo_id() const
+  {
+    return ibo_id_;
+  }
+
   void *offset_ptr(uint additional_vertex_offset) const
   {
     additional_vertex_offset += index_start_;

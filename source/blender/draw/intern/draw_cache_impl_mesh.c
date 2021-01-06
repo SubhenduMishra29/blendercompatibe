@@ -68,6 +68,7 @@
 
 #include "draw_cache_extract.h"
 #include "draw_cache_inline.h"
+#include "draw_subdivision.h"
 
 #include "draw_cache_impl.h" /* own include */
 
@@ -1371,15 +1372,23 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
 
   /* Initialize batches and request VBO's & IBO's. */
   if (DRW_batch_requested(cache->batch.surface, GPU_PRIM_TRIS)) {
-    DRW_ibo_request(cache->batch.surface, &mbufcache->ibo.tris);
-    /* Order matters. First ones override latest VBO's attributes. */
-    DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.lnor);
-    DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.pos_nor);
-    if (cache->cd_used.uv != 0) {
-      DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.uv);
+    if (BKE_mesh_uses_subdivision(scene, me)) {
+      DRW_ibo_request(cache->batch.surface, &mbufcache->ibo.subdiv_tris);
+      DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.subdiv_pos);
+
+      DRW_create_subdivision(scene, me, &mbufcache->vbo.subdiv_pos, &mbufcache->ibo.subdiv_tris);
     }
-    if (cache->cd_used.vcol != 0 || cache->cd_used.sculpt_vcol != 0) {
-      DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.vcol);
+    else {
+      DRW_ibo_request(cache->batch.surface, &mbufcache->ibo.tris);
+      /* Order matters. First ones override latest VBO's attributes. */
+      DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.lnor);
+      DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.pos_nor);
+      if (cache->cd_used.uv != 0) {
+        DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.uv);
+      }
+      if (cache->cd_used.vcol != 0 || cache->cd_used.sculpt_vcol != 0) {
+        DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.vcol);
+      }
     }
   }
   if (DRW_batch_requested(cache->batch.all_verts, GPU_PRIM_POINTS)) {
@@ -1434,22 +1443,34 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
 
   /* Per Material */
   for (int i = 0; i < cache->mat_len; i++) {
-    if (DRW_batch_requested(cache->surface_per_mat[i], GPU_PRIM_TRIS)) {
-      DRW_ibo_request(cache->surface_per_mat[i], &mbufcache->tris_per_mat[i]);
-      /* Order matters. First ones override latest VBO's attributes. */
-      DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.lnor);
-      DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.pos_nor);
-      if (cache->cd_used.uv != 0) {
-        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.uv);
+    if (BKE_mesh_uses_subdivision(scene, me)) {
+      // TODO(@kevindietrich) : proper primitive type for subdivision (to obtain from the patch
+      // description)
+      if (DRW_batch_requested(cache->surface_per_mat[i], cache->batch.surface->prim_type)) {
+        // TODO(@kevindietrich) : how to handle multiple shaders?
+        DRW_ibo_request(cache->surface_per_mat[i], &mbufcache->ibo.subdiv_tris);
+        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.subdiv_pos);
       }
-      if ((cache->cd_used.tan != 0) || (cache->cd_used.tan_orco != 0)) {
-        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.tan);
-      }
-      if (cache->cd_used.vcol != 0 || cache->cd_used.sculpt_vcol != 0) {
-        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.vcol);
-      }
-      if (cache->cd_used.orco != 0) {
-        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.orco);
+    }
+    else {
+      if (DRW_batch_requested(cache->surface_per_mat[i], GPU_PRIM_TRIS)) {
+        DRW_ibo_request(cache->surface_per_mat[i], &mbufcache->tris_per_mat[i]);
+        /* Order matters. First ones override latest VBO's attributes. */
+        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.lnor);
+        DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.pos_nor);
+
+        if (cache->cd_used.uv != 0) {
+          DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.uv);
+        }
+        if ((cache->cd_used.tan != 0) || (cache->cd_used.tan_orco != 0)) {
+          DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.tan);
+        }
+        if (cache->cd_used.vcol != 0 || cache->cd_used.sculpt_vcol != 0) {
+          DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.vcol);
+        }
+        if (cache->cd_used.orco != 0) {
+          DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.orco);
+        }
       }
     }
   }

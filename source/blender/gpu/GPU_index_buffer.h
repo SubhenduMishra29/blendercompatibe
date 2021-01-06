@@ -82,6 +82,8 @@ void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,
                                            uint start,
                                            uint length);
 
+uint32_t GPU_indexbuf_get_index_len(GPUIndexBuf *elem);
+
 /**
  * (Download and) return a pointer containing the data of an index buffer.
  *

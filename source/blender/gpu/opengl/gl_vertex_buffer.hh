@@ -50,6 +50,12 @@ class GLVertBuf : public VertBuf {
   const void *read() const override;
   void *unmap(const void *mapped_data) const override;
 
+  /* Exposed for usage from OpenSubDiv's OpenGL evaluator. */
+  GLuint vbo_id() const
+  {
+    return vbo_id_;
+  }
+
  protected:
   void acquire_data(void) override;
   void resize_data(void) override;

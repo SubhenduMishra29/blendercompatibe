@@ -698,6 +698,10 @@ int BKE_mesh_get_subdivision_level(const struct Scene *scene, struct Mesh *me);
 
 bool BKE_mesh_uses_subdivision(const struct Scene *scene, struct Mesh *me);
 
+void BKE_mesh_subdivision_mesh_free(struct Mesh *me);
+
+extern void (*BKE_mesh_subdivision_mesh_free_cb)(struct Mesh *me);
+
 /* Inlines */
 
 /* Instead of -1 that function uses ORIGINDEX_NONE as defined in BKE_customdata.h,

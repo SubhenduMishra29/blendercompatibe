@@ -100,6 +100,8 @@ class VertBuf {
   virtual const void *read() const = 0;
   virtual void *unmap(const void *mapped_data) const = 0;
 
+  bool is_invalid() const;
+
  protected:
   virtual void acquire_data(void) = 0;
   virtual void resize_data(void) = 0;

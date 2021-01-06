@@ -87,6 +87,7 @@
 #include "draw_manager_profiling.h"
 #include "draw_manager_testing.h"
 #include "draw_manager_text.h"
+#include "draw_subdivision.h"
 
 /* only for callbacks */
 #include "draw_cache_impl.h"
@@ -2970,6 +2971,8 @@ void DRW_engines_register(void)
 
     BKE_volume_batch_cache_dirty_tag_cb = DRW_volume_batch_cache_dirty_tag;
     BKE_volume_batch_cache_free_cb = DRW_volume_batch_cache_free;
+
+    BKE_mesh_subdivision_mesh_free_cb = DRW_subdivision_mesh_free;
   }
 }
 
@@ -2991,6 +2994,7 @@ void DRW_engines_free(void)
   DRW_shape_cache_free();
   DRW_stats_free();
   DRW_globals_free();
+  DRW_subdiv_free();
 
   DrawEngineType *next;
   for (DrawEngineType *type = DRW_engines.first; type; type = next) {

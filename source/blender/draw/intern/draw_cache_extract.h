@@ -105,10 +105,11 @@ typedef struct MeshBufferCache {
    * For some VBOs, it extends to (in this exact order) :
    * loops + loose_edges*2 + loose_verts */
   struct {
-    GPUVertBuf *pos_nor;  /* extend */
-    GPUVertBuf *lnor;     /* extend */
-    GPUVertBuf *edge_fac; /* extend */
-    GPUVertBuf *weights;  /* extend */
+    GPUVertBuf *pos_nor;    /* extend */
+    GPUVertBuf *subdiv_pos; /* extend */
+    GPUVertBuf *lnor;       /* extend */
+    GPUVertBuf *edge_fac;   /* extend */
+    GPUVertBuf *weights;    /* extend */
     GPUVertBuf *uv;
     GPUVertBuf *tan;
     GPUVertBuf *vcol;
@@ -137,6 +138,7 @@ typedef struct MeshBufferCache {
   struct {
     /* Indices to vloops. */
     GPUIndexBuf *tris;        /* Ordered per material. */
+    GPUIndexBuf *subdiv_tris;
     GPUIndexBuf *lines;       /* Loose edges last. */
     GPUIndexBuf *lines_loose; /* sub buffer of `lines` only containing the loose edges. */
     GPUIndexBuf *points;

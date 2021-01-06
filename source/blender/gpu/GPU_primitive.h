@@ -44,6 +44,8 @@ typedef enum {
   GPU_PRIM_TRIS_ADJ,
   GPU_PRIM_LINE_STRIP_ADJ,
 
+  GPU_PRIM_PATCHES,
+
   GPU_PRIM_NONE,
 } GPUPrimType;
 
