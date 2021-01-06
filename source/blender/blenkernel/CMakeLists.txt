@@ -193,6 +193,7 @@ set(SRC
   intern/mesh_remesh_voxel.c
   intern/mesh_runtime.c
   intern/mesh_sample.cc
+  intern/mesh_subdivision.c
   intern/mesh_tangent.c
   intern/mesh_validate.c
   intern/mesh_validate.cc

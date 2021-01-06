@@ -230,6 +230,13 @@ typedef struct Mesh {
   int face_sets_color_default;
 
   Mesh_Runtime runtime;
+
+  char use_subdivision;
+  char adaptive_subdivision;
+  char subdiv_viewport_level;
+  char subdiv_render_level;
+  short uv_smooth;
+  short boundary_smooth;
 } Mesh;
 
 /* deprecated by MTFace, only here for file reading */

@@ -1003,10 +1003,10 @@ static void create_subd_mesh(Scene *scene,
                              BL::Mesh &b_mesh,
                              const array<Node *> &used_shaders,
                              float dicing_rate,
-                             int max_subdivisions)
+                             int max_subdivisions,
+                             bool background)
 {
-  BL::SubsurfModifier subsurf_mod(b_ob.modifiers[b_ob.modifiers.length() - 1]);
-  bool subdivide_uvs = subsurf_mod.uv_smooth() != BL::SubsurfModifier::uv_smooth_NONE;
+  bool subdivide_uvs = b_mesh.uv_smooth() != BL::Mesh::uv_smooth_NONE;
 
   create_mesh(scene, mesh, b_mesh, used_shaders, true, subdivide_uvs);
 
@@ -1038,6 +1038,13 @@ static void create_subd_mesh(Scene *scene,
   /* set subd params */
   PointerRNA cobj = RNA_pointer_get(&b_ob.ptr, "cycles");
   float subd_dicing_rate = max(0.1f, RNA_float_get(&cobj, "dicing_rate") * dicing_rate);
+
+  if (background) {
+    max_subdivisions = std::min(max_subdivisions, b_mesh.render_subdivision_levels());
+  }
+  else {
+    max_subdivisions = std::min(max_subdivisions, b_mesh.preview_subdivision_levels());
+  }
 
   mesh->set_subd_dicing_rate(subd_dicing_rate);
   mesh->set_subd_max_level(max_subdivisions);
@@ -1156,18 +1163,22 @@ void BlenderSync::sync_mesh(BL::Depsgraph b_depsgraph, BL::Object b_ob, Mesh *me
   new_mesh.set_used_shaders(used_shaders);
 
   if (view_layer.use_surfaces) {
-    /* Adaptive subdivision setup. Not for baking since that requires
-     * exact mapping to the Blender mesh. */
-    if (!scene->bake_manager->get_baking()) {
-      new_mesh.set_subdivision_type(object_subdivision_type(b_ob, preview, experimental));
-    }
-
     /* For some reason, meshes do not need this... */
     bool need_undeformed = new_mesh.need_attribute(scene, ATTR_STD_GENERATED);
-    BL::Mesh b_mesh = object_to_mesh(
-        b_data, b_ob, b_depsgraph, need_undeformed, new_mesh.get_subdivision_type());
+    BL::Mesh b_mesh = object_to_mesh(b_data, b_ob, b_depsgraph, need_undeformed);
 
     if (b_mesh) {
+      /* Adaptive subdivision setup. Not for baking since that requires
+       * exact mapping to the Blender mesh. */
+      if (b_mesh.use_subdivision() && !scene->bake_manager->get_baking()) {
+        if (b_mesh.adaptive_subdivision()) {
+          new_mesh.set_subdivision_type(Mesh::SUBDIVISION_CATMULL_CLARK);
+        }
+        else {
+          new_mesh.set_subdivision_type(Mesh::SUBDIVISION_LINEAR);
+        }
+      }
+
       /* Sync mesh itself. */
       if (new_mesh.get_subdivision_type() != Mesh::SUBDIVISION_NONE)
         create_subd_mesh(scene,
@@ -1176,7 +1187,8 @@ void BlenderSync::sync_mesh(BL::Depsgraph b_depsgraph, BL::Object b_ob, Mesh *me
                          b_mesh,
                          new_mesh.get_used_shaders(),
                          dicing_rate,
-                         max_subdivisions);
+                         max_subdivisions,
+                         true);  // todo(@kevindietrich) : background
       else
         create_mesh(scene, &new_mesh, b_mesh, new_mesh.get_used_shaders(), false);
 
@@ -1246,7 +1258,7 @@ void BlenderSync::sync_mesh_motion(BL::Depsgraph b_depsgraph,
   BL::Mesh b_mesh(PointerRNA_NULL);
   if (ccl::BKE_object_is_deform_modified(b_ob, b_scene, preview)) {
     /* get derived mesh */
-    b_mesh = object_to_mesh(b_data, b_ob, b_depsgraph, false, Mesh::SUBDIVISION_NONE);
+    b_mesh = object_to_mesh(b_data, b_ob, b_depsgraph, false);
   }
 
   /* TODO(sergey): Perform preliminary check for number of vertices. */
