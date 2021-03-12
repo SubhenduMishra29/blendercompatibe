@@ -376,59 +376,56 @@ static bool is_fcurve_evaluatable(FCurve *fcu)
   return true;
 }
 
-bool BKE_animsys_store_rna_setting(PointerRNA *ptr,
-                                   /* typically 'fcu->rna_path', 'fcu->array_index' */
-                                   const char *rna_path,
-                                   const int array_index,
-                                   PathResolvedRNA *r_result)
+bool BKE_animsys_rna_path_resolve(PointerRNA *ptr,
+                                  /* typically 'fcu->rna_path', 'fcu->array_index' */
+                                  const char *rna_path,
+                                  const int array_index,
+                                  PathResolvedRNA *r_result)
 {
-  bool success = false;
-  const char *path = rna_path;
-
-  /* write value to setting */
-  if (path) {
-    /* get property to write to */
-    if (RNA_path_resolve_property(ptr, path, &r_result->ptr, &r_result->prop)) {
-      if ((ptr->owner_id == NULL) || RNA_property_animateable(&r_result->ptr, r_result->prop)) {
-        int array_len = RNA_property_array_length(&r_result->ptr, r_result->prop);
-
-        if (array_len && array_index >= array_len) {
-          if (G.debug & G_DEBUG) {
-            CLOG_WARN(&LOG,
-                      "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
-                      (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
-                      path,
-                      array_index,
-                      array_len - 1);
-          }
-        }
-        else {
-          r_result->prop_index = array_len ? array_index : -1;
-          success = true;
-        }
-      }
-    }
-    else {
-      /* failed to get path */
-      /* XXX don't tag as failed yet though, as there are some legit situations (Action Constraint)
-       * where some channels will not exist, but shouldn't lock up Action */
-      if (G.debug & G_DEBUG) {
-        CLOG_WARN(&LOG,
-                  "Animato: Invalid path. ID = '%s',  '%s[%d]'",
-                  (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
-                  path,
-                  array_index);
-      }
-    }
+  if (rna_path == NULL) {
+    return false;
   }
 
-  return success;
+  const char *path = rna_path;
+  if (!RNA_path_resolve_property(ptr, path, &r_result->ptr, &r_result->prop)) {
+    /* failed to get path */
+    /* XXX don't tag as failed yet though, as there are some legit situations (Action Constraint)
+     * where some channels will not exist, but shouldn't lock up Action */
+    if (G.debug & G_DEBUG) {
+      CLOG_WARN(&LOG,
+                "Animato: Invalid path. ID = '%s',  '%s[%d]'",
+                (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
+                path,
+                array_index);
+    }
+    return false;
+  }
+
+  if (ptr->owner_id != NULL && !RNA_property_animateable(&r_result->ptr, r_result->prop)) {
+    return false;
+  }
+
+  int array_len = RNA_property_array_length(&r_result->ptr, r_result->prop);
+  if (array_len && array_index >= array_len) {
+    if (G.debug & G_DEBUG) {
+      CLOG_WARN(&LOG,
+                "Animato: Invalid array index. ID = '%s',  '%s[%d]', array length is %d",
+                (ptr->owner_id) ? (ptr->owner_id->name + 2) : "<No ID>",
+                path,
+                array_index,
+                array_len - 1);
+    }
+    return false;
+  }
+
+  r_result->prop_index = array_len ? array_index : -1;
+  return true;
 }
 
 /* less than 1.0 evaluates to false, use epsilon to avoid float error */
 #define ANIMSYS_FLOAT_AS_BOOL(value) ((value) > ((1.0f - FLT_EPSILON)))
 
-bool BKE_animsys_read_rna_setting(PathResolvedRNA *anim_rna, float *r_value)
+bool BKE_animsys_read_from_rna_path(PathResolvedRNA *anim_rna, float *r_value)
 {
   PropertyRNA *prop = anim_rna->prop;
   PointerRNA *ptr = &anim_rna->ptr;
@@ -491,7 +488,7 @@ bool BKE_animsys_read_rna_setting(PathResolvedRNA *anim_rna, float *r_value)
 }
 
 /* Write the given value to a setting using RNA, and return success */
-bool BKE_animsys_write_rna_setting(PathResolvedRNA *anim_rna, const float value)
+bool BKE_animsys_write_to_rna_path(PathResolvedRNA *anim_rna, const float value)
 {
   PropertyRNA *prop = anim_rna->prop;
   PointerRNA *ptr = &anim_rna->ptr;
@@ -502,7 +499,7 @@ bool BKE_animsys_write_rna_setting(PathResolvedRNA *anim_rna, const float value)
 
   /* Check whether value is new. Otherwise we skip all the updates. */
   float old_value;
-  if (!BKE_animsys_read_rna_setting(anim_rna, &old_value)) {
+  if (!BKE_animsys_read_from_rna_path(anim_rna, &old_value)) {
     return false;
   }
   if (old_value == value) {
@@ -591,8 +588,8 @@ static void animsys_write_orig_anim_rna(PointerRNA *ptr,
   }
   PathResolvedRNA orig_anim_rna;
   /* TODO(sergey): Should be possible to cache resolved path in dependency graph somehow. */
-  if (BKE_animsys_store_rna_setting(&ptr_orig, rna_path, array_index, &orig_anim_rna)) {
-    BKE_animsys_write_rna_setting(&orig_anim_rna, value);
+  if (BKE_animsys_rna_path_resolve(&ptr_orig, rna_path, array_index, &orig_anim_rna)) {
+    BKE_animsys_write_to_rna_path(&orig_anim_rna, value);
   }
 }
 
@@ -614,9 +611,9 @@ static void animsys_evaluate_fcurves(PointerRNA *ptr,
     }
 
     PathResolvedRNA anim_rna;
-    if (BKE_animsys_store_rna_setting(ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
+    if (BKE_animsys_rna_path_resolve(ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
       const float curval = calculate_fcurve(&anim_rna, fcu, anim_eval_context);
-      BKE_animsys_write_rna_setting(&anim_rna, curval);
+      BKE_animsys_write_to_rna_path(&anim_rna, curval);
       if (flush_to_original) {
         animsys_write_orig_anim_rna(ptr, fcu->rna_path, fcu->array_index, curval);
       }
@@ -666,9 +663,9 @@ static void animsys_evaluate_drivers(PointerRNA *ptr,
          * NOTE: for 'layering' option later on, we should check if we should remove old value
          * before adding new to only be done when drivers only changed. */
         PathResolvedRNA anim_rna;
-        if (BKE_animsys_store_rna_setting(ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
+        if (BKE_animsys_rna_path_resolve(ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
           const float curval = calculate_fcurve(&anim_rna, fcu, anim_eval_context);
-          ok = BKE_animsys_write_rna_setting(&anim_rna, curval);
+          ok = BKE_animsys_write_to_rna_path(&anim_rna, curval);
         }
 
         /* set error-flag if evaluation failed */
@@ -747,19 +744,19 @@ void animsys_evaluate_action_group(PointerRNA *ptr,
     /* check if this curve should be skipped */
     if ((fcu->flag & (FCURVE_MUTED | FCURVE_DISABLED)) == 0 && !BKE_fcurve_is_empty(fcu)) {
       PathResolvedRNA anim_rna;
-      if (BKE_animsys_store_rna_setting(ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
+      if (BKE_animsys_rna_path_resolve(ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
         const float curval = calculate_fcurve(&anim_rna, fcu, anim_eval_context);
-        BKE_animsys_write_rna_setting(&anim_rna, curval);
+        BKE_animsys_write_to_rna_path(&anim_rna, curval);
       }
     }
   }
 }
 
 /* Evaluate Action (F-Curve Bag) */
-static void animsys_evaluate_action_ex(PointerRNA *ptr,
-                                       bAction *act,
-                                       const AnimationEvalContext *anim_eval_context,
-                                       const bool flush_to_original)
+void animsys_evaluate_action(PointerRNA *ptr,
+                             bAction *act,
+                             const AnimationEvalContext *anim_eval_context,
+                             const bool flush_to_original)
 {
   /* check if mapper is appropriate for use here (we set to NULL if it's inappropriate) */
   if (act == NULL) {
@@ -770,14 +767,6 @@ static void animsys_evaluate_action_ex(PointerRNA *ptr,
 
   /* calculate then execute each curve */
   animsys_evaluate_fcurves(ptr, &act->curves, anim_eval_context, flush_to_original);
-}
-
-void animsys_evaluate_action(PointerRNA *ptr,
-                             bAction *act,
-                             const AnimationEvalContext *anim_eval_context,
-                             const bool flush_to_original)
-{
-  animsys_evaluate_action_ex(ptr, act, anim_eval_context, flush_to_original);
 }
 
 /* ***************************************** */
@@ -1050,6 +1039,7 @@ static NlaEvalChannelSnapshot *nlaevalchan_snapshot_new(NlaEvalChannel *nec)
 
   nec_snapshot->channel = nec;
   nec_snapshot->length = length;
+  nlavalidmask_init(&nec_snapshot->blend_domain, length);
 
   return nec_snapshot;
 }
@@ -1059,6 +1049,7 @@ static void nlaevalchan_snapshot_free(NlaEvalChannelSnapshot *nec_snapshot)
 {
   BLI_assert(!nec_snapshot->is_base);
 
+  nlavalidmask_free(&nec_snapshot->blend_domain);
   MEM_freeN(nec_snapshot);
 }
 
@@ -1173,10 +1164,6 @@ static void nlaeval_snapshot_free_data(NlaEvalSnapshot *snapshot)
 static void nlaevalchan_free_data(NlaEvalChannel *nec)
 {
   nlavalidmask_free(&nec->domain);
-
-  if (nec->blend_snapshot != NULL) {
-    nlaevalchan_snapshot_free(nec->blend_snapshot);
-  }
 }
 
 /* Initialize a full NLA evaluation state structure. */
@@ -1598,7 +1585,7 @@ static bool nla_combine_get_inverted_strip_value(const int mix_mode,
       if (IS_EQF(base_value, 0.0f)) {
         base_value = 1.0f;
       }
-      /* Divison by zero. */
+      /* Division by zero. */
       if (IS_EQF(lower_value, 0.0f)) {
         /* Resolve 0/0 to 1. */
         if (IS_EQF(blended_value, 0.0f)) {
@@ -1659,141 +1646,6 @@ static bool nla_combine_quaternion_get_inverted_strip_values(const float lower_v
   pow_qt_fl_normalized(r_strip_values, 1.0f / influence);
 
   return true;
-}
-
-/* Data about the current blend mode. */
-typedef struct NlaBlendData {
-  NlaEvalSnapshot *snapshot;
-  int mode;
-  float influence;
-
-  NlaEvalChannel *blend_queue;
-} NlaBlendData;
-
-/* Queue the channel for deferred blending. */
-static NlaEvalChannelSnapshot *nlaevalchan_queue_blend(NlaBlendData *blend, NlaEvalChannel *nec)
-{
-  if (!nec->in_blend) {
-    if (nec->blend_snapshot == NULL) {
-      nec->blend_snapshot = nlaevalchan_snapshot_new(nec);
-    }
-
-    nec->in_blend = true;
-    nlaevalchan_snapshot_copy(nec->blend_snapshot, &nec->base_snapshot);
-
-    nec->next_blend = blend->blend_queue;
-    blend->blend_queue = nec;
-  }
-
-  return nec->blend_snapshot;
-}
-
-/* Accumulate (i.e. blend) the given value on to the channel it affects. */
-static bool nlaeval_blend_value(NlaBlendData *blend,
-                                NlaEvalChannel *nec,
-                                int array_index,
-                                float value)
-{
-  if (nec == NULL) {
-    return false;
-  }
-
-  if (!nlaevalchan_validate_index_ex(nec, array_index)) {
-    return false;
-  }
-
-  NlaEvalChannelSnapshot *nec_snapshot = nlaeval_snapshot_ensure_channel(blend->snapshot, nec);
-  float *p_value = &nec_snapshot->values[array_index];
-
-  if (blend->mode == NLASTRIP_MODE_COMBINE) {
-    /* Quaternion blending is deferred until all sub-channel values are known. */
-    if (nec->mix_mode == NEC_MIX_QUATERNION) {
-      NlaEvalChannelSnapshot *blend_snapshot = nlaevalchan_queue_blend(blend, nec);
-
-      blend_snapshot->values[array_index] = value;
-    }
-    else {
-      float base_value = nec->base_snapshot.values[array_index];
-
-      *p_value = nla_combine_value(nec->mix_mode, base_value, *p_value, value, blend->influence);
-    }
-  }
-  else {
-    *p_value = nla_blend_value(blend->mode, *p_value, value, blend->influence);
-  }
-
-  return true;
-}
-
-/* Finish deferred quaternion blending. */
-static void nlaeval_blend_flush(NlaBlendData *blend)
-{
-  NlaEvalChannel *nec;
-
-  while ((nec = blend->blend_queue)) {
-    blend->blend_queue = nec->next_blend;
-    nec->in_blend = false;
-
-    NlaEvalChannelSnapshot *nec_snapshot = nlaeval_snapshot_ensure_channel(blend->snapshot, nec);
-    NlaEvalChannelSnapshot *blend_snapshot = nec->blend_snapshot;
-
-    if (nec->mix_mode == NEC_MIX_QUATERNION) {
-      nla_combine_quaternion(
-          nec_snapshot->values, blend_snapshot->values, blend->influence, nec_snapshot->values);
-    }
-    else {
-      BLI_assert(!"mix quaternion");
-    }
-  }
-}
-
-/* Blend the specified snapshots into the target, and free the input snapshots. */
-static void nlaeval_snapshot_mix_and_free(NlaEvalData *nlaeval,
-                                          NlaEvalSnapshot *out,
-                                          NlaEvalSnapshot *in1,
-                                          NlaEvalSnapshot *in2,
-                                          float alpha)
-{
-  BLI_assert(in1->base == out && in2->base == out);
-
-  nlaeval_snapshot_ensure_size(out, nlaeval->num_channels);
-
-  for (int i = 0; i < nlaeval->num_channels; i++) {
-    NlaEvalChannelSnapshot *c_in1 = nlaeval_snapshot_get(in1, i);
-    NlaEvalChannelSnapshot *c_in2 = nlaeval_snapshot_get(in2, i);
-
-    if (c_in1 || c_in2) {
-      NlaEvalChannelSnapshot *c_out = out->channels[i];
-
-      /* Steal the entry from one of the input snapshots. */
-      if (c_out == NULL) {
-        if (c_in1 != NULL) {
-          c_out = c_in1;
-          in1->channels[i] = NULL;
-        }
-        else {
-          c_out = c_in2;
-          in2->channels[i] = NULL;
-        }
-      }
-
-      if (c_in1 == NULL) {
-        c_in1 = nlaeval_snapshot_find_channel(in1->base, c_out->channel);
-      }
-      if (c_in2 == NULL) {
-        c_in2 = nlaeval_snapshot_find_channel(in2->base, c_out->channel);
-      }
-
-      out->channels[i] = c_out;
-
-      for (int j = 0; j < c_out->length; j++) {
-        c_out->values[j] = c_in1->values[j] * (1.0f - alpha) + c_in2->values[j] * alpha;
-      }
-    }
-  }
-
-  nlaeval_snapshot_free_data(in1);
-  nlaeval_snapshot_free_data(in2);
 }
 
 /* ---------------------- */
@@ -1857,6 +1709,58 @@ static void nlaeval_fmodifiers_split_stacks(ListBase *list1, ListBase *list2)
 
 /* ---------------------- */
 
+/** Fills \a r_snapshot with the \a action's evaluated fcurve values with modifiers applied. */
+static void nlasnapshot_from_action(PointerRNA *ptr,
+                                    NlaEvalData *channels,
+                                    ListBase *modifiers,
+                                    bAction *action,
+                                    const float evaltime,
+                                    NlaEvalSnapshot *r_snapshot)
+{
+  FCurve *fcu;
+
+  action_idcode_patch_check(ptr->owner_id, action);
+
+  /* Evaluate modifiers which modify time to evaluate the base curves at. */
+  FModifiersStackStorage storage;
+  storage.modifier_count = BLI_listbase_count(modifiers);
+  storage.size_per_modifier = evaluate_fmodifiers_storage_size_per_modifier(modifiers);
+  storage.buffer = alloca(storage.modifier_count * storage.size_per_modifier);
+
+  const float modified_evaltime = evaluate_time_fmodifiers(
+      &storage, modifiers, NULL, 0.0f, evaltime);
+
+  for (fcu = action->curves.first; fcu; fcu = fcu->next) {
+    if (!is_fcurve_evaluatable(fcu)) {
+      continue;
+    }
+
+    NlaEvalChannel *nec = nlaevalchan_verify(ptr, channels, fcu->rna_path);
+
+    /* Invalid path or property cannot be animated. */
+    if (nec == NULL) {
+      continue;
+    }
+
+    if (!nlaevalchan_validate_index_ex(nec, fcu->array_index)) {
+      continue;
+    }
+
+    NlaEvalChannelSnapshot *necs = nlaeval_snapshot_ensure_channel(r_snapshot, nec);
+
+    float value = evaluate_fcurve(fcu, modified_evaltime);
+    evaluate_value_fmodifiers(&storage, modifiers, fcu, &value, evaltime);
+    necs->values[fcu->array_index] = value;
+
+    if (nec->mix_mode == NEC_MIX_QUATERNION) {
+      BLI_bitmap_set_all(necs->blend_domain.ptr, true, 4);
+    }
+    else {
+      BLI_BITMAP_ENABLE(necs->blend_domain.ptr, fcu->array_index);
+    }
+  }
+}
+
 /* evaluate action-clip strip */
 static void nlastrip_evaluate_actionclip(PointerRNA *ptr,
                                          NlaEvalData *channels,
@@ -1864,10 +1768,8 @@ static void nlastrip_evaluate_actionclip(PointerRNA *ptr,
                                          NlaEvalStrip *nes,
                                          NlaEvalSnapshot *snapshot)
 {
-  ListBase tmp_modifiers = {NULL, NULL};
+
   NlaStrip *strip = nes->strip;
-  FCurve *fcu;
-  float evaltime;
 
   /* sanity checks for action */
   if (strip == NULL) {
@@ -1879,54 +1781,20 @@ static void nlastrip_evaluate_actionclip(PointerRNA *ptr,
     return;
   }
 
-  action_idcode_patch_check(ptr->owner_id, strip->act);
+  ListBase tmp_modifiers = {NULL, NULL};
 
   /* join this strip's modifiers to the parent's modifiers (own modifiers first) */
   nlaeval_fmodifiers_join_stacks(&tmp_modifiers, &strip->modifiers, modifiers);
 
-  /* evaluate strip's modifiers which modify time to evaluate the base curves at */
-  FModifiersStackStorage storage;
-  storage.modifier_count = BLI_listbase_count(&tmp_modifiers);
-  storage.size_per_modifier = evaluate_fmodifiers_storage_size_per_modifier(&tmp_modifiers);
-  storage.buffer = alloca(storage.modifier_count * storage.size_per_modifier);
+  NlaEvalSnapshot strip_snapshot;
+  nlaeval_snapshot_init(&strip_snapshot, channels, NULL);
 
-  evaltime = evaluate_time_fmodifiers(&storage, &tmp_modifiers, NULL, 0.0f, strip->strip_time);
+  nlasnapshot_from_action(
+      ptr, channels, &tmp_modifiers, strip->act, strip->strip_time, &strip_snapshot);
+  nlasnapshot_blend(
+      channels, snapshot, &strip_snapshot, strip->blendmode, strip->influence, snapshot);
 
-  NlaBlendData blend = {
-      .snapshot = snapshot,
-      .mode = strip->blendmode,
-      .influence = strip->influence,
-  };
-
-  /* Evaluate all the F-Curves in the action,
-   * saving the relevant pointers to data that will need to be used. */
-  for (fcu = strip->act->curves.first; fcu; fcu = fcu->next) {
-
-    if (!is_fcurve_evaluatable(fcu)) {
-      continue;
-    }
-
-    /* evaluate the F-Curve's value for the time given in the strip
-     * NOTE: we use the modified time here, since strip's F-Curve Modifiers
-     * are applied on top of this.
-     */
-    float value = evaluate_fcurve(fcu, evaltime);
-
-    /* apply strip's F-Curve Modifiers on this value
-     * NOTE: we apply the strip's original evaluation time not the modified one
-     * (as per standard F-Curve eval)
-     */
-    evaluate_value_fmodifiers(&storage, &tmp_modifiers, fcu, &value, strip->strip_time);
-
-    /* Get an NLA evaluation channel to work with,
-     * and accumulate the evaluated value with the value(s)
-     * stored in this channel if it has been used already. */
-    NlaEvalChannel *nec = nlaevalchan_verify(ptr, channels, fcu->rna_path);
-
-    nlaeval_blend_value(&blend, nec, fcu->array_index, value);
-  }
-
-  nlaeval_blend_flush(&blend);
+  nlaeval_snapshot_free_data(&strip_snapshot);
 
   /* unlink this strip's modifiers from the parent's modifiers again */
   nlaeval_fmodifiers_split_stacks(&strip->modifiers, modifiers);
@@ -1992,8 +1860,15 @@ static void nlastrip_evaluate_transition(PointerRNA *ptr,
   nlastrip_evaluate(
       ptr, channels, &tmp_modifiers, &tmp_nes, &snapshot2, anim_eval_context, flush_to_original);
 
-  /* accumulate temp-buffer and full-buffer, using the 'real' strip */
-  nlaeval_snapshot_mix_and_free(channels, snapshot, &snapshot1, &snapshot2, nes->strip_time);
+  /** Replace \a snapshot2 NULL channels with base or default values so all channels blend. */
+  nlasnapshot_ensure_channels(channels, &snapshot2);
+  /** Mark all \a snapshot2 channel's values to blend. */
+  nlasnapshot_enable_all_blend_domain(&snapshot2);
+  nlasnapshot_blend(
+      channels, &snapshot1, &snapshot2, NLASTRIP_MODE_REPLACE, nes->strip_time, snapshot);
+
+  nlaeval_snapshot_free_data(&snapshot1);
+  nlaeval_snapshot_free_data(&snapshot2);
 
   /* unlink this strip's modifiers from the parent's modifiers again */
   nlaeval_fmodifiers_split_stacks(&nes->strip->modifiers, modifiers);
@@ -2122,7 +1997,7 @@ void nladata_flush_channels(PointerRNA *ptr,
         if (nec->is_array) {
           rna.prop_index = i;
         }
-        BKE_animsys_write_rna_setting(&rna, value);
+        BKE_animsys_write_to_rna_path(&rna, value);
         if (flush_to_original) {
           animsys_write_orig_anim_rna(ptr, nec->rna_path, rna.prop_index, value);
         }
@@ -2349,7 +2224,7 @@ static bool is_action_track_evaluated_without_nla(const AnimData *adt,
   }
 
   /** NLA settings interference. */
-  if ((adt->flag & (ADT_NLA_SOLO_TRACK | ADT_NLA_EDIT_ON)) == 0) {
+  if ((adt->flag & (ADT_NLA_SOLO_TRACK | ADT_NLA_EDIT_ON)) != 0) {
     return false;
   }
 
@@ -2357,9 +2232,10 @@ static bool is_action_track_evaluated_without_nla(const AnimData *adt,
   return true;
 }
 
-/** XXX Wayde Moss: BKE_nlatrack_find_tweaked() exists within nla.c, but it doesn't appear to
- * work as expected. From animsys_evaluate_nla_for_flush(), it returns NULL in tweak mode. I'm not
- * sure why. Preferably, it would be as simple as checking for (adt->act_Track == nlt) but that
+/**
+ * XXX(Wayde Moss): #BKE_nlatrack_find_tweaked() exists within nla.c, but it doesn't appear to
+ * work as expected. From #animsys_evaluate_nla_for_flush(), it returns NULL in tweak mode. I'm not
+ * sure why. Preferably, it would be as simple as checking for `(adt->act_Track == nlt)` but that
  * doesn't work either, neither does comparing indices.
  *
  *  This function is a temporary work around. The first disabled track is always the tweaked track.
@@ -2596,6 +2472,106 @@ static void animsys_calculate_nla(PointerRNA *ptr,
 
 /* ---------------------- */
 
+void nlasnapshot_enable_all_blend_domain(NlaEvalSnapshot *snapshot)
+{
+  for (int i = 0; i < snapshot->size; i++) {
+    NlaEvalChannelSnapshot *necs = nlaeval_snapshot_get(snapshot, i);
+    if (necs == NULL) {
+      continue;
+    }
+
+    BLI_bitmap_set_all(necs->blend_domain.ptr, true, necs->length);
+  }
+}
+
+void nlasnapshot_ensure_channels(NlaEvalData *eval_data, NlaEvalSnapshot *snapshot)
+{
+  LISTBASE_FOREACH (NlaEvalChannel *, nec, &eval_data->channels) {
+    nlaeval_snapshot_ensure_channel(snapshot, nec);
+  }
+}
+
+/** Blends the \a lower_snapshot with the \a upper_snapshot into \a r_blended_snapshot according
+ * to the given \a upper_blendmode and \a upper_influence.
+ *
+ * For \a upper_snapshot, blending limited to values in the \a blend_domain. For Replace blendmode,
+ * this allows the upper snapshot to have a location XYZ channel where only a subset of values are
+ * blended.
+ */
+void nlasnapshot_blend(NlaEvalData *eval_data,
+                       NlaEvalSnapshot *lower_snapshot,
+                       NlaEvalSnapshot *upper_snapshot,
+                       const short upper_blendmode,
+                       const float upper_influence,
+                       NlaEvalSnapshot *r_blended_snapshot)
+{
+  nlaeval_snapshot_ensure_size(r_blended_snapshot, eval_data->num_channels);
+
+  const bool zero_upper_influence = IS_EQF(upper_influence, 0.0f);
+
+  LISTBASE_FOREACH (NlaEvalChannel *, nec, &eval_data->channels) {
+    const int length = nec->base_snapshot.length;
+
+    NlaEvalChannelSnapshot *upper_necs = nlaeval_snapshot_get(upper_snapshot, nec->index);
+    NlaEvalChannelSnapshot *lower_necs = nlaeval_snapshot_get(lower_snapshot, nec->index);
+    if (upper_necs == NULL && lower_necs == NULL) {
+      continue;
+    }
+
+    /** Blend with lower_snapshot's base or default. */
+    if (lower_necs == NULL) {
+      lower_necs = nlaeval_snapshot_find_channel(lower_snapshot->base, nec);
+    }
+
+    NlaEvalChannelSnapshot *result_necs = nlaeval_snapshot_ensure_channel(r_blended_snapshot, nec);
+
+    /** Always copy \a lower_snapshot to result, irrelevant of whether \a upper_snapshot has a
+     * corresponding channel. This only matters when \a lower_snapshot not the same as
+     * \a r_blended_snapshot. */
+    memcpy(result_necs->values, lower_necs->values, length * sizeof(float));
+    if (upper_necs == NULL || zero_upper_influence) {
+      continue;
+    }
+
+    if (upper_blendmode == NLASTRIP_MODE_COMBINE) {
+      const int mix_mode = nec->mix_mode;
+      if (mix_mode == NEC_MIX_QUATERNION) {
+        if (!BLI_BITMAP_TEST_BOOL(upper_necs->blend_domain.ptr, 0)) {
+          continue;
+        }
+
+        nla_combine_quaternion(
+            lower_necs->values, upper_necs->values, upper_influence, result_necs->values);
+      }
+      else {
+        for (int j = 0; j < length; j++) {
+          if (!BLI_BITMAP_TEST_BOOL(upper_necs->blend_domain.ptr, j)) {
+            continue;
+          }
+
+          result_necs->values[j] = nla_combine_value(mix_mode,
+                                                     nec->base_snapshot.values[j],
+                                                     lower_necs->values[j],
+                                                     upper_necs->values[j],
+                                                     upper_influence);
+        }
+      }
+    }
+    else {
+      for (int j = 0; j < length; j++) {
+        if (!BLI_BITMAP_TEST_BOOL(upper_necs->blend_domain.ptr, j)) {
+          continue;
+        }
+
+        result_necs->values[j] = nla_blend_value(
+            upper_blendmode, lower_necs->values[j], upper_necs->values[j], upper_influence);
+      }
+    }
+  }
+}
+
+/* ---------------------- */
+
 /**
  * Prepare data necessary to compute correct keyframe values for NLA strips
  * with non-Replace mode or influence different from 1.
@@ -2782,8 +2758,8 @@ static void animsys_evaluate_overrides(PointerRNA *ptr, AnimData *adt)
   /* for each override, simply execute... */
   for (aor = adt->overrides.first; aor; aor = aor->next) {
     PathResolvedRNA anim_rna;
-    if (BKE_animsys_store_rna_setting(ptr, aor->rna_path, aor->array_index, &anim_rna)) {
-      BKE_animsys_write_rna_setting(&anim_rna, aor->value);
+    if (BKE_animsys_rna_path_resolve(ptr, aor->rna_path, aor->array_index, &anim_rna)) {
+      BKE_animsys_write_to_rna_path(&anim_rna, aor->value);
     }
   }
 }
@@ -2863,7 +2839,7 @@ void BKE_animsys_evaluate_animdata(ID *id,
     }
     /* evaluate Active Action only */
     else if (adt->action) {
-      animsys_evaluate_action_ex(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+      animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
     }
   }
 
@@ -3113,13 +3089,13 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph, ID *id, int driver_index, FCu
       // printf("\told val = %f\n", fcu->curval);
 
       PathResolvedRNA anim_rna;
-      if (BKE_animsys_store_rna_setting(&id_ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
+      if (BKE_animsys_rna_path_resolve(&id_ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
         /* Evaluate driver, and write results to COW-domain destination */
         const float ctime = DEG_get_ctime(depsgraph);
         const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
             depsgraph, ctime);
         const float curval = calculate_fcurve(&anim_rna, fcu, &anim_eval_context);
-        ok = BKE_animsys_write_rna_setting(&anim_rna, curval);
+        ok = BKE_animsys_write_to_rna_path(&anim_rna, curval);
 
         /* Flush results & status codes to original data for UI (T59984) */
         if (ok && DEG_is_active(depsgraph)) {

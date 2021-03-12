@@ -658,7 +658,7 @@ static int round_box_shadow_edges(
   const float maxx = rect->xmax + step;
   const float maxy = rect->ymax + step;
 
-  /* mult */
+  /* Multiply. */
   for (int a = 0; a < WIDGET_CURVE_RESOLU; a++) {
     vec[a][0] = rad * cornervec[a][0];
     vec[a][1] = rad * cornervec[a][1];
@@ -1180,7 +1180,7 @@ void UI_widgetbase_draw_cache_flush(void)
     /* draw single */
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
     GPU_batch_uniform_4fv_array(
-        batch, "parameters", MAX_WIDGET_PARAMETERS, (float(*)[4])g_widget_base_batch.params);
+        batch, "parameters", MAX_WIDGET_PARAMETERS, (const float(*)[4])g_widget_base_batch.params);
     GPU_batch_uniform_3fv(batch, "checkerColorAndSize", checker_params);
     GPU_batch_draw(batch);
   }
@@ -1311,7 +1311,7 @@ static void widgetbase_draw_ex(uiWidgetBase *wtb,
     tria_col[3] = wcol->item[3];
   }
 
-  /* Draw everything in one drawcall */
+  /* Draw everything in one draw-call. */
   if (inner_col1[3] || inner_col2[3] || outline_col[3] || emboss_col[3] || tria_col[3] ||
       show_alpha_checkers) {
     widgetbase_set_uniform_colors_ubv(
@@ -1533,25 +1533,22 @@ static void ui_text_clip_right_ex(const uiFontStyle *fstyle,
 {
   BLI_assert(str[0]);
 
-  /* If the trailing ellipsis takes more than 20% of all available width, just cut the string
-   * (as using the ellipsis would remove even more useful chars, and we cannot show much
-   * already!).
-   */
-  if (sep_strwidth / okwidth > 0.2f) {
-    float tmp;
-    const int l_end = BLF_width_to_strlen(fstyle->uifont_id, str, max_len, okwidth, &tmp);
-    str[l_end] = '\0';
-    if (r_final_len) {
-      *r_final_len = (size_t)l_end;
-    }
-  }
-  else {
-    float tmp;
-    const int l_end = BLF_width_to_strlen(
-        fstyle->uifont_id, str, max_len, okwidth - sep_strwidth, &tmp);
+  /* How many BYTES (not characters) of this utf-8 string can fit, along with appended ellipsis. */
+  int l_end = BLF_width_to_strlen(fstyle->uifont_id, str, max_len, okwidth - sep_strwidth, NULL);
+
+  if (l_end > 0) {
+    /* At least one character, so clip and add the ellipsis.  */
     memcpy(str + l_end, sep, sep_len + 1); /* +1 for trailing '\0'. */
     if (r_final_len) {
       *r_final_len = (size_t)(l_end) + sep_len;
+    }
+  }
+  else {
+    /* Otherwise fit as much as we can without adding an ellipsis.  */
+    l_end = BLF_width_to_strlen(fstyle->uifont_id, str, max_len, okwidth, NULL);
+    str[l_end] = '\0';
+    if (r_final_len) {
+      *r_final_len = (size_t)l_end;
     }
   }
 }
@@ -1822,7 +1819,7 @@ static void ui_text_clip_right_label(const uiFontStyle *fstyle, uiBut *but, cons
   but->strwidth = BLF_width(fstyle->uifont_id, but->drawstr, sizeof(but->drawstr));
   but->ofs = 0;
 
-  /* First shorten num-buttons eg,
+  /* First shorten number-buttons eg,
    *   Translucency: 0.000
    * becomes
    *   Trans: 0.000
@@ -2257,20 +2254,33 @@ static void widget_draw_extra_icons(const uiWidgetColors *wcol,
                                     rcti *rect,
                                     float alpha)
 {
-  /* inverse order, from right to left. */
+  const float icon_size = ICON_SIZE_FROM_BUTRECT(rect);
+
+  /* Offset of icons from the right edge. Keep in sync
+     with 'ui_but_extra_operator_icon_mouse_over_get'. */
+  if (!BLI_listbase_is_empty(&but->extra_op_icons)) {
+    /* Eyeballed. */
+    rect->xmax -= 0.2 * icon_size;
+  }
+
+  /* Inverse order, from right to left. */
   LISTBASE_FOREACH_BACKWARD (uiButExtraOpIcon *, op_icon, &but->extra_op_icons) {
     rcti temp = *rect;
     float alpha_this = alpha;
 
-    temp.xmin = temp.xmax - (BLI_rcti_size_y(rect) * 1.08f);
+    temp.xmin = temp.xmax - icon_size;
 
     if (!op_icon->highlighted) {
       alpha_this *= 0.75f;
     }
 
+    /* Draw the icon at the center, and restore the flags after. */
+    const int old_drawflags = but->drawflag;
+    UI_but_drawflag_disable(but, UI_BUT_ICON_LEFT);
     widget_draw_icon(but, op_icon->icon, alpha_this, &temp, wcol->text);
+    but->drawflag = old_drawflags;
 
-    rect->xmax -= ICON_SIZE_FROM_BUTRECT(rect);
+    rect->xmax -= icon_size;
   }
 }
 
@@ -2339,7 +2349,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
     int icon_size = BLI_rcti_size_y(rect);
     int text_size = 0;
 
-    /* This is a bit britle, but avoids adding an 'UI_BUT_HAS_LABEL' flag to but... */
+    /* This is a bit brittle, but avoids adding an 'UI_BUT_HAS_LABEL' flag to but... */
     if (icon_size > BLI_rcti_size_x(rect)) {
       /* button is not square, it has extra height for label */
       text_size = UI_UNIT_Y;
@@ -2400,7 +2410,9 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
       rect->xmin += 0.2f * U.widget_unit;
     }
 
-    widget_draw_icon(but, icon, alpha, rect, wcol->text);
+    /* By default icon is the color of text, but can optionally override with but->col. */
+    widget_draw_icon(but, icon, alpha, rect, (but->col[3] != 0) ? but->col : wcol->text);
+
     if (show_menu_icon) {
       BLI_assert(but->block->content_hints & UI_BLOCK_CONTAINS_SUBMENU_BUT);
       widget_draw_submenu_tria(but, rect, wcol);
@@ -3604,7 +3616,7 @@ static void widget_scroll(
     rect1.xmin = rect1.xmin + ceilf(fac * (value - but->softmin));
     rect1.xmax = rect1.xmin + ceilf(fac * (but->a1 - but->softmin));
 
-    /* ensure minimium size */
+    /* Ensure minimum size. */
     const float min = BLI_rcti_size_y(rect);
 
     if (BLI_rcti_size_x(&rect1) < min) {
@@ -3621,7 +3633,7 @@ static void widget_scroll(
     rect1.ymax = rect1.ymax - ceilf(fac * (value - but->softmin));
     rect1.ymin = rect1.ymax - ceilf(fac * (but->a1 - but->softmin));
 
-    /* ensure minimium size */
+    /* Ensure minimum size. */
     const float min = BLI_rcti_size_x(rect);
 
     if (BLI_rcti_size_y(&rect1) < min) {
@@ -3655,16 +3667,16 @@ static void widget_progressbar(
 
   /* round corners */
   const float value = but_progressbar->progress;
-  const float offs = wcol->roundness * BLI_rcti_size_y(&rect_prog);
+  const float ofs = wcol->roundness * BLI_rcti_size_y(&rect_prog);
   float w = value * BLI_rcti_size_x(&rect_prog);
 
-  /* ensure minimium size */
-  w = MAX2(w, offs);
+  /* Ensure minimum size. */
+  w = MAX2(w, ofs);
 
   rect_bar.xmax = rect_bar.xmin + w;
 
-  round_box_edges(&wtb, roundboxalign, &rect_prog, offs);
-  round_box_edges(&wtb_bar, roundboxalign, &rect_bar, offs);
+  round_box_edges(&wtb, roundboxalign, &rect_prog, ofs);
+  round_box_edges(&wtb_bar, roundboxalign, &rect_bar, ofs);
 
   wtb.draw_outline = true;
   widgetbase_draw(&wtb, wcol);
@@ -3721,9 +3733,9 @@ static void widget_numslider(
   widget_init(&wtb1);
 
   /* Backdrop first. */
-  const float offs = wcol->roundness * BLI_rcti_size_y(rect);
-  const float toffs = offs * 0.75f;
-  round_box_edges(&wtb, roundboxalign, rect, offs);
+  const float ofs = wcol->roundness * BLI_rcti_size_y(rect);
+  const float toffs = ofs * 0.75f;
+  round_box_edges(&wtb, roundboxalign, rect, ofs);
 
   wtb.draw_outline = false;
   widgetbase_draw(&wtb, wcol);
@@ -3756,13 +3768,13 @@ static void widget_numslider(
     const float width = (float)BLI_rcti_size_x(rect);
     factor_ui = factor * width;
 
-    if (factor_ui <= offs) {
+    if (factor_ui <= ofs) {
       /* Left part only. */
       roundboxalign_slider &= ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
-      rect1.xmax = rect1.xmin + offs;
-      factor_discard = factor_ui / offs;
+      rect1.xmax = rect1.xmin + ofs;
+      factor_discard = factor_ui / ofs;
     }
-    else if (factor_ui <= width - offs) {
+    else if (factor_ui <= width - ofs) {
       /* Left part + middle part. */
       roundboxalign_slider &= ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
       rect1.xmax = rect1.xmin + factor_ui;
@@ -3772,7 +3784,7 @@ static void widget_numslider(
       factor_discard = factor;
     }
 
-    round_box_edges(&wtb1, roundboxalign_slider, &rect1, offs);
+    round_box_edges(&wtb1, roundboxalign_slider, &rect1, ofs);
     wtb1.draw_outline = false;
     widgetbase_set_uniform_discard_factor(&wtb1, factor_discard);
     widgetbase_draw(&wtb1, wcol);
@@ -3789,7 +3801,7 @@ static void widget_numslider(
   wtb.draw_inner = false;
   widgetbase_draw(&wtb, wcol);
 
-  /* Add space at either side of the button so text aligns with numbuttons
+  /* Add space at either side of the button so text aligns with number-buttons
    * (which have arrow icons). */
   if (!(state & UI_STATE_TEXT_INPUT)) {
     rect->xmax -= toffs;
@@ -5211,8 +5223,7 @@ void ui_draw_tooltip_background(const uiStyle *UNUSED(style), uiBlock *UNUSED(bl
  *
  * \param state: The state of the button,
  * typically #UI_ACTIVE, #UI_BUT_DISABLED, #UI_BUT_INACTIVE.
- * \param use_sep: When true, characters after the last #UI_SEP_CHAR are right aligned,
- * use for displaying key shortcuts.
+ * \param separator_type: The kind of separator which controls if and how the string is clipped.
  * \param r_xmax: The right hand position of the text, this takes into the icon,
  * padding and text clipping when there is not enough room to display the full text.
  */
@@ -5221,11 +5232,14 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
                        const char *name,
                        int iconid,
                        int state,
-                       bool use_sep,
+                       uiMenuItemSeparatorType separator_type,
                        int *r_xmax)
 {
   uiWidgetType *wt = widget_type(UI_WTYPE_MENU_ITEM);
   const rcti _rect = *rect;
+  const int row_height = BLI_rcti_size_y(rect);
+  int max_hint_width = INT_MAX;
+  int padding = 0.25f * row_height;
   char *cpoin = NULL;
 
   wt->state(wt, state, 0, UI_EMBOSS_UNDEFINED);
@@ -5234,13 +5248,13 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
   UI_fontstyle_set(fstyle);
 
   /* text location offset */
-  rect->xmin += 0.25f * UI_UNIT_X;
+  rect->xmin += padding;
   if (iconid) {
-    rect->xmin += UI_DPI_ICON_SIZE;
+    rect->xmin += row_height; /* Use square area for icon. */
   }
 
   /* cut string in 2 parts? */
-  if (use_sep) {
+  if (separator_type != UI_MENU_ITEM_SEPARATOR_NONE) {
     cpoin = strrchr(name, UI_SEP_CHAR);
     if (cpoin) {
       *cpoin = 0;
@@ -5253,7 +5267,30 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
         BLF_enable(fstyle->uifont_id, BLF_KERNING_DEFAULT);
       }
 
-      rect->xmax -= BLF_width(fstyle->uifont_id, cpoin + 1, INT_MAX) + UI_DPI_ICON_SIZE;
+      if (separator_type == UI_MENU_ITEM_SEPARATOR_SHORTCUT) {
+        /* Shrink rect to exclude the shortcut string. */
+        rect->xmax -= BLF_width(fstyle->uifont_id, cpoin + 1, INT_MAX) + UI_DPI_ICON_SIZE;
+      }
+      else if (separator_type == UI_MENU_ITEM_SEPARATOR_HINT) {
+        /* Determine max-width for the hint string to leave the name string un-clipped (if there's
+         * enough space to display it). */
+
+        const int available_width = BLI_rcti_size_x(rect) - padding;
+        const int name_width = BLF_width(fstyle->uifont_id, name, INT_MAX);
+        const int hint_width = BLF_width(fstyle->uifont_id, cpoin + 1, INT_MAX) + padding;
+
+        if ((name_width + hint_width) > available_width) {
+          /* Clipping width for hint string. */
+          max_hint_width = available_width * 0.40f;
+          /* Clipping xmax for clipping of item name. */
+          rect->xmax = (hint_width < max_hint_width) ?
+                           (rect->xmax - hint_width) :
+                           (rect->xmin + (available_width - max_hint_width));
+        }
+      }
+      else {
+        BLI_assert(!"Unknwon menu item separator type");
+      }
 
       if (fstyle->kerning == 1) {
         BLF_disable(fstyle->uifont_id, BLF_KERNING_DEFAULT);
@@ -5308,15 +5345,26 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
   }
 
   /* part text right aligned */
-  if (use_sep) {
+  if (separator_type != UI_MENU_ITEM_SEPARATOR_NONE) {
     if (cpoin) {
       /* Set inactive state for grayed out text. */
       wt->state(wt, state | UI_BUT_INACTIVE, 0, UI_EMBOSS_UNDEFINED);
 
+      char hint_drawstr[UI_MAX_DRAW_STR];
+      {
+        const size_t max_len = sizeof(hint_drawstr);
+        const float minwidth = (float)(UI_DPI_ICON_SIZE);
+
+        BLI_strncpy(hint_drawstr, cpoin + 1, sizeof(hint_drawstr));
+        if (hint_drawstr[0] && (max_hint_width < INT_MAX)) {
+          UI_text_clip_middle_ex(fstyle, hint_drawstr, max_hint_width, minwidth, max_len, '\0');
+        }
+      }
+
       rect->xmax = _rect.xmax - 5;
       UI_fontstyle_draw(fstyle,
                         rect,
-                        cpoin + 1,
+                        hint_drawstr,
                         wt->wcol.text,
                         &(struct uiFontStyleDraw_Params){
                             .align = UI_STYLE_TEXT_RIGHT,

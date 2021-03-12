@@ -63,6 +63,12 @@ struct wmTimer;
 /* Defined in `buttons_intern.h`. */
 typedef struct SpaceProperties_Runtime SpaceProperties_Runtime;
 
+/* Defined in `node_intern.h`. */
+typedef struct SpaceNode_Runtime SpaceNode_Runtime;
+
+/* Defined in `file_intern.h`. */
+typedef struct SpaceFile_Runtime SpaceFile_Runtime;
+
 /* -------------------------------------------------------------------- */
 /** \name SpaceLink (Base)
  * \{ */
@@ -238,8 +244,8 @@ typedef enum eSpaceButtons_Flag {
 /* SpaceProperties.outliner_sync */
 typedef enum eSpaceButtons_OutlinerSync {
   PROPERTIES_SYNC_AUTO = 0,
-  PROPERTIES_SYNC_OFF = 1,
-  PROPERTIES_SYNC_ON = 2,
+  PROPERTIES_SYNC_NEVER = 1,
+  PROPERTIES_SYNC_ALWAYS = 2,
 } eSpaceButtons_OutlinerSync;
 
 /** \} */
@@ -486,6 +492,7 @@ typedef enum eGraphEdit_Flag {
   SIPO_NORMALIZE_FREEZE = (1 << 15),
   /* show markers region */
   SIPO_SHOW_MARKERS = (1 << 16),
+  SIPO_NO_DRAW_EXTRAPOLATION = (1 << 17),
 } eGraphEdit_Flag;
 
 /* SpaceGraph.mode (Graph Editor Mode) */
@@ -687,7 +694,7 @@ typedef enum eSpaceSeq_OverlayType {
  * custom library. Otherwise idname is not used.
  */
 typedef struct FileSelectAssetLibraryUID {
-  short type;
+  short type; /* eFileAssetLibrary_Type */
   char _pad[2];
   /**
    * If showing a custom asset library (#FILE_ASSET_LIBRARY_CUSTOM), this is the index of the
@@ -843,6 +850,8 @@ typedef struct SpaceFile {
 
   short recentnr, bookmarknr;
   short systemnr, system_bookmarknr;
+
+  SpaceFile_Runtime *runtime;
 } SpaceFile;
 
 /* SpaceFile.browse_mode (File Space Browsing Mode) */
@@ -1084,6 +1093,8 @@ typedef struct FileDirEntry {
   struct FileDirEntry *next, *prev;
 
   int uuid[4];
+  /* Name needs freeing if FILE_ENTRY_NAME_FREE is set. Otherwise this is a direct pointer to a
+   * name buffer. */
   char *name;
   char *description;
 
@@ -1162,6 +1173,7 @@ enum {
 /* FileDirEntry.flags */
 enum {
   FILE_ENTRY_INVALID_PREVIEW = 1 << 0, /* The preview for this entry could not be generated. */
+  FILE_ENTRY_NAME_FREE = 1 << 1,
 };
 
 /** \} */
@@ -1518,19 +1530,17 @@ typedef struct SpaceNode {
 
   /** Context, no need to save in file? well... pinning... */
   struct ID *id, *from;
-  /** Menunr: browse id block in header. */
+
   short flag;
-  char _pad1[2];
-  /** Internal state variables. */
-  float aspect;
-  char _pad2[4];
+
+  /** Direction for offsetting nodes on insertion. */
+  char insert_ofs_dir;
+  char _pad1;
 
   /** Offset for drawing the backdrop. */
   float xof, yof;
   /** Zoom for backdrop. */
   float zoom;
-  /** Mouse pos for drawing socketless link and adding nodes. */
-  float cursor[2];
 
   /**
    * XXX nodetree pointer info is all in the path stack now,
@@ -1541,33 +1551,25 @@ typedef struct SpaceNode {
    */
   ListBase treepath;
 
-  struct bNodeTree *nodetree, *edittree;
+  /* The tree farthest down in the group hierarchy. */
+  struct bNodeTree *edittree;
+
+  struct bNodeTree *nodetree;
 
   /* tree type for the current node tree */
   char tree_idname[64];
   /** Treetype: as same nodetree->type. */
   int treetype DNA_DEPRECATED;
-  char _pad3[4];
 
   /** Texfrom object, world or brush. */
   short texfrom;
   /** Shader from object or world. */
   short shaderfrom;
-  /** Currently on 0/1, for auto compo. */
-  short recalc;
-
-  /** Direction for offsetting nodes on insertion. */
-  char insert_ofs_dir;
-  char _pad4;
-
-  /** Temporary data for modal linking operator. */
-  ListBase linkdrag;
-  /* XXX hack for translate_attach op-macros to pass data from transform op to insert_offset op */
-  /** Temporary data for node insert offset (in UI called Auto-offset). */
-  struct NodeInsertOfsData *iofsd;
 
   /** Grease-pencil data. */
   struct bGPdata *gpd;
+
+  SpaceNode_Runtime *runtime;
 } SpaceNode;
 
 /* SpaceNode.flag */
@@ -1839,6 +1841,38 @@ typedef struct SpaceStatusBar {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Spreadsheet
+ * \{ */
+
+typedef struct SpaceSpreadsheet {
+  SpaceLink *next, *prev;
+  /** Storage of regions for inactive spaces. */
+  ListBase regionbase;
+  char spacetype;
+  char link_flag;
+  char _pad0[6];
+  /* End 'SpaceLink' header. */
+
+  struct ID *pinned_id;
+
+  /* eSpaceSpreadsheet_FilterFlag. */
+  uint8_t filter_flag;
+
+  /* #GeometryComponentType. */
+  uint8_t geometry_component_type;
+  /* #AttributeDomain. */
+  uint8_t attribute_domain;
+
+  char _pad1[5];
+} SpaceSpreadsheet;
+
+/** \} */
+
+typedef enum eSpaceSpreadsheet_FilterFlag {
+  SPREADSHEET_FILTER_SELECTED_ONLY = (1 << 0),
+} eSpaceSpreadsheet_FilterFlag;
+
+/* -------------------------------------------------------------------- */
 /** \name Space Defines (eSpace_Type)
  * \{ */
 
@@ -1875,8 +1909,9 @@ typedef enum eSpace_Type {
   SPACE_CLIP = 20,
   SPACE_TOPBAR = 21,
   SPACE_STATUSBAR = 22,
+  SPACE_SPREADSHEET = 23
 
-#define SPACE_TYPE_LAST SPACE_STATUSBAR
+#define SPACE_TYPE_LAST SPACE_SPREADSHEET
 } eSpace_Type;
 
 /* use for function args */

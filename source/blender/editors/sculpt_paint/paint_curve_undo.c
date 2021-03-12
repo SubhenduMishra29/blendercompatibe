@@ -126,7 +126,7 @@ static bool paintcurve_undosys_step_encode(struct bContext *C,
 static void paintcurve_undosys_step_decode(struct bContext *UNUSED(C),
                                            struct Main *UNUSED(bmain),
                                            UndoStep *us_p,
-                                           int UNUSED(dir),
+                                           const eUndoStepDir UNUSED(dir),
                                            bool UNUSED(is_final))
 {
   PaintCurveUndoStep *us = (PaintCurveUndoStep *)us_p;
@@ -177,10 +177,10 @@ void ED_paintcurve_undo_push_begin(const char *name)
   BKE_undosys_step_push_init_with_type(ustack, C, name, BKE_UNDOSYS_TYPE_PAINTCURVE);
 }
 
-void ED_paintcurve_undo_push_end(void)
+void ED_paintcurve_undo_push_end(bContext *C)
 {
   UndoStack *ustack = ED_undo_stack_get();
-  BKE_undosys_step_push(ustack, NULL, NULL);
+  BKE_undosys_step_push(ustack, C, NULL);
   BKE_undosys_stack_limit_steps_and_memory_defaults(ustack);
   WM_file_tag_modified();
 }

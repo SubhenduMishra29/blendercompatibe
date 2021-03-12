@@ -48,6 +48,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
+#include "BKE_undo_system.h"
 
 #include "BLO_readfile.h"
 #include "BLO_undofile.h"
@@ -62,7 +63,7 @@
 #define UNDO_DISK 0
 
 bool BKE_memfile_undo_decode(MemFileUndoData *mfu,
-                             const int undo_direction,
+                             const eUndoStepDir undo_direction,
                              const bool use_old_bmain_data,
                              bContext *C)
 {
@@ -76,15 +77,25 @@ bool BKE_memfile_undo_decode(MemFileUndoData *mfu,
   G.fileflags |= G_FILE_NO_UI;
 
   if (UNDO_DISK) {
-    success = BKE_blendfile_read(C, mfu->filename, &(const struct BlendFileReadParams){0}, NULL);
+    const struct BlendFileReadParams params = {0};
+    struct BlendFileData *bfd = BKE_blendfile_read(mfu->filename, &params, NULL);
+    if (bfd != NULL) {
+      BKE_blendfile_read_setup(C, bfd, &params, NULL);
+      success = true;
+    }
   }
   else {
     struct BlendFileReadParams params = {0};
-    params.undo_direction = undo_direction > 0 ? 1 : -1;
+    params.undo_direction = undo_direction;
     if (!use_old_bmain_data) {
       params.skip_flags |= BLO_READ_SKIP_UNDO_OLD_MAIN;
     }
-    success = BKE_blendfile_read_from_memfile(C, &mfu->memfile, &params, NULL);
+    struct BlendFileData *bfd = BKE_blendfile_read_from_memfile(
+        bmain, &mfu->memfile, &params, NULL);
+    if (bfd != NULL) {
+      BKE_blendfile_read_setup(C, bfd, &params, NULL);
+      success = true;
+    }
   }
 
   /* Restore, bmain has been re-allocated. */

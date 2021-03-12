@@ -185,7 +185,11 @@ static char *rna_ColorRamp_path(PointerRNA *ptr)
         char *node_path;
 
         for (node = ntree->nodes.first; node; node = node->next) {
-          if (ELEM(node->type, SH_NODE_VALTORGB, CMP_NODE_VALTORGB, TEX_NODE_VALTORGB)) {
+          if (ELEM(node->type,
+                   SH_NODE_VALTORGB,
+                   CMP_NODE_VALTORGB,
+                   TEX_NODE_VALTORGB,
+                   GEO_NODE_ATTRIBUTE_COLOR_RAMP)) {
             if (node->storage == ptr->data) {
               /* all node color ramp properties called 'color_ramp'
                * prepend path from ID to the node
@@ -312,7 +316,11 @@ static void rna_ColorRamp_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *
         bNode *node;
 
         for (node = ntree->nodes.first; node; node = node->next) {
-          if (ELEM(node->type, SH_NODE_VALTORGB, CMP_NODE_VALTORGB, TEX_NODE_VALTORGB)) {
+          if (ELEM(node->type,
+                   SH_NODE_VALTORGB,
+                   CMP_NODE_VALTORGB,
+                   TEX_NODE_VALTORGB,
+                   GEO_NODE_ATTRIBUTE_COLOR_RAMP)) {
             ED_node_tag_update_nodetree(bmain, ntree, node);
           }
         }
@@ -888,6 +896,9 @@ static void rna_def_curvemapping(BlenderRNA *brna)
   func = RNA_def_function(srna, "update", "BKE_curvemapping_changed_all");
   RNA_def_function_ui_description(func, "Update curve mapping after making changes");
 
+  func = RNA_def_function(srna, "reset_view", "BKE_curvemapping_reset_view");
+  RNA_def_function_ui_description(func, "Reset the curve mapping grid to its clipping size");
+
   func = RNA_def_function(srna, "initialize", "rna_CurveMap_initialize");
   RNA_def_function_ui_description(func, "Initialize curve");
 
@@ -1099,7 +1110,7 @@ static void rna_def_histogram(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "mode");
   RNA_def_property_enum_items(prop, prop_mode_items);
-  RNA_def_property_ui_text(prop, "Mode", "Channels to display when drawing the histogram");
+  RNA_def_property_ui_text(prop, "Mode", "Channels to display in the histogram");
 
   prop = RNA_def_property(srna, "show_line", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", HISTO_FLAG_LINE);

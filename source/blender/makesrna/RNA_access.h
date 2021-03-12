@@ -91,6 +91,7 @@ extern StructRNA RNA_BoidSettings;
 extern StructRNA RNA_BoidState;
 extern StructRNA RNA_Bone;
 extern StructRNA RNA_BoneGroup;
+extern StructRNA RNA_BoolAttribute;
 extern StructRNA RNA_BoolProperty;
 extern StructRNA RNA_BooleanModifier;
 extern StructRNA RNA_Brush;
@@ -264,6 +265,7 @@ extern StructRNA RNA_FloatAttributeValue;
 extern StructRNA RNA_FloatColorAttribute;
 extern StructRNA RNA_FloatColorAttributeValue;
 extern StructRNA RNA_FloatProperty;
+extern StructRNA RNA_Float2Attribute;
 extern StructRNA RNA_FloorConstraint;
 extern StructRNA RNA_FluidDomainSettings;
 extern StructRNA RNA_FluidEffectorSettings;
@@ -574,7 +576,6 @@ extern StructRNA RNA_SimpleDeformModifier;
 extern StructRNA RNA_SimplifyGpencilModifier;
 extern StructRNA RNA_Simulation;
 extern StructRNA RNA_NodesModifier;
-extern StructRNA RNA_NodesModifierSettings;
 extern StructRNA RNA_GeometryNode;
 extern StructRNA RNA_GeometryNodeTree;
 extern StructRNA RNA_SkinModifier;
@@ -600,6 +601,7 @@ extern StructRNA RNA_SpaceOutliner;
 extern StructRNA RNA_SpacePreferences;
 extern StructRNA RNA_SpaceProperties;
 extern StructRNA RNA_SpaceSequenceEditor;
+extern StructRNA RNA_SpaceSpreadsheet;
 extern StructRNA RNA_SpaceTextEditor;
 extern StructRNA RNA_SpaceUVEditor;
 extern StructRNA RNA_SpaceView3D;
@@ -1510,11 +1512,21 @@ bool RNA_struct_override_store(struct Main *bmain,
                                PointerRNA *ptr_storage,
                                struct IDOverrideLibrary *override);
 
+typedef enum eRNAOverrideApplyFlag {
+  RNA_OVERRIDE_APPLY_FLAG_NOP = 0,
+  /**
+   * Hack to work around/fix older broken overrides: Do not apply override operations affecting ID
+   * pointers properties, unless the destination original value (the one being overridden) is NULL.
+   */
+  RNA_OVERRIDE_APPLY_FLAG_IGNORE_ID_POINTERS = 1 << 0,
+} eRNAOverrideApplyFlag;
+
 void RNA_struct_override_apply(struct Main *bmain,
                                struct PointerRNA *ptr_dst,
                                struct PointerRNA *ptr_src,
                                struct PointerRNA *ptr_storage,
-                               struct IDOverrideLibrary *override);
+                               struct IDOverrideLibrary *override,
+                               const eRNAOverrideApplyFlag flag);
 
 struct IDOverrideLibraryProperty *RNA_property_override_property_find(struct Main *bmain,
                                                                       PointerRNA *ptr,

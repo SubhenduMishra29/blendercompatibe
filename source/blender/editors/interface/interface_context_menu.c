@@ -567,7 +567,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
 
     /* Keyframes */
     if (but->flag & UI_BUT_ANIMATED_KEY) {
-      /* replace/delete keyfraemes */
+      /* Replace/delete keyframes. */
       if (is_array_component) {
         uiItemBooleanO(layout,
                        CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Replace Keyframes"),
@@ -936,6 +936,12 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
             CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Data Path"),
             ICON_NONE,
             "UI_OT_copy_data_path_button");
+    uiItemBooleanO(layout,
+                   CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Full Data Path"),
+                   ICON_NONE,
+                   "UI_OT_copy_data_path_button",
+                   "full_path",
+                   true);
 
     if (ptr->owner_id && !is_whole_array &&
         ELEM(type, PROP_BOOLEAN, PROP_INT, PROP_FLOAT, PROP_ENUM)) {
@@ -953,7 +959,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but)
     }
   }
 
-  /* If the button reprents an id, it can set the "id" context pointer. */
+  /* If the button represents an id, it can set the "id" context pointer. */
   if (U.experimental.use_asset_browser && ED_asset_can_make_single_from_context(C)) {
     ID *id = CTX_data_pointer_get_type(C, "id", &RNA_ID).data;
 

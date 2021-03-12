@@ -61,19 +61,12 @@ void BKE_lib_override_library_copy(struct ID *dst_id,
 void BKE_lib_override_library_clear(struct IDOverrideLibrary *override, const bool do_id_user);
 void BKE_lib_override_library_free(struct IDOverrideLibrary **override, const bool do_id_user);
 
+bool BKE_lib_override_library_is_user_edited(struct ID *id);
+
 struct ID *BKE_lib_override_library_create_from_id(struct Main *bmain,
                                                    struct ID *reference_id,
                                                    const bool do_tagged_remap);
 bool BKE_lib_override_library_create_from_tag(struct Main *bmain);
-void BKE_lib_override_library_dependencies_tag(struct Main *bmain,
-                                               struct ID *id_root,
-                                               const uint tag,
-                                               const bool do_create_main_relashionships);
-void BKE_lib_override_library_override_group_tag(struct Main *bmain,
-                                                 struct ID *id_root,
-                                                 const uint tag,
-                                                 const uint missing_tag,
-                                                 const bool do_create_main_relashionships);
 bool BKE_lib_override_library_create(struct Main *bmain,
                                      struct Scene *scene,
                                      struct ViewLayer *view_layer,
@@ -86,7 +79,12 @@ bool BKE_lib_override_library_proxy_convert(struct Main *bmain,
 bool BKE_lib_override_library_resync(struct Main *bmain,
                                      struct Scene *scene,
                                      struct ViewLayer *view_layer,
-                                     struct ID *id_root);
+                                     struct ID *id_root,
+                                     const bool do_hierarchy_enforce);
+void BKE_lib_override_library_main_resync(struct Main *bmain,
+                                          struct Scene *scene,
+                                          struct ViewLayer *view_layer);
+
 void BKE_lib_override_library_delete(struct Main *bmain, struct ID *id_root);
 
 struct IDOverrideLibraryProperty *BKE_lib_override_library_property_find(

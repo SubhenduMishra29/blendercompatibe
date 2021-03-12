@@ -647,8 +647,6 @@ static BMLoop *uvedit_loop_find_other_boundary_loop_with_visible_face(const Scen
     }
   } while (l_step != NULL);
 
-  BM_elem_flag_set(l_step_last->e, BM_ELEM_SMOOTH, false);
-
   if (l_step_last != NULL) {
     BLI_assert(uvedit_loop_find_other_radial_loop_with_visible_face(
                    scene, l_step_last, cd_loop_uv_offset) == NULL);
@@ -695,6 +693,7 @@ bool uv_find_nearest_edge(Scene *scene, Object *obedit, const float co[2], UvNea
       const float dist_test_sq = len_squared_v2(delta);
 
       if (dist_test_sq < hit->dist_sq) {
+        hit->ob = obedit;
         hit->efa = efa;
 
         hit->l = l;
@@ -707,24 +706,30 @@ bool uv_find_nearest_edge(Scene *scene, Object *obedit, const float co[2], UvNea
   return found;
 }
 
-bool uv_find_nearest_edge_multi(Scene *scene,
-                                Object **objects,
-                                const uint objects_len,
-                                const float co[2],
-                                UvNearestHit *hit_final)
+bool uv_find_nearest_edge_multi(
+    Scene *scene, Object **objects, const uint objects_len, const float co[2], UvNearestHit *hit)
 {
   bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    if (uv_find_nearest_edge(scene, obedit, co, hit_final)) {
-      hit_final->ob = obedit;
+    if (uv_find_nearest_edge(scene, obedit, co, hit)) {
       found = true;
     }
   }
   return found;
 }
 
-bool uv_find_nearest_face(Scene *scene, Object *obedit, const float co[2], UvNearestHit *hit)
+/**
+ * \param only_in_face: when true, only hit faces which `co` is inside.
+ * This gives users a result they might expect, especially when zoomed in.
+ *
+ * \note Concave faces can cause odd behavior, although in practice this isn't often an issue.
+ * The center can be outside the face, in this case the distance to the center
+ * could cause the face to be considered too far away.
+ * If this becomes an issue we could track the distance to the faces closest edge.
+ */
+bool uv_find_nearest_face_ex(
+    Scene *scene, Object *obedit, const float co[2], UvNearestHit *hit, const bool only_in_face)
 {
   BLI_assert((hit->scale[0] > 0.0f) && (hit->scale[1] > 0.0f));
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -750,6 +755,14 @@ bool uv_find_nearest_face(Scene *scene, Object *obedit, const float co[2], UvNea
     const float dist_test_sq = len_squared_v2(delta);
 
     if (dist_test_sq < hit->dist_sq) {
+
+      if (only_in_face) {
+        if (!BM_face_uv_point_inside_test(efa, co, cd_loop_uv_offset)) {
+          continue;
+        }
+      }
+
+      hit->ob = obedit;
       hit->efa = efa;
       hit->dist_sq = dist_test_sq;
       found = true;
@@ -758,21 +771,32 @@ bool uv_find_nearest_face(Scene *scene, Object *obedit, const float co[2], UvNea
   return found;
 }
 
-bool uv_find_nearest_face_multi(Scene *scene,
-                                Object **objects,
-                                const uint objects_len,
-                                const float co[2],
-                                UvNearestHit *hit_final)
+bool uv_find_nearest_face(Scene *scene, Object *obedit, const float co[2], UvNearestHit *hit)
+{
+  return uv_find_nearest_face_ex(scene, obedit, co, hit, false);
+}
+
+bool uv_find_nearest_face_multi_ex(Scene *scene,
+                                   Object **objects,
+                                   const uint objects_len,
+                                   const float co[2],
+                                   UvNearestHit *hit,
+                                   const bool only_in_face)
 {
   bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    if (uv_find_nearest_face(scene, obedit, co, hit_final)) {
-      hit_final->ob = obedit;
+    if (uv_find_nearest_face_ex(scene, obedit, co, hit, only_in_face)) {
       found = true;
     }
   }
   return found;
+}
+
+bool uv_find_nearest_face_multi(
+    Scene *scene, Object **objects, const uint objects_len, const float co[2], UvNearestHit *hit)
+{
+  return uv_find_nearest_face_multi_ex(scene, objects, objects_len, co, hit, false);
 }
 
 static bool uv_nearest_between(const BMLoop *l, const float co[2], const int cd_loop_uv_offset)
@@ -830,8 +854,9 @@ bool uv_find_nearest_vert(
 
         hit->dist_sq = dist_test_sq;
 
-        hit->l = l;
+        hit->ob = obedit;
         hit->efa = efa;
+        hit->l = l;
         found = true;
       }
     }
@@ -845,13 +870,12 @@ bool uv_find_nearest_vert_multi(Scene *scene,
                                 const uint objects_len,
                                 float const co[2],
                                 const float penalty_dist,
-                                UvNearestHit *hit_final)
+                                UvNearestHit *hit)
 {
   bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
-    if (uv_find_nearest_vert(scene, obedit, co, penalty_dist, hit_final)) {
-      hit_final->ob = obedit;
+    if (uv_find_nearest_vert(scene, obedit, co, penalty_dist, hit)) {
       found = true;
     }
   }
@@ -1298,7 +1322,7 @@ static int uv_select_edgering(
 static void uv_select_linked_multi(Scene *scene,
                                    Object **objects,
                                    const uint objects_len,
-                                   UvNearestHit *hit_final,
+                                   UvNearestHit *hit,
                                    const bool extend,
                                    bool deselect,
                                    const bool toggle,
@@ -1306,12 +1330,12 @@ static void uv_select_linked_multi(Scene *scene,
 {
   const bool uv_sync_select = (scene->toolsettings->uv_flag & UV_SYNC_SELECTION);
 
-  /* loop over objects, or just use hit_final->ob */
+  /* loop over objects, or just use hit->ob */
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    if (hit_final && ob_index != 0) {
+    if (hit && ob_index != 0) {
       break;
     }
-    Object *obedit = hit_final ? hit_final->ob : objects[ob_index];
+    Object *obedit = hit ? hit->ob : objects[ob_index];
 
     BMFace *efa;
     BMLoop *l;
@@ -1342,7 +1366,7 @@ static void uv_select_linked_multi(Scene *scene,
     stack = MEM_mallocN(sizeof(*stack) * (em->bm->totface + 1), "UvLinkStack");
     flag = MEM_callocN(sizeof(*flag) * em->bm->totface, "UvLinkFlag");
 
-    if (hit_final == NULL) {
+    if (hit == NULL) {
       /* Use existing selection */
       BM_ITER_MESH_INDEX (efa, &iter, em->bm, BM_FACES_OF_MESH, a) {
         if (uvedit_face_visible_test(scene, efa)) {
@@ -1399,7 +1423,7 @@ static void uv_select_linked_multi(Scene *scene,
     }
     else {
       BM_ITER_MESH_INDEX (efa, &iter, em->bm, BM_FACES_OF_MESH, a) {
-        if (efa == hit_final->efa) {
+        if (efa == hit->efa) {
           stack[stacksize] = a;
           stacksize++;
           flag[a] = 1;
@@ -1942,6 +1966,15 @@ static int uv_mouse_select_multi(bContext *C,
   else if (selectmode == UV_SELECT_FACE) {
     /* find face */
     found_item = uv_find_nearest_face_multi(scene, objects, objects_len, co, &hit);
+
+    if (!found_item) {
+      /* Fallback, perform a second pass without a limited threshold,
+       * which succeeds as long as the cursor is inside the UV face.
+       * Useful when zoomed in, to select faces with distant screen-space face centers. */
+      hit.dist_sq = FLT_MAX;
+      found_item = uv_find_nearest_face_multi_ex(scene, objects, objects_len, co, &hit, true);
+    }
+
     if (found_item) {
       BMesh *bm = BKE_editmesh_from_object(hit.ob)->bm;
       BM_mesh_active_face_set(bm, hit.efa);
@@ -1949,6 +1982,13 @@ static int uv_mouse_select_multi(bContext *C,
   }
   else if (selectmode == UV_SELECT_ISLAND) {
     found_item = uv_find_nearest_edge_multi(scene, objects, objects_len, co, &hit);
+
+    if (!found_item) {
+      /* Without this, we can be within the face of an island but too far from an edge,
+       * see face selection comment for details. */
+      hit.dist_sq = FLT_MAX;
+      found_item = uv_find_nearest_face_multi_ex(scene, objects, objects_len, co, &hit, true);
+    }
   }
 
   if (!found_item) {
@@ -3273,7 +3313,6 @@ static bool do_lasso_select_mesh_uv(bContext *C,
     uv_select_all_perform_multi(scene, objects, objects_len, SEL_DESELECT);
   }
 
-  /* don't indent to avoid diff noise! */
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
 
@@ -3283,7 +3322,7 @@ static bool do_lasso_select_mesh_uv(bContext *C,
 
     const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
-    if (use_face_center) { /* Face Center Sel */
+    if (use_face_center) { /* Face Center Select. */
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         BM_elem_flag_disable(efa, BM_ELEM_TAG);
         /* assume not touched */
@@ -3326,7 +3365,7 @@ static bool do_lasso_select_mesh_uv(bContext *C,
         }
       }
     }
-    else { /* Vert Sel */
+    else { /* Vert Selection. */
       BM_mesh_elem_hflag_disable_all(em->bm, BM_VERT, BM_ELEM_TAG, false);
 
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
@@ -3506,6 +3545,51 @@ struct UVOverlapData {
   float tri[3][2];
 };
 
+/**
+ * Specialized 2D triangle intersection for detecting UV overlap:
+ *
+ * \return
+ * - false when single corners or edges touch (common for UV coordinates).
+ * - true when all corners touch (an exactly overlapping triangle).
+ */
+static bool overlap_tri_tri_uv_test(const float t1[3][2],
+                                    const float t2[3][2],
+                                    const float endpoint_bias)
+{
+  float vi[2];
+
+  /* Don't use 'isect_tri_tri_v2' here
+   * because it's important to ignore overlap at end-points. */
+  if (isect_seg_seg_v2_point_ex(t1[0], t1[1], t2[0], t2[1], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[0], t1[1], t2[1], t2[2], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[0], t1[1], t2[2], t2[0], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[1], t1[2], t2[0], t2[1], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[1], t1[2], t2[1], t2[2], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[1], t1[2], t2[2], t2[0], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[2], t1[0], t2[0], t2[1], endpoint_bias, vi) == 1 ||
+      isect_seg_seg_v2_point_ex(t1[2], t1[0], t2[1], t2[2], endpoint_bias, vi) == 1) {
+    return true;
+  }
+
+  /* When none of the segments intersect, checking if either of the triangles corners
+   * is inside the others is almost always sufficient to test if the two triangles intersect.
+   *
+   * However, the `endpoint_bias` on segment intersections causes _exact_ overlapping
+   * triangles not to be detected.
+   *
+   * Resolve this problem at the small cost of calculating the triangle center, see T85508. */
+  mid_v2_v2v2v2(vi, UNPACK3(t1));
+  if (isect_point_tri_v2(vi, UNPACK3(t2)) != 0) {
+    return true;
+  }
+  mid_v2_v2v2v2(vi, UNPACK3(t2));
+  if (isect_point_tri_v2(vi, UNPACK3(t1)) != 0) {
+    return true;
+  }
+
+  return false;
+}
+
 static int uv_select_overlap(bContext *C, const bool extend)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -3649,24 +3733,7 @@ static int uv_select_overlap(bContext *C, const bool extend)
 
       /* Main tri-tri overlap test. */
       const float endpoint_bias = -1e-4f;
-      const float(*t1)[2] = o_a->tri;
-      const float(*t2)[2] = o_b->tri;
-      float vi[2];
-      bool result = (
-          /* Don't use 'isect_tri_tri_v2' here
-           * because it's important to ignore overlap at end-points. */
-          isect_seg_seg_v2_point_ex(t1[0], t1[1], t2[0], t2[1], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[0], t1[1], t2[1], t2[2], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[0], t1[1], t2[2], t2[0], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[1], t1[2], t2[0], t2[1], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[1], t1[2], t2[1], t2[2], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[1], t1[2], t2[2], t2[0], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[2], t1[0], t2[0], t2[1], endpoint_bias, vi) == 1 ||
-          isect_seg_seg_v2_point_ex(t1[2], t1[0], t2[1], t2[2], endpoint_bias, vi) == 1 ||
-          isect_point_tri_v2(t1[0], t2[0], t2[1], t2[2]) != 0 ||
-          isect_point_tri_v2(t2[0], t1[0], t1[1], t1[2]) != 0);
-
-      if (result) {
+      if (overlap_tri_tri_uv_test(o_a->tri, o_b->tri, endpoint_bias)) {
         uvedit_face_select_enable(scene, em_a, face_a, false, cd_loop_uv_offset_a);
         uvedit_face_select_enable(scene, em_b, face_b, false, cd_loop_uv_offset_b);
       }

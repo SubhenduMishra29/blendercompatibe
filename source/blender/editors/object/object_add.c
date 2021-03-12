@@ -265,7 +265,6 @@ static int object_add_drop_xy_generic_invoke(bContext *C, wmOperator *op, const 
 
 /* -------------------------------------------------------------------- */
 /** \name Public Add Object API
- *
  * \{ */
 
 void ED_object_location_from_view(bContext *C, float loc[3])
@@ -516,7 +515,7 @@ bool ED_object_add_generic_get_opts(bContext *C,
     if (RNA_struct_property_is_set(op->ptr, "rotation")) {
       /* If rotation is set, always use it. Alignment (and corresponding user preference)
        * can be ignored since this is in world space anyways.
-       * To not confuse (e.g. on redo), dont set it to ALIGN_WORLD in the op UI though. */
+       * To not confuse (e.g. on redo), don't set it to #ALIGN_WORLD in the op UI though. */
       *is_view_aligned = false;
       RNA_float_get_array(op->ptr, "rotation", rot);
     }
@@ -607,7 +606,6 @@ Object *ED_object_add_type_with_obdata(bContext *C,
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  /* For as long scene has editmode... */
   {
     Object *obedit = OBEDIT_FROM_VIEW_LAYER(view_layer);
     if (obedit != NULL) {
@@ -1712,9 +1710,8 @@ static int object_speaker_add_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_add_type(C, OB_SPEAKER, NULL, loc, rot, false, local_view_bits);
   const bool is_liboverride = ID_IS_OVERRIDE_LIBRARY(ob);
 
-  /* to make it easier to start using this immediately in NLA, a default sound clip is created
-   * ready to be moved around to retime the sound and/or make new sound clips
-   */
+  /* To make it easier to start using this immediately in NLA, a default sound clip is created
+   * ready to be moved around to re-time the sound and/or make new sound clips. */
   {
     /* create new data for NLA hierarchy */
     AnimData *adt = BKE_animdata_add_id(&ob->id);
@@ -1730,7 +1727,7 @@ static int object_speaker_add_exec(bContext *C, wmOperator *op)
     BLI_strncpy(nlt->name, DATA_("SoundTrack"), sizeof(nlt->name));
     BKE_nlastrip_validate_name(adt, strip);
 
-    WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_EDITED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
   }
 
   return OPERATOR_FINISHED;
@@ -1856,7 +1853,7 @@ void ED_object_base_free_and_unlink(Main *bmain, Scene *scene, Object *ob)
       ID_EXTRA_USERS(ob) == 0) {
     /* We cannot delete indirectly used object... */
     printf(
-        "WARNING, undeletable object '%s', should have been catched before reaching this "
+        "WARNING, undeletable object '%s', should have been caught before reaching this "
         "function!",
         ob->id.name + 2);
     return;
@@ -2302,7 +2299,7 @@ static void make_object_duplilist_real(bContext *C,
         /* OK to keep most of the members uninitialized,
          * they won't be read, this is simply for a hash lookup. */
         DupliObject dob_key;
-        /* We are looking one step upper in hierarchy, so we need to 'shift' the persitent_id,
+        /* We are looking one step upper in hierarchy, so we need to 'shift' the `persistent_id`,
          * ignoring the first item.
          * We only check on persistent_id here, since we have no idea what object it might be. */
         memcpy(&dob_key.persistent_id[0],
@@ -2407,7 +2404,7 @@ void OBJECT_OT_duplicates_make_real(wmOperatorType *ot)
                   "use_base_parent",
                   0,
                   "Parent",
-                  "Parent newly created objects to the original duplicator");
+                  "Parent newly created objects to the original instancer");
   RNA_def_boolean(
       ot->srna, "use_hierarchy", 0, "Keep Hierarchy", "Maintain parent child relationships");
 }
@@ -3364,6 +3361,9 @@ static int object_add_named_exec(bContext *C, wmOperator *op)
     ED_view3d_cursor3d_position(C, mval, false, basen->object->loc);
   }
 
+  /* object_add_duplicate_internal() doesn't deselect other objects, unlike object_add_common() or
+   * BKE_view_layer_base_deselect_all(). */
+  ED_object_base_deselect_all(view_layer, NULL, BA_DESELECT);
   ED_object_base_select(basen, BA_SELECT);
   ED_object_base_activate(C, basen);
 
@@ -3410,7 +3410,6 @@ void OBJECT_OT_add_named(wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 /** \name Join Object Operator
- *
  * \{ */
 
 static bool object_join_poll(bContext *C)

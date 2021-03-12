@@ -596,7 +596,7 @@ static bool do_lasso_select_objects(ViewContext *vc,
   }
 
   for (base = vc->view_layer->object_bases.first; base; base = base->next) {
-    if (BASE_SELECTABLE(v3d, base)) { /* use this to avoid un-needed lasso lookups */
+    if (BASE_SELECTABLE(v3d, base)) { /* Use this to avoid unnecessary lasso look-ups. */
       const bool is_select = base->flag & BASE_SELECTED;
       const bool is_inside = ((ED_view3d_project_base(vc->region, base) == V3D_PROJ_RET_OK) &&
                               BLI_lasso_is_point_inside(
@@ -1447,7 +1447,7 @@ static const EnumPropertyItem *object_select_menu_enum_itemf(bContext *C,
   int totitem = 0;
   int i = 0;
 
-  /* don't need context but avoid docgen using this */
+  /* Don't need context but avoid API doc-generation using this. */
   if (C == NULL || object_mouse_select_menu_data[i].idname[0] == '\0') {
     return DummyRNA_NULL_items;
   }
@@ -1673,8 +1673,8 @@ static int selectbuffer_ret_hits_15(uint *UNUSED(buffer), const int hits15)
 
 static int selectbuffer_ret_hits_9(uint *buffer, const int hits15, const int hits9)
 {
-  const int offs = 4 * hits15;
-  memcpy(buffer, buffer + offs, 4 * hits9 * sizeof(uint));
+  const int ofs = 4 * hits15;
+  memcpy(buffer, buffer + ofs, 4 * hits9 * sizeof(uint));
   return hits9;
 }
 
@@ -1683,8 +1683,8 @@ static int selectbuffer_ret_hits_5(uint *buffer,
                                    const int hits9,
                                    const int hits5)
 {
-  const int offs = 4 * hits15 + 4 * hits9;
-  memcpy(buffer, buffer + offs, 4 * hits5 * sizeof(uint));
+  const int ofs = 4 * hits15 + 4 * hits9;
+  memcpy(buffer, buffer + ofs, 4 * hits5 * sizeof(uint));
   return hits5;
 }
 
@@ -1726,30 +1726,30 @@ static int mixed_bones_object_selectbuffer(ViewContext *vc,
     goto finally;
   }
   else if (hits15 > 0) {
-    int offs;
+    int ofs;
     has_bones15 = selectbuffer_has_bones(buffer, hits15);
 
-    offs = 4 * hits15;
+    ofs = 4 * hits15;
     BLI_rcti_init_pt_radius(&rect, mval, 9);
     hits9 = view3d_opengl_select(
-        vc, buffer + offs, MAXPICKBUF - offs, &rect, select_mode, select_filter);
+        vc, buffer + ofs, MAXPICKBUF - ofs, &rect, select_mode, select_filter);
     if (hits9 == 1) {
       hits = selectbuffer_ret_hits_9(buffer, hits15, hits9);
       goto finally;
     }
     else if (hits9 > 0) {
-      has_bones9 = selectbuffer_has_bones(buffer + offs, hits9);
+      has_bones9 = selectbuffer_has_bones(buffer + ofs, hits9);
 
-      offs += 4 * hits9;
+      ofs += 4 * hits9;
       BLI_rcti_init_pt_radius(&rect, mval, 5);
       hits5 = view3d_opengl_select(
-          vc, buffer + offs, MAXPICKBUF - offs, &rect, select_mode, select_filter);
+          vc, buffer + ofs, MAXPICKBUF - ofs, &rect, select_mode, select_filter);
       if (hits5 == 1) {
         hits = selectbuffer_ret_hits_5(buffer, hits15, hits9, hits5);
         goto finally;
       }
       else if (hits5 > 0) {
-        has_bones5 = selectbuffer_has_bones(buffer + offs, hits5);
+        has_bones5 = selectbuffer_has_bones(buffer + ofs, hits5);
       }
     }
 
@@ -2494,8 +2494,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Pass-through allows tweaks
-   * FINISHED to signal one operator worked
-   * */
+   * FINISHED to signal one operator worked */
   if (retval) {
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
     return OPERATOR_PASS_THROUGH | OPERATOR_FINISHED;
