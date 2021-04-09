@@ -42,6 +42,7 @@
 extern "C" {
 #endif
 
+struct Collection;
 struct ID;
 struct IDOverrideLibrary;
 struct IDOverrideLibraryProperty;
@@ -50,6 +51,7 @@ struct Main;
 struct Object;
 struct PointerRNA;
 struct PropertyRNA;
+struct ReportList;
 struct Scene;
 struct ViewLayer;
 
@@ -72,6 +74,7 @@ bool BKE_lib_override_library_create(struct Main *bmain,
                                      struct ViewLayer *view_layer,
                                      struct ID *id_root,
                                      struct ID *id_reference);
+bool BKE_lib_override_library_template_create(struct ID *id);
 bool BKE_lib_override_library_proxy_convert(struct Main *bmain,
                                             struct Scene *scene,
                                             struct ViewLayer *view_layer,
@@ -80,7 +83,9 @@ bool BKE_lib_override_library_resync(struct Main *bmain,
                                      struct Scene *scene,
                                      struct ViewLayer *view_layer,
                                      struct ID *id_root,
-                                     const bool do_hierarchy_enforce);
+                                     struct Collection *override_resync_residual_storage,
+                                     const bool do_hierarchy_enforce,
+                                     const bool do_post_process);
 void BKE_lib_override_library_main_resync(struct Main *bmain,
                                           struct Scene *scene,
                                           struct ViewLayer *view_layer);
@@ -128,6 +133,11 @@ bool BKE_lib_override_library_property_operation_operands_validate(
     struct PropertyRNA *prop_dst,
     struct PropertyRNA *prop_src,
     struct PropertyRNA *prop_storage);
+
+void BKE_lib_override_library_validate(struct Main *bmain,
+                                       struct ID *id,
+                                       struct ReportList *reports);
+void BKE_lib_override_library_main_validate(struct Main *bmain, struct ReportList *reports);
 
 bool BKE_lib_override_library_status_check_local(struct Main *bmain, struct ID *local);
 bool BKE_lib_override_library_status_check_reference(struct Main *bmain, struct ID *local);

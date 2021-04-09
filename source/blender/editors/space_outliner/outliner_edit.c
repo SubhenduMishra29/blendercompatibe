@@ -466,7 +466,7 @@ static void id_delete(bContext *C, ReportList *reports, TreeElement *te, TreeSto
     BKE_reportf(reports, RPT_WARNING, "Cannot delete indirectly linked id '%s'", id->name);
     return;
   }
-  if (BKE_library_ID_is_indirectly_used(bmain, id) && ID_REAL_USERS(id) <= 1) {
+  if (ID_REAL_USERS(id) <= 1 && BKE_library_ID_is_indirectly_used(bmain, id)) {
     BKE_reportf(reports,
                 RPT_WARNING,
                 "Cannot delete id '%s', indirectly used data-blocks need at least one user",
@@ -1100,36 +1100,6 @@ bool outliner_flag_flip(ListBase *lb, short flag)
   }
 
   return changed;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Restriction Column Utility
- * \{ */
-
-/* same check needed for both object operation and restrict column button func
- * return 0 when in edit mode (cannot restrict view or select)
- * otherwise return 1 */
-int common_restrict_check(bContext *C, Object *ob)
-{
-  /* Don't allow hide an object in edit mode,
-   * check the bugs (T22153 and T21609, T23977).
-   */
-  Object *obedit = CTX_data_edit_object(C);
-  if (obedit && obedit == ob) {
-    /* found object is hidden, reset */
-    if (ob->restrictflag & OB_RESTRICT_VIEWPORT) {
-      ob->restrictflag &= ~OB_RESTRICT_VIEWPORT;
-    }
-    /* found object is unselectable, reset */
-    if (ob->restrictflag & OB_RESTRICT_SELECT) {
-      ob->restrictflag &= ~OB_RESTRICT_SELECT;
-    }
-    return 0;
-  }
-
-  return 1;
 }
 
 /** \} */

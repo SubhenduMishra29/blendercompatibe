@@ -396,6 +396,10 @@ static void add_uvs(AlembicProcedural *proc,
 
   ccl::set<chrono_t> times = get_relevant_sample_times(proc, time_sampling, uvs.getNumSamples());
 
+  /* Keys used to determine if the UVs do actually change over time. */
+  ArraySample::Key previous_indices_key;
+  ArraySample::Key previous_values_key;
+
   foreach (chrono_t time, times) {
     if (progress.get_cancel()) {
       return;
@@ -422,21 +426,32 @@ static void add_uvs(AlembicProcedural *proc,
 
     float2 *data_float2 = reinterpret_cast<float2 *>(data.data());
 
-    const unsigned int *indices = uvsample.getIndices()->get();
-    const V2f *values = uvsample.getVals()->get();
+    const ArraySample::Key indices_key = uvsample.getIndices()->getKey();
+    const ArraySample::Key values_key = uvsample.getVals()->getKey();
 
-    for (const int3 &loop : *triangles_loops) {
-      unsigned int v0 = indices[loop.x];
-      unsigned int v1 = indices[loop.y];
-      unsigned int v2 = indices[loop.z];
+    if (indices_key == previous_indices_key && values_key == previous_values_key) {
+      attr.data.reuse_data_for_last_time(time);
+    }
+    else {
+      const unsigned int *indices = uvsample.getIndices()->get();
+      const V2f *values = uvsample.getVals()->get();
 
-      data_float2[0] = make_float2(values[v0][0], values[v0][1]);
-      data_float2[1] = make_float2(values[v1][0], values[v1][1]);
-      data_float2[2] = make_float2(values[v2][0], values[v2][1]);
-      data_float2 += 3;
+      for (const int3 &loop : *triangles_loops) {
+        unsigned int v0 = indices[loop.x];
+        unsigned int v1 = indices[loop.y];
+        unsigned int v2 = indices[loop.z];
+
+        data_float2[0] = make_float2(values[v0][0], values[v0][1]);
+        data_float2[1] = make_float2(values[v1][0], values[v1][1]);
+        data_float2[2] = make_float2(values[v2][0], values[v2][1]);
+        data_float2 += 3;
+      }
+
+      attr.data.add_data(data, time);
     }
 
-    attr.data.add_data(data, time);
+    previous_indices_key = indices_key;
+    previous_values_key = values_key;
   }
 }
 
@@ -599,7 +614,7 @@ NODE_DEFINE(AlembicObject)
   NodeType *type = NodeType::add("alembic_object", create);
 
   SOCKET_STRING(path, "Alembic Path", ustring());
-  SOCKET_NODE_ARRAY(used_shaders, "Used Shaders", &Shader::node_type);
+  SOCKET_NODE_ARRAY(used_shaders, "Used Shaders", Shader::get_node_type());
 
   SOCKET_INT(subd_max_level, "Max Subdivision Level", 1);
   SOCKET_FLOAT(subd_dicing_rate, "Subdivision Dicing Rate", 1.0f);
@@ -609,7 +624,7 @@ NODE_DEFINE(AlembicObject)
   return type;
 }
 
-AlembicObject::AlembicObject() : Node(node_type)
+AlembicObject::AlembicObject() : Node(get_node_type())
 {
   schema_type = INVALID;
 }
@@ -736,6 +751,11 @@ void AlembicObject::load_all_data(AlembicProcedural *proc,
   ccl::set<chrono_t> times = get_relevant_sample_times(
       proc, *time_sampling, schema.getNumSamples());
 
+  /* Key used to determine if the triangles change over time, if the key is the same as the
+   * last one, we can avoid creating a new entry in the cache and simply point to the last
+   * frame. */
+  ArraySample::Key previous_key;
+
   /* read topology */
   foreach (chrono_t time, times) {
     if (progress.get_cancel()) {
@@ -747,22 +767,27 @@ void AlembicObject::load_all_data(AlembicProcedural *proc,
 
     add_positions(sample.getPositions(), time, cached_data);
 
-    /* Only copy triangles for other frames if the topology is changing over time as well.
-     *
-     * TODO(@kevindietrich): even for dynamic simulations, this is a waste of memory and
-     * processing time if only the positions are changing in a subsequence of frames but we
-     * cannot optimize in this current system if the attributes are changing over time as well,
-     * as we need valid data for each time point. This can be solved by using reference counting
-     * on the ccl::array and simply share the array across frames. */
+    /* Only copy triangles for other frames if the topology is changing over time as well. */
     if (schema.getTopologyVariance() != kHomogenousTopology || cached_data.triangles.size() == 0) {
-      /* start by reading the face sets (per face shader), as we directly split polygons to
-       * triangles
-       */
-      array<int> polygon_to_shader;
-      read_face_sets(schema, polygon_to_shader, iss);
+      const ArraySample::Key key = sample.getFaceIndices()->getKey();
 
-      add_triangles(
-          sample.getFaceCounts(), sample.getFaceIndices(), time, cached_data, polygon_to_shader);
+      if (key == previous_key) {
+        cached_data.triangles.reuse_data_for_last_time(time);
+        cached_data.triangles_loops.reuse_data_for_last_time(time);
+        cached_data.shader.reuse_data_for_last_time(time);
+      }
+      else {
+        /* start by reading the face sets (per face shader), as we directly split polygons to
+         * triangles
+         */
+        array<int> polygon_to_shader;
+        read_face_sets(schema, polygon_to_shader, iss);
+
+        add_triangles(
+            sample.getFaceCounts(), sample.getFaceIndices(), time, cached_data, polygon_to_shader);
+      }
+
+      previous_key = key;
     }
 
     if (normals.valid()) {
@@ -1320,12 +1345,12 @@ NODE_DEFINE(AlembicProcedural)
   SOCKET_FLOAT(default_radius, "Default Radius", 0.01f);
   SOCKET_FLOAT(scale, "Scale", 1.0f);
 
-  SOCKET_NODE_ARRAY(objects, "Objects", &AlembicObject::node_type);
+  SOCKET_NODE_ARRAY(objects, "Objects", AlembicObject::get_node_type());
 
   return type;
 }
 
-AlembicProcedural::AlembicProcedural() : Procedural(node_type)
+AlembicProcedural::AlembicProcedural() : Procedural(get_node_type())
 {
   objects_loaded = false;
   scene_ = nullptr;
@@ -1380,6 +1405,15 @@ void AlembicProcedural::generate(Scene *scene, Progress &progress)
 
     if (object->is_modified()) {
       need_data_updates = true;
+    }
+
+    /* Check if the shaders were modified. */
+    if (object->used_shaders_is_modified() && object->get_object() &&
+        object->get_object()->get_geometry()) {
+      Geometry *geometry = object->get_object()->get_geometry();
+      array<Node *> used_shaders = object->get_used_shaders();
+      geometry->set_used_shaders(used_shaders);
+      need_shader_updates = true;
     }
 
     /* Check for changes in shaders (e.g. newly requested attributes). */
@@ -1561,6 +1595,11 @@ void AlembicProcedural::read_mesh(AlembicObject *abc_object, Abc::chrono_t frame
 
   Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
 
+  /* Make sure shader ids are also updated. */
+  if (mesh->used_shaders_is_modified()) {
+    mesh->tag_shader_modified();
+  }
+
   cached_data.vertices.copy_to_socket(frame_time, mesh, mesh->get_verts_socket());
 
   cached_data.shader.copy_to_socket(frame_time, mesh, mesh->get_shader_socket());
@@ -1627,6 +1666,11 @@ void AlembicProcedural::read_subd(AlembicObject *abc_object, Abc::chrono_t frame
   }
 
   Mesh *mesh = static_cast<Mesh *>(object->get_geometry());
+
+  /* Make sure shader ids are also updated. */
+  if (mesh->used_shaders_is_modified()) {
+    mesh->tag_shader_modified();
+  }
 
   /* Cycles overwrites the original triangles when computing displacement, so we always have to
    * repass the data if something is animated (vertices most likely) to avoid buffer overflows. */
@@ -1717,6 +1761,11 @@ void AlembicProcedural::read_curves(AlembicObject *abc_object, Abc::chrono_t fra
   }
 
   Hair *hair = static_cast<Hair *>(object->get_geometry());
+
+  /* Make sure shader ids are also updated. */
+  if (hair->used_shaders_is_modified()) {
+    hair->tag_curve_shader_modified();
+  }
 
   cached_data.curve_keys.copy_to_socket(frame_time, hair, hair->get_curve_keys_socket());
 

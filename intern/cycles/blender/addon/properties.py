@@ -226,9 +226,6 @@ def update_render_passes(self, context):
     view_layer = context.view_layer
     view_layer.update_render_passes()
 
-def poll_object_is_camera(self, obj):
-    return obj.type == 'CAMERA'
-
 
 class CyclesRenderSettings(bpy.types.PropertyGroup):
 
@@ -541,7 +538,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Camera to use as reference point when subdividing geometry, useful to avoid crawling "
         "artifacts in animations when the scene camera is moving",
         type=bpy.types.Object,
-        poll=poll_object_is_camera,
+        poll=lambda self, obj: obj.type == 'CAMERA',
     )
     offscreen_dicing_scale: FloatProperty(
         name="Offscreen Dicing Scale",
@@ -804,17 +801,22 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         items=enum_texture_limit
     )
 
+    use_fast_gi: BoolProperty(
+        name="Fast GI Approximation",
+        description="Approximate diffuse indirect light with background tinted ambient occlusion. This provides fast alternative to full global illumination, for interactive viewport rendering or final renders with reduced quality",
+        default=False,
+    )
     ao_bounces: IntProperty(
         name="AO Bounces",
-        default=0,
-        description="Approximate indirect light with background tinted ambient occlusion at the specified bounce, 0 disables this feature",
+        default=1,
+        description="After this number of light bounces, use approximate global illumination. 0 disables this feature",
         min=0, max=1024,
     )
 
     ao_bounces_render: IntProperty(
         name="AO Bounces Render",
-        default=0,
-        description="Approximate indirect light with background tinted ambient occlusion at the specified bounce, 0 disables this feature",
+        default=1,
+        description="After this number of light bounces, use approximate global illumination. 0 disables this feature",
         min=0, max=1024,
     )
 

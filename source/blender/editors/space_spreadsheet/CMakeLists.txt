@@ -17,9 +17,9 @@
 
 set(INC
   ../include
+  ../../blenfont
   ../../blenkernel
   ../../blenlib
-  ../../blenfont
   ../../bmesh
   ../../depsgraph
   ../../functions
@@ -33,13 +33,21 @@ set(INC
 
 set(SRC
   space_spreadsheet.cc
+  spreadsheet_column.cc
+  spreadsheet_data_source.cc
+  spreadsheet_data_source_geometry.cc
   spreadsheet_draw.cc
-  spreadsheet_from_geometry.cc
+  spreadsheet_layout.cc
   spreadsheet_ops.cc
 
+  spreadsheet_cell_value.hh
+  spreadsheet_column.hh
+  spreadsheet_data_source.hh
+  spreadsheet_data_source_geometry.hh
+  spreadsheet_column_values.hh
   spreadsheet_draw.hh
-  spreadsheet_from_geometry.hh
   spreadsheet_intern.hh
+  spreadsheet_layout.hh
 )
 
 set(LIB
