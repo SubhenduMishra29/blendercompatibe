@@ -397,7 +397,7 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
   /* determine initial range
    * - strip length cannot be 0... ever...
    */
-  calc_action_range(strip->act, &strip->actstart, &strip->actend, 0);
+  BKE_action_get_frame_range(strip->act, &strip->actstart, &strip->actend);
 
   strip->start = strip->actstart;
   strip->end = (IS_EQF(strip->actstart, strip->actend)) ? (strip->actstart + 1.0f) :
@@ -1444,7 +1444,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
 
   prev_actstart = strip->actstart;
 
-  calc_action_range(strip->act, &strip->actstart, &strip->actend, 0);
+  BKE_action_get_frame_range(strip->act, &strip->actstart, &strip->actend);
 
   /* Set start such that key's do not visually move, to preserve the overall animation result. */
   strip->start += (strip->actstart - prev_actstart) * strip->scale;

@@ -688,6 +688,32 @@ class DOPESHEET_MT_snap_pie(Menu):
         pie.operator("action.snap", text="Selection to Nearest Marker").type = 'NEAREST_MARKER'
 
 
+class DOPESHEET_PT_action(Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Item"
+    bl_label = "Action"
+
+    @classmethod
+    def poll(cls, context):
+        return bool(context.selected_visible_actions)
+
+    def draw(self, context):
+        layout = self.layout
+        action = context.selected_visible_actions[0]
+
+        layout.label(text=action.name, icon='ACTION')
+
+        layout.prop(action, "use_frame_range")
+
+        col = layout.column()
+        col.active = action.use_frame_range
+
+        row = col.row(align=True)
+        row.prop(action, "frame_start", text="Start")
+        row.prop(action, "frame_end", text="End")
+
+
 class LayersDopeSheetPanel:
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_region_type = 'UI'
@@ -779,6 +805,7 @@ classes = (
     DOPESHEET_MT_channel_context_menu,
     DOPESHEET_MT_snap_pie,
     DOPESHEET_PT_filters,
+    DOPESHEET_PT_action,
     DOPESHEET_PT_gpencil_mode,
     DOPESHEET_PT_gpencil_layer_masks,
     DOPESHEET_PT_gpencil_layer_transform,
