@@ -1232,7 +1232,7 @@ void fcurve_samples_to_keyframes(FCurve *fcu, const int start, const int end)
  */
 
 /* Checks if the F-Curve has a Cycles modifier, and returns the type of the cycle behavior. */
-eFCU_Cycle_Type BKE_fcurve_get_cycle_type(FCurve *fcu)
+eFCU_Cycle_Type BKE_fcurve_get_cycle_type(const FCurve *fcu)
 {
   FModifier *fcm = fcu->modifiers.first;
 

@@ -294,7 +294,7 @@ typedef enum eFCU_Cycle_Type {
   FCU_CYCLE_OFFSET,
 } eFCU_Cycle_Type;
 
-eFCU_Cycle_Type BKE_fcurve_get_cycle_type(struct FCurve *fcu);
+eFCU_Cycle_Type BKE_fcurve_get_cycle_type(const struct FCurve *fcu);
 
 /* Recompute handles to neatly subdivide the prev-next range at bezt. */
 bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,

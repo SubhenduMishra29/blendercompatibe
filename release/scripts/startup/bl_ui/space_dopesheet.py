@@ -715,6 +715,10 @@ class DOPESHEET_PT_action(Panel):
 
         col.prop(action, "is_cyclic")
 
+        row = col.row()
+        row.active = action.is_cyclic
+        row.prop(action, "use_cyclic_errors")
+
 
 class LayersDopeSheetPanel:
     bl_space_type = 'DOPESHEET_EDITOR'

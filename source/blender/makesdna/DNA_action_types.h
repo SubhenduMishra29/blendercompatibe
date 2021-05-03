@@ -703,6 +703,8 @@ typedef enum eAction_Flags {
   ACT_FRAME_RANGE = (1 << 12),
   /** The action is intended to be a cycle (requires ACT_FRAME_RANGE). */
   ACT_CYCLIC = (1 << 13),
+  /** Treat cycle length or extrapolation mismatch as a curve error. */
+  ACT_CYCLIC_ERRORS = (1 << 14),
 } eAction_Flags;
 
 /* ************************************************ */
