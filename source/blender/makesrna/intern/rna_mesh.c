@@ -2855,6 +2855,7 @@ static void rna_def_vertex_creases(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "MeshVertexCreaseLayer", NULL);
   RNA_def_struct_ui_text(srna, "Mesh Vertex Crease Layer", "Per-vertex crease");
   RNA_def_struct_sdna(srna, "CustomDataLayer");
+  RNA_def_struct_path_func(srna, "rna_MeshVertexCreaseLayer_path");
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "MeshVertexCrease");
@@ -3480,6 +3481,10 @@ static void rna_def_mesh(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_customdata_edge_bevel", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "cd_flag", ME_CDFLAG_EDGE_BWEIGHT);
   RNA_def_property_ui_text(prop, "Store Edge Bevel Weight", "");
+
+  prop = RNA_def_property(srna, "use_customdata_vertex_crease", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "cd_flag", ME_CDFLAG_VERT_CREASE);
+  RNA_def_property_ui_text(prop, "Store Vertex Crease", "");
 
   prop = RNA_def_property(srna, "use_customdata_edge_crease", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "cd_flag", ME_CDFLAG_EDGE_CREASE);

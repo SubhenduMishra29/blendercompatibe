@@ -1680,6 +1680,8 @@ const MeshExtract extract_weights = {
 typedef struct EditLoopData {
   ushort v_flag;
   ushort e_flag;
+  /* This is used for both vertex and edge creases. The edge crease value is stored in the bottom 8
+   * bits, while the vertex crease is stored in the upper 8 bits. */
   ushort crease;
   ushort bweight;
 } EditLoopData;
@@ -1751,11 +1753,11 @@ static void mesh_render_data_edge_flag(const MeshRenderData *mr, BMEdge *eed, Ed
   }
 
   /* Use a byte for value range */
-  if (mr->crease_ofs != -1) {
-    float crease = BM_ELEM_CD_GET_FLOAT(eed, mr->crease_ofs);
+  if (mr->edge_crease_ofs != -1) {
+    float crease = BM_ELEM_CD_GET_FLOAT(eed, mr->edge_crease_ofs);
     if (crease > 0) {
       eattr->e_flag |= VFLAG_EDGE_CREASE;
-      eattr->crease = (ushort)(crease * 65535.0f);
+      eattr->crease = (ushort)(crease * 255.0f);
     }
   }
   /* Use a byte for value range */
@@ -1820,7 +1822,7 @@ static void mesh_render_data_vert_flag(const MeshRenderData *mr, BMVert *eve, Ed
     float crease = BM_ELEM_CD_GET_FLOAT(eve, mr->vert_crease_ofs);
     if (crease > 0) {
       eattr->e_flag |= VFLAG_VERT_CREASE;
-      eattr->crease = (ushort)(crease * 65535.0f);
+      eattr->crease |= (ushort)(crease * 255.0f) << 8;
     }
   }
 }

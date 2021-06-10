@@ -1023,7 +1023,7 @@ static void create_subd_mesh(Scene *scene,
 
   for (BL::MeshEdge &e : b_mesh.edges) {
     if (e.crease() != 0.0f) {
-      mesh->add_crease(e.vertices()[0], e.vertices()[1], e.crease());
+      mesh->add_edge_crease(e.vertices()[0], e.vertices()[1], e.crease());
     }
   }
 

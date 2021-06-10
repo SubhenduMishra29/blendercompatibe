@@ -125,9 +125,9 @@ static void initCrease_ex(TransInfo *t, int mode)
   t->flag |= T_NO_CONSTRAINT | T_NO_PROJECT;
 }
 
-void initCrease(TransInfo *t)
+void initEgdeCrease(TransInfo *t)
 {
-  initCrease_ex(t, TFM_CREASE);
+  initCrease_ex(t, TFM_EDGE_CREASE);
 }
 
 void initVertCrease(TransInfo *t)

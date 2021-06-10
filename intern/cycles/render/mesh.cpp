@@ -418,7 +418,7 @@ Mesh::SubdFace Mesh::get_subd_face(size_t index) const
   return s;
 }
 
-void Mesh::add_crease(int v0, int v1, float weight)
+void Mesh::add_edge_crease(int v0, int v1, float weight)
 {
   subd_creases_edge.push_back_slow(v0);
   subd_creases_edge.push_back_slow(v1);

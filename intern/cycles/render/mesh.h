@@ -215,7 +215,7 @@ class Mesh : public Geometry {
   void add_vertex_slow(float3 P);
   void add_triangle(int v0, int v1, int v2, int shader, bool smooth);
   void add_subd_face(int *corners, int num_corners, int shader_, bool smooth_, bool hole);
-  void add_crease(int v0, int v1, float weight);
+  void add_edge_crease(int v0, int v1, float weight);
   void add_vertex_crease(int v, float weight);
 
   void copy_center_to_motion_step(const int motion_step);

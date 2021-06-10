@@ -499,8 +499,8 @@ static bool is_crease_supported(const MultiresReshapeSmoothContext *reshape_smoo
 
 /* Get crease which will be used for communication to OpenSubdiv topology.
  * Note that simple subdivision treats all base edges as infinitely sharp. */
-static char get_effective_crease_char(
-    const MultiresReshapeSmoothContext *reshape_smooth_context, const MEdge *base_edge)
+static char get_effective_crease_char(const MultiresReshapeSmoothContext *reshape_smooth_context,
+                                      const MEdge *base_edge)
 {
   if (!is_crease_supported(reshape_smooth_context)) {
     return 255;
@@ -508,8 +508,8 @@ static char get_effective_crease_char(
   return base_edge->crease;
 }
 
-static float get_effective_crease_float(
-    const MultiresReshapeSmoothContext *reshape_smooth_context, const float crease)
+static float get_effective_crease_float(const MultiresReshapeSmoothContext *reshape_smooth_context,
+                                        const float crease)
 {
   if (!is_crease_supported(reshape_smooth_context)) {
     return 1.0f;
@@ -874,8 +874,7 @@ static void geometry_init_loose_information(MultiresReshapeSmoothContext *reshap
       if (!BLI_BITMAP_TEST_BOOL(reshape_smooth_context->non_loose_base_edge_map, loop->e)) {
         BLI_BITMAP_ENABLE(reshape_smooth_context->non_loose_base_edge_map, loop->e);
 
-        const char crease = get_effective_crease_char(reshape_smooth_context,
-                                                           &base_edge[loop->e]);
+        const char crease = get_effective_crease_char(reshape_smooth_context, &base_edge[loop->e]);
         if (crease != 0) {
           ++num_used_edges;
         }

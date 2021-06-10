@@ -79,7 +79,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   pd->edit_mesh.do_edges = true;
 
   int *mask = shdata->data_mask;
-  mask[0] = 0xFF; /* Face Flag */
+  mask[0] = 0xFF;   /* Face Flag */
   mask[1] = 0xFFFF; /* Edge Flag */
 
   const int flag = pd->edit_mesh.flag = v3d->overlay.edit_flag;
@@ -89,8 +89,8 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   SET_FLAG_FROM_TEST(mask[1], flag & V3D_OVERLAY_EDIT_FREESTYLE_EDGE, VFLAG_EDGE_FREESTYLE);
   SET_FLAG_FROM_TEST(mask[1], flag & V3D_OVERLAY_EDIT_SEAMS, VFLAG_EDGE_SEAM);
   SET_FLAG_FROM_TEST(mask[1], flag & V3D_OVERLAY_EDIT_SHARP, VFLAG_EDGE_SHARP);
-  SET_FLAG_FROM_TEST(mask[2], flag & V3D_OVERLAY_EDIT_CREASES, 0xFF);
-  SET_FLAG_FROM_TEST(mask[3], flag & V3D_OVERLAY_EDIT_BWEIGHTS, 0xFF);
+  SET_FLAG_FROM_TEST(mask[2], flag & V3D_OVERLAY_EDIT_CREASES, 0xFFFF);
+  SET_FLAG_FROM_TEST(mask[3], flag & V3D_OVERLAY_EDIT_BWEIGHTS, 0xFFFF);
 
   if ((flag & V3D_OVERLAY_EDIT_FACES) == 0) {
     pd->edit_mesh.do_faces = false;

@@ -85,7 +85,7 @@ typedef struct {
 } TransformMedian_Generic;
 
 typedef struct {
-  float location[3], bv_weight, v_crease, be_weight, skin[2], crease;
+  float location[3], bv_weight, v_crease, be_weight, skin[2], e_crease;
 } TransformMedian_Mesh;
 
 typedef struct {
@@ -271,7 +271,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
             }
 
             if (cd_edge_crease_offset != -1) {
-              median->crease += BM_ELEM_CD_GET_FLOAT(eed, cd_edge_crease_offset);
+              median->e_crease += BM_ELEM_CD_GET_FLOAT(eed, cd_edge_crease_offset);
             }
 
             totedgedata++;
@@ -408,7 +408,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
   if (has_meshdata) {
     TransformMedian_Mesh *median = &median_basis.mesh;
     if (totedgedata) {
-      median->crease /= (float)totedgedata;
+      median->e_crease /= (float)totedgedata;
       median->be_weight /= (float)totedgedata;
     }
     if (tot) {
@@ -698,7 +698,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
                         yi -= buth + but_margin,
                         butw,
                         buth,
-                        &ve_median->crease,
+                        &ve_median->e_crease,
                         0.0,
                         1.0,
                         0,
@@ -883,7 +883,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     if ((ob->type == OB_MESH) &&
         (apply_vcos || median_basis.mesh.bv_weight || median_basis.mesh.v_crease ||
          median_basis.mesh.skin[0] || median_basis.mesh.skin[1] || median_basis.mesh.be_weight ||
-         median_basis.mesh.crease)) {
+         median_basis.mesh.e_crease)) {
       const TransformMedian_Mesh *median = &median_basis.mesh, *ve_median = &ve_median_basis.mesh;
       Mesh *me = ob->data;
       BMEditMesh *em = me->edit_mesh;
@@ -902,7 +902,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
       float scale_v_crease = 1.0f;
       float scale_skin[2] = {1.0f, 1.0f};
       float scale_be_weight = 1.0f;
-      float scale_crease = 1.0f;
+      float scale_e_crease = 1.0f;
 
       /* Vertices */
 
@@ -972,7 +972,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
 
       /* Edges */
 
-      if (median->be_weight || median->crease) {
+      if (median->be_weight || median->e_crease) {
         if (median->be_weight) {
           BM_mesh_cd_flag_ensure(bm, me, ME_CDFLAG_EDGE_BWEIGHT);
           cd_edge_bweight_offset = CustomData_get_offset(&bm->edata, CD_BWEIGHT);
@@ -981,12 +981,12 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
           scale_be_weight = compute_scale_factor(ve_median->be_weight, median->be_weight);
         }
 
-        if (median->crease) {
+        if (median->e_crease) {
           BM_mesh_cd_flag_ensure(bm, me, ME_CDFLAG_EDGE_CREASE);
           cd_edge_crease_offset = CustomData_get_offset(&bm->edata, CD_CREASE);
           BLI_assert(cd_edge_crease_offset != -1);
 
-          scale_crease = compute_scale_factor(ve_median->crease, median->crease);
+          scale_e_crease = compute_scale_factor(ve_median->e_crease, median->e_crease);
         }
 
         BM_ITER_MESH (eed, &iter, bm, BM_EDGES_OF_MESH) {
@@ -996,9 +996,9 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
               apply_scale_factor_clamp(b_weight, tot, ve_median->be_weight, scale_be_weight);
             }
 
-            if (median->crease != 0.0f) {
+            if (median->e_crease != 0.0f) {
               float *crease = BM_ELEM_CD_GET_VOID_P(eed, cd_edge_crease_offset);
-              apply_scale_factor_clamp(crease, tot, ve_median->crease, scale_crease);
+              apply_scale_factor_clamp(crease, tot, ve_median->e_crease, scale_e_crease);
             }
           }
         }

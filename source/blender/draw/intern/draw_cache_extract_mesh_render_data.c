@@ -280,7 +280,7 @@ MeshRenderData *mesh_render_data_create(Mesh *me,
     mr->eve_act = BM_mesh_active_vert_get(mr->bm);
 
     mr->vert_crease_ofs = CustomData_get_offset(&mr->bm->vdata, CD_CREASE);
-    mr->crease_ofs = CustomData_get_offset(&mr->bm->edata, CD_CREASE);
+    mr->edge_crease_ofs = CustomData_get_offset(&mr->bm->edata, CD_CREASE);
     mr->bweight_ofs = CustomData_get_offset(&mr->bm->edata, CD_BWEIGHT);
 #ifdef WITH_FREESTYLE
     mr->freestyle_edge_ofs = CustomData_get_offset(&mr->bm->edata, CD_FREESTYLE_EDGE);

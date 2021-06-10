@@ -57,17 +57,18 @@ void main()
   bool occluded = test_occlusion();
 
 #elif defined(EDGE)
-  float crease = float(m_data.z) / 65535.0;
+  float vertex_crease = float(m_data.z >> 8) / 255.0;
+  float egde_crease = float(m_data.z & 0xFF) / 255.0;
 #  ifdef FLAT
   finalColor = EDIT_MESH_edge_color_inner(m_data.y);
   selectOverride = 1;
 #  else
-  finalColor = EDIT_MESH_edge_vertex_color(m_data.y, crease);
+  finalColor = EDIT_MESH_edge_vertex_color(m_data.y, vertex_crease);
   selectOverride = (m_data.y & EDGE_SELECTED);
 #  endif
 
   float bweight = float(m_data.w) / 65535.0;
-  finalColorOuter = EDIT_MESH_edge_color_outer(m_data.y, m_data.x, crease, bweight);
+  finalColorOuter = EDIT_MESH_edge_color_outer(m_data.y, m_data.x, egde_crease, bweight);
 
   if (finalColorOuter.a > 0.0) {
     gl_Position.z -= 5e-7 * abs(gl_Position.w);
