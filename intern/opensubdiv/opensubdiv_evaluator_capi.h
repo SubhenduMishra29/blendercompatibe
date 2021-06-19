@@ -27,6 +27,16 @@ struct OpenSubdiv_EvaluatorInternal;
 struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 
+typedef struct OpenSubdiv_BufferInterface {
+  unsigned int (*bind)(struct OpenSubdiv_BufferInterface *buffer);
+
+  void *(*alloc)(struct OpenSubdiv_BufferInterface *buffer, const unsigned int size);
+
+  int (*num_vertices)(struct OpenSubdiv_BufferInterface *buffer);
+
+  void *data;
+} OpenSubdiv_BufferInterface;
+
 typedef struct OpenSubdiv_Evaluator {
   // Set coarse positions from a continuous array of coordinates.
   void (*setCoarsePositions)(struct OpenSubdiv_Evaluator *evaluator,
@@ -109,6 +119,11 @@ typedef struct OpenSubdiv_Evaluator {
                               float face_v,
                               float face_varying[2]);
 
+  void (*evaluateFaceVaryingFromBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                        const int face_varying_channel,
+                                        OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                        OpenSubdiv_BufferInterface *face_varying_buffer);
+
   // Batched evaluation of multiple input coordinates.
 
   // Evaluate limit surface.
@@ -122,12 +137,21 @@ typedef struct OpenSubdiv_Evaluator {
                                float *dPdu,
                                float *dPdv);
 
+  void (*evaluatePatchesLimitFromBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                         struct OpenSubdiv_BufferInterface *patch_coords,
+                                         struct OpenSubdiv_BufferInterface *P);
+
+  void (*buildPatchCoordsBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                 const struct OpenSubdiv_PatchCoord *patch_coords,
+                                 int num_patch_coords,
+                                 struct OpenSubdiv_BufferInterface *buffer);
+
   // Implementation of the evaluator.
   struct OpenSubdiv_EvaluatorImpl *impl;
 } OpenSubdiv_Evaluator;
 
 OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
-    struct OpenSubdiv_TopologyRefiner *topology_refiner);
+    struct OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type);
 
 void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator);
 

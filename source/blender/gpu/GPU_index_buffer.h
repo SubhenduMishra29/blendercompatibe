@@ -53,6 +53,8 @@ void GPU_indexbuf_init_ex(GPUIndexBufBuilder *, GPUPrimType, uint index_len, uin
 void GPU_indexbuf_init(GPUIndexBufBuilder *, GPUPrimType, uint prim_len, uint vertex_len);
 GPUIndexBuf *GPU_indexbuf_build_on_device(uint index_len);
 
+void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len);
+
 /*
  * Thread safe.
  *
@@ -88,8 +90,6 @@ void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,
                                            GPUIndexBuf *elem_src,
                                            uint start,
                                            uint length);
-
-uint32_t GPU_indexbuf_get_index_len(GPUIndexBuf *elem);
 
 /**
  * (Download and) return a pointer containing the data of an index buffer.

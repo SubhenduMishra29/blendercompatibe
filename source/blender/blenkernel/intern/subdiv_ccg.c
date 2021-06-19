@@ -604,7 +604,7 @@ Mesh *BKE_subdiv_to_ccg_mesh(Subdiv *subdiv,
 {
   /* Make sure evaluator is ready. */
   BKE_subdiv_stats_begin(&subdiv->stats, SUBDIV_STATS_SUBDIV_TO_CCG);
-  if (!BKE_subdiv_eval_begin_from_mesh(subdiv, coarse_mesh, NULL)) {
+  if (!BKE_subdiv_eval_begin_from_mesh(subdiv, coarse_mesh, NULL, OPENSUBDIV_EVALUATOR_CPU)) {
     if (coarse_mesh->totpoly) {
       return NULL;
     }

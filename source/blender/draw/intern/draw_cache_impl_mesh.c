@@ -94,6 +94,10 @@ MDEPS_CREATE(vbo_pos_nor,
              batch.edit_mesh_analysis,
              batch.sculpt_overlays,
              surface_per_mat);
+MDEPS_CREATE(vbo_subdiv_pos, batch.surface, surface_per_mat);
+MDEPS_CREATE(vbo_subdiv_tris, batch.surface, surface_per_mat);
+MDEPS_CREATE(vbo_subdiv_uv, batch.surface, surface_per_mat);
+MDEPS_CREATE(vbo_subdiv_vcol, batch.surface, surface_per_mat);
 MDEPS_CREATE(vbo_uv,
              batch.surface,
              batch.wire_loops_uvs,
@@ -1435,16 +1439,31 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
 
   const bool do_uvcage = is_editmode && !me->edit_mesh->mesh_eval_final->runtime.is_original;
 
+  const bool do_subdivision = BKE_modifier_subsurf_can_do_gpu_subdiv(ob);
+
   MeshBufferCache *mbufcache = &cache->final;
 
   /* Initialize batches and request VBO's & IBO's. */
-  MDEPS_ASSERT(batch.surface, ibo_tris, vbo_lnor, vbo_pos_nor, vbo_uv, vbo_vcol);
+  MDEPS_ASSERT(batch.surface,
+               ibo_tris,
+               vbo_lnor,
+               vbo_pos_nor,
+               vbo_uv,
+               vbo_vcol,
+               vbo_subdiv_pos,
+               vbo_subdiv_tris,
+               vbo_subdiv_uv,
+               vbo_subdiv_vcol);
   if (DRW_batch_requested(cache->batch.surface, GPU_PRIM_TRIS)) {
-    if (BKE_mesh_uses_subdivision(scene, me)) {
+    if (do_subdivision) {
       DRW_ibo_request(cache->batch.surface, &mbufcache->ibo.subdiv_tris);
       DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.subdiv_pos);
-
-      DRW_create_subdivision(scene, me, &mbufcache->vbo.subdiv_pos, &mbufcache->ibo.subdiv_tris);
+      if (cache->cd_used.uv != 0) {
+        DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.subdiv_uv);
+      }
+      if (cache->cd_used.vcol != 0) {
+        DRW_vbo_request(cache->batch.surface, &mbufcache->vbo.subdiv_vcol);
+      }
     }
     else {
       DRW_ibo_request(cache->batch.surface, &mbufcache->ibo.tris);
@@ -1527,15 +1546,23 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
                vbo_uv,
                vbo_tan,
                vbo_vcol,
-               vbo_orco);
+               vbo_orco,
+               vbo_subdiv_pos,
+               vbo_subdiv_tris,
+               vbo_subdiv_uv,
+               vbo_subdiv_vcol);
   for (int i = 0; i < cache->mat_len; i++) {
-    if (BKE_mesh_uses_subdivision(scene, me)) {
-      // TODO(@kevindietrich) : proper primitive type for subdivision (to obtain from the patch
-      // description)
-      if (DRW_batch_requested(cache->surface_per_mat[i], cache->batch.surface->prim_type)) {
+    if (do_subdivision) {
+      if (DRW_batch_requested(cache->surface_per_mat[i], GPU_PRIM_TRIS)) {
         // TODO(@kevindietrich) : how to handle multiple shaders?
         DRW_ibo_request(cache->surface_per_mat[i], &mbufcache->ibo.subdiv_tris);
         DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.subdiv_pos);
+        if (cache->cd_used.uv != 0) {
+          DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.subdiv_uv);
+        }
+        if (cache->cd_used.vcol != 0) {
+          DRW_vbo_request(cache->surface_per_mat[i], &mbufcache->vbo.subdiv_vcol);
+        }
       }
     }
     else {
@@ -1708,6 +1735,10 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
   MDEPS_ASSERT_MAP(vbo_edituv_stretch_angle);
   MDEPS_ASSERT_MAP(vbo_fdots_uv);
   MDEPS_ASSERT_MAP(vbo_fdots_edituv_data);
+  MDEPS_ASSERT_MAP(vbo_subdiv_pos);
+  MDEPS_ASSERT_MAP(vbo_subdiv_tris);
+  MDEPS_ASSERT_MAP(vbo_subdiv_uv);
+  MDEPS_ASSERT_MAP(vbo_subdiv_vcol);
 
   MDEPS_ASSERT_MAP(ibo_tris);
   MDEPS_ASSERT_MAP(ibo_lines);
@@ -1759,6 +1790,10 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
                                        scene,
                                        ts,
                                        true);
+  }
+
+  if (do_subdivision) {
+    DRW_create_subdivision(scene, ob, me, &cache->final);
   }
 
   mesh_buffer_cache_create_requested(task_graph,

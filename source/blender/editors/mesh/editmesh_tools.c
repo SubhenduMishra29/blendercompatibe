@@ -3008,7 +3008,12 @@ static int edbm_faces_mark_hole_exec(bContext *C, wmOperator *UNUSED(op))
     }
 
     mesh_set_faces_flag(em, BM_ELEM_HOLE, 1);
-    EDBM_update_generic(obedit->data, false, false);
+    EDBM_update(obedit->data,
+                &(const struct EDBMUpdate_Params){
+                    .calc_looptri = false,
+                    .calc_normals = false,
+                    .is_destructive = false,
+                });
   }
   MEM_freeN(objects);
 
@@ -3051,7 +3056,12 @@ static int edbm_faces_unmark_hole_exec(bContext *C, wmOperator *UNUSED(op))
     }
 
     mesh_set_faces_flag(em, BM_ELEM_HOLE, 0);
-    EDBM_update_generic(obedit->data, false, false);
+    EDBM_update(obedit->data,
+                &(const struct EDBMUpdate_Params){
+                    .calc_looptri = false,
+                    .calc_normals = false,
+                    .is_destructive = false,
+                });
   }
   MEM_freeN(objects);
 

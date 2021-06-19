@@ -34,8 +34,10 @@ struct Mesh;
 struct MultiresModifierData;
 struct OpenSubdiv_Converter;
 struct OpenSubdiv_Evaluator;
+struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 struct Subdiv;
+struct SubsurfModifierData;
 
 typedef enum eSubdivVtxBoundaryInterpolation {
   /* Do not interpolate boundaries. */
@@ -185,6 +187,14 @@ typedef struct Subdiv {
   /* Statistics for debugging. */
   SubdivStats stats;
 
+  /* Patch coordinates used to interpolate data. */
+  struct OpenSubdiv_PatchCoord *patch_coords;
+  uint num_patch_coords;
+  uint patch_resolution;
+
+  void (*free_draw_cache)(void *);
+  void *patch_coords_draw_cache;
+
   /* Cached values, are not supposed to be accessed directly. */
   struct {
     /* Indexed by base face index, element indicates total number of ptex
@@ -221,6 +231,10 @@ void BKE_subdiv_stats_print(const SubdivStats *stats);
 /* ================================ SETTINGS ================================ */
 
 bool BKE_subdiv_settings_equal(const SubdivSettings *settings_a, const SubdivSettings *settings_b);
+
+void BKE_subdiv_settings_init_from_modifier(SubdivSettings *settings,
+                                            const struct SubsurfModifierData *smd,
+                                            const bool use_render_params);
 
 /* ============================== CONSTRUCTION ============================== */
 
@@ -296,10 +310,6 @@ BLI_INLINE void BKE_subdiv_rotate_grid_to_quad(
 /* Convert Blender edge crease value to OpenSubdiv sharpness. */
 BLI_INLINE float BKE_subdiv_crease_to_sharpness_f(float edge_crease);
 BLI_INLINE float BKE_subdiv_crease_to_sharpness_char(char edge_crease);
-
-void BKE_subdiv_converter_init_for_mesh(struct OpenSubdiv_Converter *converter,
-                                        const struct SubdivSettings *settings,
-                                        const struct Mesh *mesh);
 
 #ifdef __cplusplus
 }

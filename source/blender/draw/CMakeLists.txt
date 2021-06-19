@@ -73,6 +73,7 @@ set(SRC
   intern/draw_cache_impl_metaball.c
   intern/draw_cache_impl_particles.c
   intern/draw_cache_impl_pointcloud.c
+  intern/draw_cache_impl_subdivision.c
   intern/draw_cache_impl_volume.c
   intern/draw_color_management.c
   intern/draw_common.c
@@ -88,7 +89,6 @@ set(SRC
   intern/draw_manager_text.c
   intern/draw_manager_texture.c
   intern/draw_select_buffer.c
-  intern/draw_subdivision.cc
   intern/draw_view.c
   engines/basic/basic_engine.c
   engines/image/image_engine.c
@@ -344,6 +344,8 @@ data_to_c_simple(intern/shaders/common_math_geom_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_view_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_fxaa_lib.glsl SRC)
 data_to_c_simple(intern/shaders/common_smaa_lib.glsl SRC)
+data_to_c_simple(intern/shaders/common_subdiv_lib.glsl SRC)
+data_to_c_simple(intern/shaders/common_subdiv_buffer_build_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_fullscreen_vert.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_frag.glsl SRC)

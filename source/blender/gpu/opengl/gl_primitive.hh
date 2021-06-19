@@ -59,9 +59,6 @@ static inline GLenum to_gl(GPUPrimType prim_type)
       return GL_LINE_STRIP_ADJACENCY;
     case GPU_PRIM_TRIS_ADJ:
       return GL_TRIANGLES_ADJACENCY;
-
-    case GPU_PRIM_PATCHES:
-      return GL_PATCHES;
   };
 }
 

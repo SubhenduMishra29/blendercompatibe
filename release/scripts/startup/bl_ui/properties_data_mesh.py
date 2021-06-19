@@ -581,14 +581,18 @@ class DATA_PT_subdivision(MeshButtonsPanel, Panel):
         mesh = context.mesh
 
         layout = self.layout
-        layout.use_property_split = True
         layout.use_property_decorate = False
         layout.active = mesh.use_subdivision
 
+        layout.prop(mesh, "subdivision_type", expand=True)
+
         col = layout.column()
+        col.use_property_split = True
         col.prop(mesh, "adaptive_subdivision")
         col.prop(mesh, "preview_subdivision_levels")
         col.prop(mesh, "render_subdivision_levels")
+        col.prop(mesh, "use_limit_surface")
+        col.prop(mesh, "subdivision_quality")
         col.prop(mesh, "uv_smooth")
         col.prop(mesh, "boundary_smooth")
 
@@ -613,7 +617,7 @@ classes = (
     DATA_PT_remesh,
     DATA_PT_customdata,
     DATA_PT_custom_props_mesh,
-    DATA_PT_subdivision,
+    # DATA_PT_subdivision,
 )
 
 if __name__ == "__main__":  # only for live edit.

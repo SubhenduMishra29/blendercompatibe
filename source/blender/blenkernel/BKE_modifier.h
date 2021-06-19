@@ -43,6 +43,8 @@ struct Mesh;
 struct ModifierData;
 struct Object;
 struct Scene;
+struct Subdiv;
+struct SubdivSettings;
 struct bArmature;
 
 typedef enum {
@@ -549,6 +551,15 @@ void BKE_modifier_blend_read_data(struct BlendDataReader *reader,
                                   struct ListBase *lb,
                                   struct Object *ob);
 void BKE_modifier_blend_read_lib(struct BlendLibReader *reader, struct Object *ob);
+
+bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(struct Object *ob, SubsurfModifierData *smd);
+bool BKE_modifier_subsurf_can_do_gpu_subdiv(struct Object *ob);
+
+struct Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(
+    SubsurfModifierData *smd,
+    const struct SubdivSettings *subdiv_settings,
+    const struct Mesh *mesh,
+    bool for_draw_code);
 
 #ifdef __cplusplus
 }

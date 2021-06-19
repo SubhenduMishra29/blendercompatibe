@@ -37,6 +37,7 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_shrinkwrap.h"
+#include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 
 /* -------------------------------------------------------------------- */
@@ -263,12 +264,12 @@ void BKE_mesh_batch_cache_free(Mesh *me)
   }
 }
 
-void (*BKE_mesh_subdivision_mesh_free_cb)(Mesh *me) = NULL;
-
 void BKE_mesh_subdivision_mesh_free(Mesh *me)
 {
-  if (me->runtime.subdivision_mesh) {
-    BKE_mesh_subdivision_mesh_free_cb(me);
+  Subdiv *subdiv = (Subdiv *)(me->runtime.subdivision_mesh);
+  if (subdiv) {
+    BKE_subdiv_free(subdiv);
+    me->runtime.subdivision_mesh = NULL;
   }
 }
 

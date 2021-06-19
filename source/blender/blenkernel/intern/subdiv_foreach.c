@@ -1689,6 +1689,9 @@ static void subdiv_foreach_loops(SubdivForeachTaskContext *ctx, void *tls, int p
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   const MPoly *coarse_poly = &coarse_mpoly[poly_index];
+  if (coarse_poly->flag & ME_HOLE) {
+    return;
+  }
   if (coarse_poly->totloop == 4) {
     subdiv_foreach_loops_regular(ctx, tls, coarse_poly);
   }

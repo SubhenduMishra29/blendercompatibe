@@ -44,6 +44,7 @@
     .subdiv_render_level = 1, \
     .uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES, \
     .boundary_smooth = SUBSURF_BOUNDARY_SMOOTH_ALL, \
+    .subdivision_quality = 3, \
   }
 
 /** \} */

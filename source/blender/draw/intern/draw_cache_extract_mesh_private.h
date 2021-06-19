@@ -88,6 +88,10 @@ extern "C" {
 #  define _MDEPS_ASSERT6(b, n1, n2, n3, n4, n5) _MDEPS_ASSERT5(b, n1, n2, n3, n4); _MDEPS_ASSERT2(b, n5)
 #  define _MDEPS_ASSERT7(b, n1, n2, n3, n4, n5, n6) _MDEPS_ASSERT6(b, n1, n2, n3, n4, n5); _MDEPS_ASSERT2(b, n6)
 #  define _MDEPS_ASSERT8(b, n1, n2, n3, n4, n5, n6, n7) _MDEPS_ASSERT7(b, n1, n2, n3, n4, n5, n6); _MDEPS_ASSERT2(b, n7)
+#  define _MDEPS_ASSERT9(b, n1, n2, n3, n4, n5, n6, n7, n8) _MDEPS_ASSERT8(b, n1, n2, n3, n4, n5, n6, n7); _MDEPS_ASSERT2(b, n8)
+#  define _MDEPS_ASSERT10(b, n1, n2, n3, n4, n5, n6, n7, n8, n9) _MDEPS_ASSERT9(b, n1, n2, n3, n4, n5, n6, n7, n8); _MDEPS_ASSERT2(b, n9)
+#  define _MDEPS_ASSERT11(b, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10) _MDEPS_ASSERT10(b, n1, n2, n3, n4, n5, n6, n7, n8, n9); _MDEPS_ASSERT2(b, n10)
+#  define _MDEPS_ASSERT12(b, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11) _MDEPS_ASSERT11(b, n1, n2, n3, n4, n5, n6, n7, n8, n9, n10); _MDEPS_ASSERT2(b, n11)
 
 #  define MDEPS_ASSERT(...) VA_NARGS_CALL_OVERLOAD(_MDEPS_ASSERT, __VA_ARGS__)
 #  define MDEPS_ASSERT_MAP(name) BLI_assert(MDEP_assert_##name == MDEP_##name)

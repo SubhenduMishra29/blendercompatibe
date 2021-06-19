@@ -30,6 +30,11 @@ void setCoarsePositions(OpenSubdiv_Evaluator *evaluator,
                         const int start_vertex_index,
                         const int num_vertices)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->setCoarsePositions(
+        positions, start_vertex_index, num_vertices);
+    return;
+  }
   evaluator->impl->eval_output->setCoarsePositions(positions, start_vertex_index, num_vertices);
 }
 
@@ -38,6 +43,11 @@ void setVaryingData(OpenSubdiv_Evaluator *evaluator,
                     const int start_vertex_index,
                     const int num_vertices)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->setVaryingData(
+        varying_data, start_vertex_index, num_vertices);
+    return;
+  }
   evaluator->impl->eval_output->setVaryingData(varying_data, start_vertex_index, num_vertices);
 }
 
@@ -47,6 +57,11 @@ void setFaceVaryingData(OpenSubdiv_Evaluator *evaluator,
                         const int start_vertex_index,
                         const int num_vertices)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->setFaceVaryingData(
+        face_varying_channel, face_varying_data, start_vertex_index, num_vertices);
+    return;
+  }
   evaluator->impl->eval_output->setFaceVaryingData(
       face_varying_channel, face_varying_data, start_vertex_index, num_vertices);
 }
@@ -58,6 +73,11 @@ void setCoarsePositionsFromBuffer(OpenSubdiv_Evaluator *evaluator,
                                   const int start_vertex_index,
                                   const int num_vertices)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->setCoarsePositionsFromBuffer(
+        buffer, start_offset, stride, start_vertex_index, num_vertices);
+    return;
+  }
   evaluator->impl->eval_output->setCoarsePositionsFromBuffer(
       buffer, start_offset, stride, start_vertex_index, num_vertices);
 }
@@ -69,6 +89,11 @@ void setVaryingDataFromBuffer(OpenSubdiv_Evaluator *evaluator,
                               const int start_vertex_index,
                               const int num_vertices)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->setVaryingDataFromBuffer(
+        buffer, start_offset, stride, start_vertex_index, num_vertices);
+    return;
+  }
   evaluator->impl->eval_output->setVaryingDataFromBuffer(
       buffer, start_offset, stride, start_vertex_index, num_vertices);
 }
@@ -81,12 +106,21 @@ void setFaceVaryingDataFromBuffer(OpenSubdiv_Evaluator *evaluator,
                                   const int start_vertex_index,
                                   const int num_vertices)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->setFaceVaryingDataFromBuffer(
+        face_varying_channel, buffer, start_offset, stride, start_vertex_index, num_vertices);
+    return;
+  }
   evaluator->impl->eval_output->setFaceVaryingDataFromBuffer(
       face_varying_channel, buffer, start_offset, stride, start_vertex_index, num_vertices);
 }
 
 void refine(OpenSubdiv_Evaluator *evaluator)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->refine();
+    return;
+  }
   evaluator->impl->eval_output->refine();
 }
 
@@ -98,6 +132,11 @@ void evaluateLimit(OpenSubdiv_Evaluator *evaluator,
                    float dPdu[3],
                    float dPdv[3])
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->evaluateLimit(
+        ptex_face_index, face_u, face_v, P, dPdu, dPdv);
+    return;
+  }
   evaluator->impl->eval_output->evaluateLimit(ptex_face_index, face_u, face_v, P, dPdu, dPdv);
 }
 
@@ -108,8 +147,23 @@ void evaluatePatchesLimit(OpenSubdiv_Evaluator *evaluator,
                           float *dPdu,
                           float *dPdv)
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->evaluatePatchesLimit(
+        patch_coords, num_patch_coords, P, dPdu, dPdv);
+    return;
+  }
   evaluator->impl->eval_output->evaluatePatchesLimit(
       patch_coords, num_patch_coords, P, dPdu, dPdv);
+}
+
+void evaluatePatchesLimitFromBuffer(OpenSubdiv_Evaluator *evaluator,
+                                    OpenSubdiv_BufferInterface *patch_coords,
+                                    OpenSubdiv_BufferInterface *P)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->evaluatePatchesLimit(patch_coords, P);
+    return;
+  }
 }
 
 void evaluateVarying(OpenSubdiv_Evaluator *evaluator,
@@ -118,6 +172,10 @@ void evaluateVarying(OpenSubdiv_Evaluator *evaluator,
                      float face_v,
                      float varying[3])
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->evaluateVarying(ptex_face_index, face_u, face_v, varying);
+    return;
+  }
   evaluator->impl->eval_output->evaluateVarying(ptex_face_index, face_u, face_v, varying);
 }
 
@@ -128,8 +186,37 @@ void evaluateFaceVarying(OpenSubdiv_Evaluator *evaluator,
                          float face_v,
                          float face_varying[2])
 {
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->evaluateFaceVarying(
+        face_varying_channel, ptex_face_index, face_u, face_v, face_varying);
+    return;
+  }
   evaluator->impl->eval_output->evaluateFaceVarying(
       face_varying_channel, ptex_face_index, face_u, face_v, face_varying);
+}
+
+void evaluateFaceVaryingFromBuffer(OpenSubdiv_Evaluator *evaluator,
+                                   const int face_varying_channel,
+                                   OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                   OpenSubdiv_BufferInterface *face_varying_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->evaluateFaceVarying(
+        face_varying_channel, patch_coords_buffer, face_varying_buffer);
+    return;
+  }
+}
+
+void buildPatchCoordsBuffer(OpenSubdiv_Evaluator *evaluator,
+                            const OpenSubdiv_PatchCoord *patch_coords,
+                            int num_patch_coords,
+                            OpenSubdiv_BufferInterface *buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildPatchCoordsBuffer(
+        patch_coords, num_patch_coords, buffer);
+    return;
+  }
 }
 
 void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
@@ -149,16 +236,20 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
   evaluator->evaluateFaceVarying = evaluateFaceVarying;
 
   evaluator->evaluatePatchesLimit = evaluatePatchesLimit;
+  evaluator->evaluatePatchesLimitFromBuffer = evaluatePatchesLimitFromBuffer;
+
+  evaluator->buildPatchCoordsBuffer = buildPatchCoordsBuffer;
+  evaluator->evaluateFaceVaryingFromBuffer = evaluateFaceVaryingFromBuffer;
 }
 
 }  // namespace
 
 OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
-    OpenSubdiv_TopologyRefiner *topology_refiner)
+    OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type)
 {
   OpenSubdiv_Evaluator *evaluator = OBJECT_GUARDED_NEW(OpenSubdiv_Evaluator);
   assignFunctionPointers(evaluator);
-  evaluator->impl = openSubdiv_createEvaluatorInternal(topology_refiner);
+  evaluator->impl = openSubdiv_createEvaluatorInternal(topology_refiner, evaluator_type);
   return evaluator;
 }
 

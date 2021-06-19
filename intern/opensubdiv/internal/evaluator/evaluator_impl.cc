@@ -31,6 +31,9 @@
 #include <opensubdiv/osd/cpuEvaluator.h>
 #include <opensubdiv/osd/cpuPatchTable.h>
 #include <opensubdiv/osd/cpuVertexBuffer.h>
+#include <opensubdiv/osd/glComputeEvaluator.h>
+#include <opensubdiv/osd/glPatchTable.h>
+#include <opensubdiv/osd/glVertexBuffer.h>
 #include <opensubdiv/osd/mesh.h>
 #include <opensubdiv/osd/types.h>
 #include <opensubdiv/version.h>
@@ -39,8 +42,10 @@
 
 #include "internal/base/type.h"
 #include "internal/topology/topology_refiner_impl.h"
+#include "opensubdiv_evaluator_capi.h"
 #include "opensubdiv_topology_refiner_capi.h"
 
+using OpenSubdiv::Far::PatchDescriptor;
 using OpenSubdiv::Far::PatchMap;
 using OpenSubdiv::Far::PatchTable;
 using OpenSubdiv::Far::PatchTableFactory;
@@ -51,6 +56,11 @@ using OpenSubdiv::Osd::BufferDescriptor;
 using OpenSubdiv::Osd::CpuEvaluator;
 using OpenSubdiv::Osd::CpuPatchTable;
 using OpenSubdiv::Osd::CpuVertexBuffer;
+using OpenSubdiv::Osd::GLComputeEvaluator;
+using OpenSubdiv::Osd::GLPatchTable;
+using OpenSubdiv::Osd::GLStencilTableSSBO;
+using OpenSubdiv::Osd::GLVertexBuffer;
+using OpenSubdiv::Osd::PatchArray;
 using OpenSubdiv::Osd::PatchCoord;
 
 namespace blender {
@@ -153,10 +163,40 @@ template<typename T> class RawDataWrapperBuffer {
     return data_;
   }
 
+  int BindVBO()
+  {
+    return 0;
+  }
+
   // TODO(sergey): Support UpdateData().
 
  protected:
   T *data_;
+};
+
+class BufferInterfaceWrapper {
+ public:
+  BufferInterfaceWrapper(OpenSubdiv_BufferInterface *buffer) : buffer_(buffer)
+  {
+  }
+
+  void *BindCpuBuffer()
+  {
+    return nullptr;
+  }
+
+  unsigned int BindVBO()
+  {
+    return buffer_->bind(buffer_);
+  }
+
+  int GetNumVertices() const
+  {
+    return buffer_->num_vertices(buffer_);
+  }
+
+ private:
+  OpenSubdiv_BufferInterface *buffer_;
 };
 
 template<typename T> class RawDataWrapperVertexBuffer : public RawDataWrapperBuffer<T> {
@@ -182,6 +222,18 @@ class ConstPatchCoordWrapperBuffer : public RawDataWrapperVertexBuffer<const Pat
   {
   }
 };
+
+// Discriminators used in FaceVaryingVolatileEval in order to detect whether we are using adaptive
+// subdivision as the CPU and OpenGL PatchTable have different APIs.
+static bool is_adaptive(CpuPatchTable *patch_table)
+{
+  return patch_table->GetPatchArrayBuffer()[0].GetDescriptor().IsAdaptive();
+}
+
+static bool is_adaptive(GLPatchTable *patch_table)
+{
+  return patch_table->GetPatchArrays()[0].GetDescriptor().IsAdaptive();
+}
 
 template<typename EVAL_VERTEX_BUFFER,
          typename STENCIL_TABLE,
@@ -252,17 +304,7 @@ class FaceVaryingVolatileEval {
     const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
         evaluator_cache_, src_face_varying_desc_, face_varying_desc, device_context_);
 
-    // src_face_varying_data_ always contains coarse vertices at the beginning.
-    // In adaptive mode they are followed by number of blocks for intermediate
-    // subdivision levels, and this is what OSD expects in this mode.
-    // In non-adaptive mode (generateIntermediateLevels == false),
-    // they are followed by max subdivision level, but they break interpolation as OSD
-    // expects only one subd level in this buffer.
-    // So in non-adaptive mode we put offset into buffer descriptor to skip over coarse vertices.
-    BufferDescriptor src_desc = src_face_varying_desc_;
-    if (!patch_table_->GetPatchArrayBuffer()[0].GetDescriptor().IsAdaptive()) {
-      src_desc.offset += num_coarse_face_varying_vertices_ * src_face_varying_desc_.stride;
-    }
+    BufferDescriptor src_desc = get_src_varying_desc();
 
     EVALUATOR::EvalPatchesFaceVarying(src_face_varying_data_,
                                       src_desc,
@@ -274,6 +316,48 @@ class FaceVaryingVolatileEval {
                                       face_varying_channel_,
                                       eval_instance,
                                       device_context_);
+  }
+
+  void evalPatches(OpenSubdiv_BufferInterface *patch_coords,
+                   OpenSubdiv_BufferInterface *face_varying)
+  {
+    BufferInterfaceWrapper face_varying_data(face_varying);
+    BufferDescriptor face_varying_desc(0, 2, 2);
+
+    BufferInterfaceWrapper patch_coords_buffer(patch_coords);
+
+    BufferDescriptor src_desc = get_src_varying_desc();
+
+    const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
+        evaluator_cache_, src_face_varying_desc_, face_varying_desc, device_context_);
+
+    EVALUATOR::EvalPatchesFaceVarying(src_face_varying_data_,
+                                      src_desc,
+                                      &face_varying_data,
+                                      face_varying_desc,
+                                      patch_coords_buffer.GetNumVertices(),
+                                      &patch_coords_buffer,
+                                      patch_table_,
+                                      face_varying_channel_,
+                                      eval_instance,
+                                      device_context_);
+  }
+
+ private:
+  BufferDescriptor get_src_varying_desc() const
+  {
+    // src_face_varying_data_ always contains coarse vertices at the beginning.
+    // In adaptive mode they are followed by number of blocks for intermediate
+    // subdivision levels, and this is what OSD expects in this mode.
+    // In non-adaptive mode (generateIntermediateLevels == false),
+    // they are followed by max subdivision level, but they break interpolation as OSD
+    // expects only one subd level in this buffer.
+    // So in non-adaptive mode we put offset into buffer descriptor to skip over coarse vertices.
+    BufferDescriptor src_desc = src_face_varying_desc_;
+    if (!is_adaptive(patch_table_)) {
+      src_desc.offset += num_coarse_face_varying_vertices_ * src_face_varying_desc_.stride;
+    }
+    return src_desc;
   }
 
  protected:
@@ -317,12 +401,14 @@ class VolatileEvalOutput {
   VolatileEvalOutput(const StencilTable *vertex_stencils,
                      const StencilTable *varying_stencils,
                      const vector<const StencilTable *> &all_face_varying_stencils,
+                     const int num_vertex_elements,
+                     const int num_varying_elements,
                      const int face_varying_width,
                      const PatchTable *patch_table,
                      EvaluatorCache *evaluator_cache = NULL,
                      DEVICE_CONTEXT *device_context = NULL)
-      : src_desc_(0, 3, 3),
-        src_varying_desc_(0, 3, 3),
+      : src_desc_(0, num_vertex_elements, num_vertex_elements),
+        src_varying_desc_(0, num_varying_elements, num_varying_elements),
         face_varying_width_(face_varying_width),
         evaluator_cache_(evaluator_cache),
         device_context_(device_context)
@@ -332,8 +418,10 @@ class VolatileEvalOutput {
                              vertex_stencils->GetNumStencils();
     num_coarse_vertices_ = vertex_stencils->GetNumControlVertices();
     using OpenSubdiv::Osd::convertToCompatibleStencilTable;
-    src_data_ = SRC_VERTEX_BUFFER::Create(3, num_total_vertices, device_context_);
-    src_varying_data_ = SRC_VERTEX_BUFFER::Create(3, num_total_vertices, device_context_);
+    src_data_ = SRC_VERTEX_BUFFER::Create(
+        num_vertex_elements, num_total_vertices, device_context_);
+    src_varying_data_ = SRC_VERTEX_BUFFER::Create(
+        num_varying_elements, num_total_vertices, device_context_);
     patch_table_ = PATCH_TABLE::Create(patch_table, device_context_);
     vertex_stencils_ = convertToCompatibleStencilTable<STENCIL_TABLE>(vertex_stencils,
                                                                       device_context_);
@@ -455,6 +543,25 @@ class VolatileEvalOutput {
                            device_context_);
   }
 
+  void evalPatches(OpenSubdiv_BufferInterface *patch_coord, OpenSubdiv_BufferInterface *P)
+  {
+    BufferInterfaceWrapper P_data(P);
+    BufferDescriptor P_desc(0, 4, 4);
+
+    BufferInterfaceWrapper patch_coord_buffer(patch_coord);
+    const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
+        evaluator_cache_, src_desc_, P_desc, device_context_);
+    EVALUATOR::EvalPatches(src_data_,
+                           src_desc_,
+                           &P_data,
+                           P_desc,
+                           patch_coord_buffer.GetNumVertices(),
+                           &patch_coord_buffer,
+                           patch_table_,
+                           eval_instance,
+                           device_context_);
+  }
+
   // NOTE: P, dPdu, dPdv must point to a memory of at least float[3]*num_patch_coords.
   void evalPatchesWithDerivatives(const PatchCoord *patch_coord,
                                   const int num_patch_coords,
@@ -519,6 +626,15 @@ class VolatileEvalOutput {
         patch_coord, num_patch_coords, face_varying);
   }
 
+  void evalPatchesFaceVarying(const int face_varying_channel,
+                              OpenSubdiv_BufferInterface *patch_coords,
+                              OpenSubdiv_BufferInterface *face_varying)
+  {
+    assert(face_varying_channel >= 0);
+    assert(face_varying_channel < face_varying_evaluators.size());
+    face_varying_evaluators[face_varying_channel]->evalPatches(patch_coords, face_varying);
+  }
+
  private:
   SRC_VERTEX_BUFFER *src_data_;
   SRC_VERTEX_BUFFER *src_varying_data_;
@@ -564,6 +680,8 @@ class CpuEvalOutput : public VolatileEvalOutput<CpuVertexBuffer,
   CpuEvalOutput(const StencilTable *vertex_stencils,
                 const StencilTable *varying_stencils,
                 const vector<const StencilTable *> &all_face_varying_stencils,
+                const int num_vertex_elements,
+                const int num_varying_elements,
                 const int face_varying_width,
                 const PatchTable *patch_table,
                 EvaluatorCache *evaluator_cache = NULL)
@@ -574,9 +692,41 @@ class CpuEvalOutput : public VolatileEvalOutput<CpuVertexBuffer,
                            CpuEvaluator>(vertex_stencils,
                                          varying_stencils,
                                          all_face_varying_stencils,
+                                         num_vertex_elements,
+                                         num_varying_elements,
                                          face_varying_width,
                                          patch_table,
                                          evaluator_cache)
+  {
+  }
+};
+
+class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
+                                                GLVertexBuffer,
+                                                GLStencilTableSSBO,
+                                                GLPatchTable,
+                                                GLComputeEvaluator> {
+ public:
+  GpuEvalOutput(const StencilTable *vertex_stencils,
+                const StencilTable *varying_stencils,
+                const vector<const StencilTable *> &all_face_varying_stencils,
+                const int num_vertex_elements,
+                const int num_varying_elements,
+                const int face_varying_width,
+                const PatchTable *patch_table,
+                EvaluatorCache *evaluator_cache = NULL)
+      : VolatileEvalOutput<GLVertexBuffer,
+                           GLVertexBuffer,
+                           GLStencilTableSSBO,
+                           GLPatchTable,
+                           GLComputeEvaluator>(vertex_stencils,
+                                               varying_stencils,
+                                               all_face_varying_stencils,
+                                               num_vertex_elements,
+                                               num_varying_elements,
+                                               face_varying_width,
+                                               patch_table,
+                                               evaluator_cache)
   {
   }
 };
@@ -747,6 +897,196 @@ void CpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_c
   }
 }
 
+GpuEvalOutputAPI::GpuEvalOutputAPI(GpuEvalOutput *implementation,
+                                   OpenSubdiv::Far::PatchMap *patch_map)
+    : implementation_(implementation), patch_map_(patch_map)
+{
+}
+
+GpuEvalOutputAPI::~GpuEvalOutputAPI()
+{
+  delete implementation_;
+}
+
+void GpuEvalOutputAPI::setCoarsePositions(const float *positions,
+                                          const int start_vertex_index,
+                                          const int num_vertices)
+{
+  // TODO(sergey): Add sanity check on indices.
+  implementation_->updateData(positions, start_vertex_index, num_vertices);
+}
+
+void GpuEvalOutputAPI::setVaryingData(const float *varying_data,
+                                      const int start_vertex_index,
+                                      const int num_vertices)
+{
+  // TODO(sergey): Add sanity check on indices.
+  implementation_->updateVaryingData(varying_data, start_vertex_index, num_vertices);
+}
+
+void GpuEvalOutputAPI::setFaceVaryingData(const int face_varying_channel,
+                                          const float *face_varying_data,
+                                          const int start_vertex_index,
+                                          const int num_vertices)
+{
+  // TODO(sergey): Add sanity check on indices.
+  implementation_->updateFaceVaryingData(
+      face_varying_channel, face_varying_data, start_vertex_index, num_vertices);
+}
+
+void GpuEvalOutputAPI::setCoarsePositionsFromBuffer(const void *buffer,
+                                                    const int start_offset,
+                                                    const int stride,
+                                                    const int start_vertex_index,
+                                                    const int num_vertices)
+{
+  // TODO(sergey): Add sanity check on indices.
+  const unsigned char *current_buffer = (unsigned char *)buffer;
+  current_buffer += start_offset;
+  for (int i = 0; i < num_vertices; ++i) {
+    const int current_vertex_index = start_vertex_index + i;
+    implementation_->updateData(
+        reinterpret_cast<const float *>(current_buffer), current_vertex_index, 1);
+    current_buffer += stride;
+  }
+}
+
+void GpuEvalOutputAPI::setVaryingDataFromBuffer(const void *buffer,
+                                                const int start_offset,
+                                                const int stride,
+                                                const int start_vertex_index,
+                                                const int num_vertices)
+{
+  // TODO(sergey): Add sanity check on indices.
+  const unsigned char *current_buffer = (unsigned char *)buffer;
+  current_buffer += start_offset;
+  for (int i = 0; i < num_vertices; ++i) {
+    const int current_vertex_index = start_vertex_index + i;
+    implementation_->updateVaryingData(
+        reinterpret_cast<const float *>(current_buffer), current_vertex_index, 1);
+    current_buffer += stride;
+  }
+}
+
+void GpuEvalOutputAPI::setFaceVaryingDataFromBuffer(const int face_varying_channel,
+                                                    const void *buffer,
+                                                    const int start_offset,
+                                                    const int stride,
+                                                    const int start_vertex_index,
+                                                    const int num_vertices)
+{
+  // TODO(sergey): Add sanity check on indices.
+  const unsigned char *current_buffer = (unsigned char *)buffer;
+  current_buffer += start_offset;
+  for (int i = 0; i < num_vertices; ++i) {
+    const int current_vertex_index = start_vertex_index + i;
+    implementation_->updateFaceVaryingData(face_varying_channel,
+                                           reinterpret_cast<const float *>(current_buffer),
+                                           current_vertex_index,
+                                           1);
+    current_buffer += stride;
+  }
+}
+
+void GpuEvalOutputAPI::refine()
+{
+  implementation_->refine();
+}
+
+void GpuEvalOutputAPI::evaluateLimit(const int ptex_face_index,
+                                     float face_u,
+                                     float face_v,
+                                     float P[3],
+                                     float dPdu[3],
+                                     float dPdv[3])
+{
+  assert(face_u >= 0.0f);
+  assert(face_u <= 1.0f);
+  assert(face_v >= 0.0f);
+  assert(face_v <= 1.0f);
+  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
+  PatchCoord patch_coord(*handle, face_u, face_v);
+  if (dPdu != NULL || dPdv != NULL) {
+    implementation_->evalPatchesWithDerivatives(&patch_coord, 1, P, dPdu, dPdv);
+  }
+  else {
+    implementation_->evalPatches(&patch_coord, 1, P);
+  }
+}
+
+void GpuEvalOutputAPI::evaluateVarying(const int ptex_face_index,
+                                       float face_u,
+                                       float face_v,
+                                       float varying[3])
+{
+  assert(face_u >= 0.0f);
+  assert(face_u <= 1.0f);
+  assert(face_v >= 0.0f);
+  assert(face_v <= 1.0f);
+  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
+  PatchCoord patch_coord(*handle, face_u, face_v);
+  implementation_->evalPatchesVarying(&patch_coord, 1, varying);
+}
+
+void GpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
+                                           const int ptex_face_index,
+                                           float face_u,
+                                           float face_v,
+                                           float face_varying[2])
+{
+  assert(face_u >= 0.0f);
+  assert(face_u <= 1.0f);
+  assert(face_v >= 0.0f);
+  assert(face_v <= 1.0f);
+  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
+  PatchCoord patch_coord(*handle, face_u, face_v);
+  implementation_->evalPatchesFaceVarying(face_varying_channel, &patch_coord, 1, face_varying);
+}
+
+void GpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
+                                           OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                           OpenSubdiv_BufferInterface *face_varying)
+{
+  implementation_->evalPatchesFaceVarying(face_varying_channel, patch_coords_buffer, face_varying);
+}
+
+void GpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
+                                            const int num_patch_coords,
+                                            float *P,
+                                            float *dPdu,
+                                            float *dPdv)
+{
+  StackOrHeapPatchCoordArray patch_coords_array;
+  convertPatchCoordsToArray(patch_coords, num_patch_coords, patch_map_, &patch_coords_array);
+  if (dPdu != NULL || dPdv != NULL) {
+    implementation_->evalPatchesWithDerivatives(
+        patch_coords_array.data(), num_patch_coords, P, dPdu, dPdv);
+  }
+  else {
+    implementation_->evalPatches(patch_coords_array.data(), num_patch_coords, P);
+  }
+}
+
+void GpuEvalOutputAPI::evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
+                                            OpenSubdiv_BufferInterface *P)
+{
+  implementation_->evalPatches(patch_coords, P);
+}
+
+void GpuEvalOutputAPI::buildPatchCoordsBuffer(const OpenSubdiv_PatchCoord *patch_coords,
+                                              int num_patch_coords,
+                                              OpenSubdiv_BufferInterface *buffer)
+{
+  PatchCoord *output = static_cast<PatchCoord *>(buffer->alloc(buffer, num_patch_coords));
+
+  for (int i = 0; i < num_patch_coords; ++i) {
+    const OpenSubdiv_PatchCoord patch_coord = patch_coords[i];
+    const PatchTable::PatchHandle *handle = patch_map_->FindPatch(
+        patch_coord.ptex_face, patch_coord.u, patch_coord.v);
+    output[i] = PatchCoord(*handle, patch_coord.u, patch_coord.v);
+  }
+}
+
 }  // namespace opensubdiv
 }  // namespace blender
 
@@ -763,8 +1103,13 @@ OpenSubdiv_EvaluatorImpl::~OpenSubdiv_EvaluatorImpl()
 }
 
 OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
-    OpenSubdiv_TopologyRefiner *topology_refiner)
+    OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type)
 {
+  // Only CPU and GLCompute are implemented at the moment.
+  if (evaluator_type != OPENSUBDIV_EVALUATOR_CPU &&
+      evaluator_type != OPENSUBDIV_EVALUATOR_GLSL_COMPUTE) {
+    return NULL;
+  }
   using blender::opensubdiv::vector;
   TopologyRefiner *refiner = topology_refiner->impl->topology_refiner;
   if (refiner == NULL) {
@@ -868,13 +1213,34 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
   }
   // Create OpenSubdiv's CPU side evaluator.
   // TODO(sergey): Make it possible to use different evaluators.
-  blender::opensubdiv::CpuEvalOutput *eval_output = new blender::opensubdiv::CpuEvalOutput(
-      vertex_stencils, varying_stencils, all_face_varying_stencils, 2, patch_table);
+  blender::opensubdiv::CpuEvalOutput *eval_output_cpu = nullptr;
+  blender::opensubdiv::GpuEvalOutput *eval_output_gpu = nullptr;
+
+  const bool use_gl_evaluator = evaluator_type == OPENSUBDIV_EVALUATOR_GLSL_COMPUTE;
+  if (use_gl_evaluator) {
+    eval_output_gpu = new blender::opensubdiv::GpuEvalOutput(
+        vertex_stencils, varying_stencils, all_face_varying_stencils, 4, 4, 2, patch_table);
+  }
+  else {
+    eval_output_cpu = new blender::opensubdiv::CpuEvalOutput(
+        vertex_stencils, varying_stencils, all_face_varying_stencils, 3, 3, 2, patch_table);
+  }
+
   OpenSubdiv::Far::PatchMap *patch_map = new PatchMap(*patch_table);
   // Wrap everything we need into an object which we control from our side.
   OpenSubdiv_EvaluatorImpl *evaluator_descr;
   evaluator_descr = new OpenSubdiv_EvaluatorImpl();
-  evaluator_descr->eval_output = new blender::opensubdiv::CpuEvalOutputAPI(eval_output, patch_map);
+
+  if (use_gl_evaluator) {
+    evaluator_descr->eval_output_gpu = new blender::opensubdiv::GpuEvalOutputAPI(eval_output_gpu,
+                                                                                 patch_map);
+    evaluator_descr->eval_output = nullptr;
+  }
+  else {
+    evaluator_descr->eval_output = new blender::opensubdiv::CpuEvalOutputAPI(eval_output_cpu,
+                                                                             patch_map);
+    evaluator_descr->eval_output_gpu = nullptr;
+  }
   evaluator_descr->patch_map = patch_map;
   evaluator_descr->patch_table = patch_table;
   // TOOD(sergey): Look into whether we've got duplicated stencils arrays.

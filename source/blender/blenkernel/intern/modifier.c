@@ -75,6 +75,7 @@
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
+#include "BKE_subdiv.h"
 
 /* may move these, only for BKE_modifier_path_relbase */
 #include "BKE_main.h"
@@ -83,11 +84,15 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#include "GPU_capabilities.h"
+
 #include "MOD_modifiertypes.h"
 
 #include "BLO_read_write.h"
 
 #include "CLG_log.h"
+
+#include "opensubdiv_capi.h"
 
 static CLG_LogRef LOG = {"bke.modifier"};
 static ModifierTypeInfo *modifier_types[NUM_MODIFIER_TYPES] = {NULL};
@@ -1578,4 +1583,55 @@ void BKE_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
       mod->flag &= ~eModifierFlag_OverrideLibrary_Local;
     }
   }
+}
+
+bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(Object *ob, SubsurfModifierData *smd)
+{
+  if (smd != ob->modifiers.last) {
+    return false;
+  }
+
+  if (!GPU_compute_shader_support()) {
+    return false;
+  }
+
+  const int available_evaluators = openSubdiv_getAvailableEvaluators();
+  if ((available_evaluators & OPENSUBDIV_EVALUATOR_GLSL_COMPUTE) == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool BKE_modifier_subsurf_can_do_gpu_subdiv(Object *ob)
+{
+  ModifierData *md = ob->modifiers.last;
+
+  if (!md) {
+    return false;
+  }
+
+  if (md->type != eModifierType_Subsurf) {
+    return false;
+  }
+
+  return BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ob, (SubsurfModifierData *)md);
+}
+
+/* Main goal of this function is to give usable subdivision surface descriptor
+ * which matches settings and topology. */
+Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(SubsurfModifierData *smd,
+                                                      const SubdivSettings *subdiv_settings,
+                                                      const Mesh *mesh,
+                                                      bool for_draw_code)
+{
+  SubsurfRuntimeData *runtime_data = (SubsurfRuntimeData *)smd->modifier.runtime;
+  if (runtime_data->subdiv && runtime_data->set_by_draw_code != for_draw_code) {
+    BKE_subdiv_free(runtime_data->subdiv);
+    runtime_data->subdiv = NULL;
+  }
+  Subdiv *subdiv = BKE_subdiv_update_from_mesh(runtime_data->subdiv, subdiv_settings, mesh);
+  runtime_data->subdiv = subdiv;
+  runtime_data->set_by_draw_code = for_draw_code;
+  return subdiv;
 }

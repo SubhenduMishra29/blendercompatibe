@@ -42,6 +42,7 @@
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
+using Alembic::Abc::FloatArraySamplePtr;
 using Alembic::Abc::Int32ArraySamplePtr;
 using Alembic::Abc::P3fArraySamplePtr;
 using Alembic::Abc::PropertyHeader;
@@ -831,6 +832,29 @@ static void read_subd_sample(const std::string &iobject_full_name,
   }
 }
 
+static void read_vertex_creases(Mesh *mesh,
+                                const Int32ArraySamplePtr &indices,
+                                const FloatArraySamplePtr &sharpnesses)
+{
+  if (indices && sharpnesses && indices->size() == sharpnesses->size() && indices->size() != 0) {
+    float *vertex_crease_data = (float *)CustomData_add_layer(
+        &mesh->vdata, CD_CREASE, CD_DEFAULT, nullptr, mesh->totvert);
+    const int totvert = mesh->totvert;
+
+    for (int i = 0, v = indices->size(); i < v; ++i) {
+      const int idx = (*indices)[i];
+
+      if (idx >= totvert) {
+        continue;
+      }
+
+      vertex_crease_data[idx] = (*sharpnesses)[i];
+    }
+
+    mesh->cd_flag |= ME_CDFLAG_VERT_CREASE;
+  }
+}
+
 /* ************************************************************************** */
 
 AbcSubDReader::AbcSubDReader(const IObject &object, ImportSettings &settings)
@@ -898,7 +922,7 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
   mesh->adaptive_subdivision = true;
   // todo(@kevindietrich) : validate and parse interpolation settings
 
-  /* read egde creases */
+  /* Read egde creases. */
   Int32ArraySamplePtr indices = sample.getCreaseIndices();
   Alembic::Abc::FloatArraySamplePtr sharpnesses = sample.getCreaseSharpnesses();
 
@@ -929,27 +953,7 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
     mesh->cd_flag |= ME_CDFLAG_EDGE_CREASE;
   }
 
-  /* read vertex creases */
-  indices = sample.getCornerIndices();
-  sharpnesses = sample.getCornerSharpnesses();
-
-  if (indices && sharpnesses && indices->size() == sharpnesses->size() && indices->size() != 0) {
-    float *data = (float *)CustomData_add_layer(
-        &mesh->vdata, CD_CREASE, CD_DEFAULT, nullptr, mesh->totvert);
-    int totvert = mesh->totvert;
-
-    for (int i = 0, v = indices->size(); i < v; ++i) {
-      const int idx = (*indices)[i];
-
-      if (idx >= totvert) {
-        continue;
-      }
-
-      data[idx] = (*sharpnesses)[i];
-    }
-
-    mesh->cd_flag |= ME_CDFLAG_VERT_CREASE;
-  }
+  read_vertex_creases(mesh, sample.getCornerIndices(), sample.getCornerSharpnesses());
 
   if (m_settings->validate_meshes) {
     BKE_mesh_validate(mesh, false, false);

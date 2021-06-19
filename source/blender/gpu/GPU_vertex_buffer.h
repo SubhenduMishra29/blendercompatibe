@@ -88,6 +88,8 @@ void GPU_vertbuf_handle_ref_remove(GPUVertBuf *verts);
 
 void GPU_vertbuf_init_with_format_ex(GPUVertBuf *, const GPUVertFormat *, GPUUsageType);
 
+void GPU_vertbuf_init_build_on_device(GPUVertBuf *verts, GPUVertFormat *format, uint v_len);
+
 #define GPU_vertbuf_init_with_format(verts, format) \
   GPU_vertbuf_init_with_format_ex(verts, format, GPU_USAGE_STATIC)
 
@@ -148,6 +150,8 @@ GPUVertBufStatus GPU_vertbuf_get_status(const GPUVertBuf *verts);
 
 void GPU_vertbuf_use(GPUVertBuf *);
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding);
+
+uint GPU_vertbuf_get_device_ptr(GPUVertBuf *verts);
 
 /* XXX do not use. */
 void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, void *data);

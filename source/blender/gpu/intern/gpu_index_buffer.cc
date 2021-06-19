@@ -74,9 +74,14 @@ void GPU_indexbuf_init(GPUIndexBufBuilder *builder,
 GPUIndexBuf *GPU_indexbuf_build_on_device(uint index_len)
 {
   GPUIndexBuf *elem_ = GPU_indexbuf_calloc();
-  IndexBuf *elem = unwrap(elem_);
-  elem->init_build_on_device(index_len);
+  GPU_indexbuf_init_build_on_device(elem_, index_len);
   return elem_;
+}
+
+void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len)
+{
+  IndexBuf *elem_ = unwrap(elem);
+  elem_->init_build_on_device(index_len);
 }
 
 void GPU_indexbuf_join(GPUIndexBufBuilder *builder_to, const GPUIndexBufBuilder *builder_from)
@@ -393,11 +398,6 @@ const uint32_t *GPU_indexbuf_read(GPUIndexBuf *elem)
 uint32_t *GPU_indexbuf_unmap(const GPUIndexBuf *elem, const uint32_t *mapped_buffer)
 {
   return unwrap(elem)->unmap(mapped_buffer);
-}
-
-uint32_t GPU_indexbuf_get_index_len(GPUIndexBuf *elem)
-{
-  return unwrap(elem)->index_len_get();
 }
 
 void GPU_indexbuf_discard(GPUIndexBuf *elem)

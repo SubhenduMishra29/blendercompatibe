@@ -77,16 +77,6 @@ class IndexBuf {
   void init_subrange(IndexBuf *elem_src, uint start, uint length);
   void init_build_on_device(uint index_len);
 
-  void set_index_type(GPUIndexBufType idx_type)
-  {
-    index_type_ = idx_type;
-  }
-
-  void set_index_len(uint32_t index_len)
-  {
-    index_len_ = index_len;
-  }
-
   uint32_t index_len_get(void) const
   {
     return index_len_;
@@ -101,11 +91,6 @@ class IndexBuf {
   {
     return is_init_;
   };
-
-  void tag_init(void)
-  {
-    is_init_ = true;
-  }
 
   virtual void bind_as_ssbo(uint binding) = 0;
 

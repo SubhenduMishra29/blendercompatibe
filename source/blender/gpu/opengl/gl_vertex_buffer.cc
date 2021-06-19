@@ -134,7 +134,6 @@ void *GLVertBuf::unmap(const void *mapped_data) const
 {
   void *result = MEM_mallocN(vbo_size_, __func__);
   memcpy(result, mapped_data, vbo_size_);
-  glUnmapBuffer(GL_ARRAY_BUFFER);
   return result;
 }
 

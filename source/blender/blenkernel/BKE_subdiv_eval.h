@@ -32,14 +32,17 @@ extern "C" {
 struct Mesh;
 struct Subdiv;
 
-/* Returns true if evaluator is ready for use. */
-bool BKE_subdiv_eval_begin(struct Subdiv *subdiv);
+/* Returns true if evaluator is ready for use.
+ * NOTE: evaluator_type is a eOpenSubdivEvaluator. */
+bool BKE_subdiv_eval_begin(struct Subdiv *subdiv, int evaluator_type);
 
 /* coarse_vertex_cos is an optional argument which allows to override coordinates of the coarse
- * mesh. */
+ * mesh.
+ * NOTE: evaluator_type is a eOpenSubdivEvaluator. */
 bool BKE_subdiv_eval_begin_from_mesh(struct Subdiv *subdiv,
                                      const struct Mesh *mesh,
-                                     const float (*coarse_vertex_cos)[3]);
+                                     const float (*coarse_vertex_cos)[3],
+                                     int evaluator_type);
 bool BKE_subdiv_eval_refine_from_mesh(struct Subdiv *subdiv,
                                       const struct Mesh *mesh,
                                       const float (*coarse_vertex_cos)[3]);

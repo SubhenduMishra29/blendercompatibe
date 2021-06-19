@@ -96,6 +96,24 @@ bool BKE_subdiv_settings_equal(const SubdivSettings *settings_a, const SubdivSet
           settings_a->fvar_linear_interpolation == settings_b->fvar_linear_interpolation);
 }
 
+void BKE_subdiv_settings_init_from_modifier(SubdivSettings *settings,
+                                            const SubsurfModifierData *smd,
+                                            const bool use_render_params)
+{
+  const int requested_levels = (use_render_params) ? smd->renderLevels : smd->levels;
+
+  settings->is_simple = (smd->subdivType == SUBSURF_TYPE_SIMPLE);
+  settings->is_adaptive = !(smd->flags & eSubsurfModifierFlag_UseRecursiveSubdivision);
+  settings->level = settings->is_simple ?
+                        1 :
+                        (settings->is_adaptive ? smd->quality : requested_levels);
+  settings->use_creases = (smd->flags & eSubsurfModifierFlag_UseCrease);
+  settings->vtx_boundary_interpolation = BKE_subdiv_vtx_boundary_interpolation_from_subsurf(
+      smd->boundary_smooth);
+  settings->fvar_linear_interpolation = BKE_subdiv_fvar_interpolation_from_uv_smooth(
+      smd->uv_smooth);
+}
+
 /* ============================== CONSTRUCTION ============================== */
 
 /* Creation from scratch. */
@@ -197,6 +215,12 @@ void BKE_subdiv_free(Subdiv *subdiv)
   BKE_subdiv_displacement_detach(subdiv);
   if (subdiv->cache_.face_ptex_offset != NULL) {
     MEM_freeN(subdiv->cache_.face_ptex_offset);
+  }
+  if (subdiv->patch_coords) {
+    MEM_freeN(subdiv->patch_coords);
+  }
+  if (subdiv->free_draw_cache) {
+    subdiv->free_draw_cache(subdiv->patch_coords_draw_cache);
   }
   MEM_freeN(subdiv);
 }

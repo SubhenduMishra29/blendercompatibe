@@ -234,10 +234,15 @@ typedef struct Mesh {
 
   char use_subdivision;
   char adaptive_subdivision;
+  char subdivision_type;
+  char use_limit_surface;
   char subdiv_viewport_level;
   char subdiv_render_level;
+  char subdivision_quality;
+  char _pad2;
   short uv_smooth;
   short boundary_smooth;
+  int _pad4;
 } Mesh;
 
 /* deprecated by MTFace, only here for file reading */

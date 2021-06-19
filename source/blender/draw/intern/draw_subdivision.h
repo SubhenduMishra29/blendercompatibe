@@ -23,16 +23,14 @@ extern "C" {
 #endif
 
 struct Mesh;
+struct Object;
 struct Scene;
-struct GPUIndexBuf;
-struct GPUVertBuf;
+struct MeshBufferCache;
 
 void DRW_create_subdivision(const struct Scene *scene,
+                            struct Object *ob,
                             struct Mesh *mesh,
-                            struct GPUVertBuf **vert_buf,
-                            struct GPUIndexBuf **index_buf);
-
-void DRW_subdivision_mesh_free(struct Mesh *mesh);
+                            struct MeshBufferCache *mbc);
 
 void DRW_subdiv_free(void);
 

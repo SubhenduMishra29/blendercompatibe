@@ -72,11 +72,6 @@ void VertBuf::clear()
   flag = GPU_VERTBUF_INVALID;
 }
 
-bool VertBuf::is_invalid() const
-{
-  return flag == GPU_VERTBUF_INVALID;
-}
-
 VertBuf *VertBuf::duplicate()
 {
   VertBuf *dst = GPUBackend::get()->vertbuf_alloc();
@@ -147,6 +142,12 @@ void GPU_vertbuf_init_with_format_ex(GPUVertBuf *verts_,
                                      GPUUsageType usage)
 {
   unwrap(verts_)->init(format, usage);
+}
+
+void GPU_vertbuf_init_build_on_device(GPUVertBuf *verts, GPUVertFormat *format, uint v_len)
+{
+  GPU_vertbuf_init_with_format_ex(verts, format, GPU_USAGE_DEVICE_ONLY);
+  GPU_vertbuf_data_alloc(verts, v_len);
 }
 
 GPUVertBuf *GPU_vertbuf_duplicate(GPUVertBuf *verts_)
@@ -337,6 +338,11 @@ uint GPU_vertbuf_get_memory_usage()
 void GPU_vertbuf_use(GPUVertBuf *verts)
 {
   unwrap(verts)->upload();
+}
+
+uint GPU_vertbuf_get_device_ptr(GPUVertBuf *verts)
+{
+  return unwrap(verts)->get_device_ptr();
 }
 
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)

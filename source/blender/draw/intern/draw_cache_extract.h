@@ -112,8 +112,10 @@ typedef struct MeshBufferCache {
     GPUVertBuf *edge_fac;   /* extend */
     GPUVertBuf *weights;    /* extend */
     GPUVertBuf *uv;
+    GPUVertBuf *subdiv_uv;
     GPUVertBuf *tan;
     GPUVertBuf *vcol;
+    GPUVertBuf *subdiv_vcol;
     GPUVertBuf *sculpt_data;
     GPUVertBuf *orco;
     /* Only for edit mode. */
@@ -138,7 +140,7 @@ typedef struct MeshBufferCache {
    * Only need to be updated when topology changes. */
   struct {
     /* Indices to vloops. */
-    GPUIndexBuf *tris;        /* Ordered per material. */
+    GPUIndexBuf *tris; /* Ordered per material. */
     GPUIndexBuf *subdiv_tris;
     GPUIndexBuf *lines;       /* Loose edges last. */
     GPUIndexBuf *lines_loose; /* sub buffer of `lines` only containing the loose edges. */
@@ -319,7 +321,7 @@ void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
                                         const bool do_uvedit,
                                         const bool use_subsurf_fdots,
                                         const Scene *scene,
-                                        const ToolSettings *ts,
+                                        const struct ToolSettings *ts,
                                         const bool use_hide);
 
 #ifdef __cplusplus
