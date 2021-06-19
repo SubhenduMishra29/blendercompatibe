@@ -195,6 +195,7 @@ set(SRC
   intern/mesh_sample.cc
   intern/mesh_subdivision.c
   intern/mesh_tangent.c
+  intern/mesh_tessellate.c
   intern/mesh_validate.c
   intern/mesh_validate.cc
   intern/mesh_wrapper.c
