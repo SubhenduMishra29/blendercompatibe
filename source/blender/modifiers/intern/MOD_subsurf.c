@@ -234,9 +234,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
   SubsurfRuntimeData *runtime_data = subsurf_ensure_runtime(smd);
 
-  /* Delay evaluation to the draw code. */
-  if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ctx->object, smd)) {
-    return result;
+  /* Delay evaluation to the draw code if possible, provided we do not have to apply the modifier. */
+  if ((ctx->flag & MOD_APPLY_TO_BASE_MESH) == 0) {
+    if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ctx->object, smd)) {
+      return result;
+    }
   }
 
   Subdiv *subdiv = BKE_modifier_subsurf_subdiv_descriptor_ensure(
