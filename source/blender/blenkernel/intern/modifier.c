@@ -1585,7 +1585,7 @@ void BKE_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
   }
 }
 
-bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(Object *ob, SubsurfModifierData *smd)
+bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Object *ob, const SubsurfModifierData *smd)
 {
   if (smd != ob->modifiers.last) {
     return false;
@@ -1603,7 +1603,9 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(Object *ob, SubsurfModifierData *
   return true;
 }
 
-bool BKE_modifier_subsurf_can_do_gpu_subdiv(Object *ob)
+bool BKE_modifier_subsurf_can_do_gpu_subdiv(const Scene *scene,
+                                            const Object *ob,
+                                            const int required_mode)
 {
   ModifierData *md = ob->modifiers.last;
 
@@ -1615,15 +1617,21 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv(Object *ob)
     return false;
   }
 
+  /* We need to manually check if the modifier is disabled since this is called from the draw code.
+   */
+  if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
+    return false;
+  }
+
   return BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ob, (SubsurfModifierData *)md);
 }
 
 /* Main goal of this function is to give usable subdivision surface descriptor
  * which matches settings and topology. */
-Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(SubsurfModifierData *smd,
+Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(const SubsurfModifierData *smd,
                                                       const SubdivSettings *subdiv_settings,
                                                       const Mesh *mesh,
-                                                      bool for_draw_code)
+                                                      const bool for_draw_code)
 {
   SubsurfRuntimeData *runtime_data = (SubsurfRuntimeData *)smd->modifier.runtime;
   if (runtime_data->subdiv && runtime_data->set_by_draw_code != for_draw_code) {
@@ -1634,4 +1642,14 @@ Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(SubsurfModifierData *smd,
   runtime_data->subdiv = subdiv;
   runtime_data->set_by_draw_code = for_draw_code;
   return subdiv;
+}
+
+SubsurfRuntimeData *BKE_modifier_subsurf_ensure_runtime(SubsurfModifierData *smd)
+{
+  SubsurfRuntimeData *runtime_data = (SubsurfRuntimeData *)smd->modifier.runtime;
+  if (runtime_data == NULL) {
+    runtime_data = MEM_callocN(sizeof(*runtime_data), "subsurf runtime");
+    smd->modifier.runtime = runtime_data;
+  }
+  return runtime_data;
 }

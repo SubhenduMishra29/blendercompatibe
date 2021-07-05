@@ -81,7 +81,8 @@ typedef struct MeshRenderData {
   const float (*bm_poly_centers)[3];
 
   int *v_origindex, *e_origindex, *p_origindex;
-  int crease_ofs;
+  int edge_crease_ofs;
+  int vert_crease_ofs;
   int bweight_ofs;
   int freestyle_edge_ofs;
   int freestyle_face_ofs;
@@ -259,10 +260,12 @@ void mesh_render_data_update_looptris(MeshRenderData *mr,
 
 /* draw_cache_extract_mesh_extractors.c */
 typedef struct EditLoopData {
-  uchar v_flag;
-  uchar e_flag;
-  uchar crease;
-  uchar bweight;
+  ushort v_flag;
+  ushort e_flag;
+  /* This is used for both vertex and edge creases. The edge crease value is stored in the bottom 8
+   * bits, while the vertex crease is stored in the upper 8 bits. */
+  ushort crease;
+  ushort bweight;
 } EditLoopData;
 
 void *mesh_extract_buffer_get(const MeshExtract *extractor, MeshBufferCache *mbc);
@@ -282,6 +285,14 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData *mr,
                                      BMLoop *l,
                                      const int cd_ofs,
                                      EditLoopData *eattr);
+
+/* Initialize the vertex format to be used for UVs. Return true if any UV layer is
+ * found, false otherwise. */
+bool mesh_extract_uv_format_init(GPUVertFormat *format,
+                                 struct MeshBatchCache *cache,
+                                 CustomData *cd_ldata,
+                                 eMRExtractType extract_type,
+                                 uint32_t *r_uv_layers);
 
 extern const MeshExtract extract_tris;
 extern const MeshExtract extract_tris_single_mat;

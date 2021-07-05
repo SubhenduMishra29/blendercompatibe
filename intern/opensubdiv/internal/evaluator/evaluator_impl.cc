@@ -41,12 +41,12 @@
 #include "MEM_guardedalloc.h"
 
 #include "internal/base/type.h"
+#include "internal/evaluator/patch_map.h"
 #include "internal/topology/topology_refiner_impl.h"
 #include "opensubdiv_evaluator_capi.h"
 #include "opensubdiv_topology_refiner_capi.h"
 
 using OpenSubdiv::Far::PatchDescriptor;
-using OpenSubdiv::Far::PatchMap;
 using OpenSubdiv::Far::PatchTable;
 using OpenSubdiv::Far::PatchTableFactory;
 using OpenSubdiv::Far::StencilTable;
@@ -322,7 +322,7 @@ class FaceVaryingVolatileEval {
                    OpenSubdiv_BufferInterface *face_varying)
   {
     BufferInterfaceWrapper face_varying_data(face_varying);
-    BufferDescriptor face_varying_desc(0, 2, 2);
+    BufferDescriptor face_varying_desc(face_varying->buffer_offset, 2, 2);
 
     BufferInterfaceWrapper patch_coords_buffer(patch_coords);
 
@@ -594,6 +594,40 @@ class VolatileEvalOutput {
                            device_context_);
   }
 
+  // NOTE: P, dPdu, dPdv must point to a memory of at least float[3]*num_patch_coords.
+  void evalPatchesWithDerivatives(OpenSubdiv_BufferInterface *patch_coord,
+                                  OpenSubdiv_BufferInterface *P,
+                                  OpenSubdiv_BufferInterface *dPdu,
+                                  OpenSubdiv_BufferInterface *dPdv)
+  {
+    assert(dPdu);
+    assert(dPdv);
+    BufferInterfaceWrapper P_data(P);
+    BufferInterfaceWrapper dPdu_data(dPdu);
+    BufferInterfaceWrapper dPdv_data(dPdv);
+
+    // TODO(sergey): Support interleaved vertex-varying data.
+    BufferDescriptor P_desc(0, 4, 4);
+    BufferDescriptor dpDu_desc(0, 4, 4), pPdv_desc(0, 4, 4);
+
+    BufferInterfaceWrapper patch_coord_buffer(patch_coord);
+    const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
+        evaluator_cache_, src_desc_, P_desc, dpDu_desc, pPdv_desc, device_context_);
+    EVALUATOR::EvalPatches(src_data_,
+                           src_desc_,
+                           &P_data,
+                           P_desc,
+                           &dPdu_data,
+                           dpDu_desc,
+                           &dPdv_data,
+                           pPdv_desc,
+                           patch_coord_buffer.GetNumVertices(),
+                           &patch_coord_buffer,
+                           patch_table_,
+                           eval_instance,
+                           device_context_);
+  }
+
   // NOTE: varying must point to a memory of at least float[3]*num_patch_coords.
   void evalPatchesVarying(const PatchCoord *patch_coord,
                           const int num_patch_coords,
@@ -656,7 +690,7 @@ class VolatileEvalOutput {
 
 void convertPatchCoordsToArray(const OpenSubdiv_PatchCoord *patch_coords,
                                const int num_patch_coords,
-                               const OpenSubdiv::Far::PatchMap *patch_map,
+                               const PatchMap *patch_map,
                                StackOrHeapPatchCoordArray *array)
 {
   array->resize(num_patch_coords);
@@ -734,8 +768,7 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
 ////////////////////////////////////////////////////////////////////////////////
 // Evaluator wrapper for anonymous API.
 
-CpuEvalOutputAPI::CpuEvalOutputAPI(CpuEvalOutput *implementation,
-                                   OpenSubdiv::Far::PatchMap *patch_map)
+CpuEvalOutputAPI::CpuEvalOutputAPI(CpuEvalOutput *implementation, PatchMap *patch_map)
     : implementation_(implementation), patch_map_(patch_map)
 {
 }
@@ -897,8 +930,7 @@ void CpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_c
   }
 }
 
-GpuEvalOutputAPI::GpuEvalOutputAPI(GpuEvalOutput *implementation,
-                                   OpenSubdiv::Far::PatchMap *patch_map)
+GpuEvalOutputAPI::GpuEvalOutputAPI(GpuEvalOutput *implementation, PatchMap *patch_map)
     : implementation_(implementation), patch_map_(patch_map)
 {
 }
@@ -1068,9 +1100,16 @@ void GpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_c
 }
 
 void GpuEvalOutputAPI::evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
-                                            OpenSubdiv_BufferInterface *P)
+                                            OpenSubdiv_BufferInterface *P,
+                                            OpenSubdiv_BufferInterface *dPdu,
+                                            OpenSubdiv_BufferInterface *dPdv)
 {
-  implementation_->evalPatches(patch_coords, P);
+  if (dPdu != NULL || dPdv != NULL) {
+    implementation_->evalPatchesWithDerivatives(patch_coords, P, dPdu, dPdv);
+  }
+  else {
+    implementation_->evalPatches(patch_coords, P);
+  }
 }
 
 void GpuEvalOutputAPI::buildPatchCoordsBuffer(const OpenSubdiv_PatchCoord *patch_coords,
@@ -1085,6 +1124,29 @@ void GpuEvalOutputAPI::buildPatchCoordsBuffer(const OpenSubdiv_PatchCoord *patch
         patch_coord.ptex_face, patch_coord.u, patch_coord.v);
     output[i] = PatchCoord(*handle, patch_coord.u, patch_coord.v);
   }
+}
+
+void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
+                                   OpenSubdiv_BufferInterface *patch_map_quadtree,
+                                   int *min_patch_face,
+                                   int *max_patch_face,
+                                   int *max_depth,
+                                   int *patches_are_triangular)
+{
+  *min_patch_face = patch_map_->getMinPatchFace();
+  *max_patch_face = patch_map_->getMaxPatchFace();
+  *max_depth = patch_map_->getMaxDepth();
+  *patches_are_triangular = patch_map_->getPatchesAreTriangular();
+
+  const std::vector<PatchTable::PatchHandle> &handles = patch_map_->getHandles();
+  PatchTable::PatchHandle *buffer_handles = static_cast<PatchTable::PatchHandle *>(
+      patch_map_handles->alloc(patch_map_handles, handles.size()));
+  memcpy(buffer_handles, &handles[0], sizeof(PatchTable::PatchHandle) * handles.size());
+
+  const std::vector<PatchMap::QuadNode> &quadtree = patch_map_->nodes();
+  PatchMap::QuadNode *buffer_nodes = static_cast<PatchMap::QuadNode *>(
+      patch_map_quadtree->alloc(patch_map_quadtree, quadtree.size()));
+  memcpy(buffer_nodes, &quadtree[0], sizeof(PatchMap::QuadNode) * quadtree.size());
 }
 
 }  // namespace opensubdiv
@@ -1226,7 +1288,7 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
         vertex_stencils, varying_stencils, all_face_varying_stencils, 3, 3, 2, patch_table);
   }
 
-  OpenSubdiv::Far::PatchMap *patch_map = new PatchMap(*patch_table);
+  PatchMap *patch_map = new PatchMap(*patch_table);
   // Wrap everything we need into an object which we control from our side.
   OpenSubdiv_EvaluatorImpl *evaluator_descr;
   evaluator_descr = new OpenSubdiv_EvaluatorImpl();

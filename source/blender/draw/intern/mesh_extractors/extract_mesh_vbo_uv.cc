@@ -25,6 +25,67 @@
 
 #include "draw_cache_extract_mesh_private.h"
 
+extern "C" {
+
+bool mesh_extract_uv_format_init(GPUVertFormat *format,
+                                 struct MeshBatchCache *cache,
+                                 CustomData *cd_ldata,
+                                 eMRExtractType extract_type,
+                                 uint32_t *r_uv_layers)
+{
+  GPU_vertformat_deinterleave(format);
+
+  uint32_t uv_layers = cache->cd_used.uv;
+  /* HACK to fix T68857 */
+  if (extract_type == MR_EXTRACT_BMESH && cache->cd_used.edit_uv == 1) {
+    int layer = CustomData_get_active_layer(cd_ldata, CD_MLOOPUV);
+    if (layer != -1) {
+      uv_layers |= (1 << layer);
+    }
+  }
+
+  if (r_uv_layers) {
+    *r_uv_layers = uv_layers;
+  }
+
+  for (int i = 0; i < MAX_MTFACE; i++) {
+    if (uv_layers & (1 << i)) {
+      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
+      const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_MLOOPUV, i);
+
+      GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
+      /* UV layer name. */
+      BLI_snprintf(attr_name, sizeof(attr_name), "u%s", attr_safe_name);
+      GPU_vertformat_attr_add(format, attr_name, GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+      /* Auto layer name. */
+      BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+      GPU_vertformat_alias_add(format, attr_name);
+      /* Active render layer name. */
+      if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPUV)) {
+        GPU_vertformat_alias_add(format, "u");
+      }
+      /* Active display layer name. */
+      if (i == CustomData_get_active_layer(cd_ldata, CD_MLOOPUV)) {
+        GPU_vertformat_alias_add(format, "au");
+        /* Alias to `pos` for edit uvs. */
+        GPU_vertformat_alias_add(format, "pos");
+      }
+      /* Stencil mask uv layer name. */
+      if (i == CustomData_get_stencil_layer(cd_ldata, CD_MLOOPUV)) {
+        GPU_vertformat_alias_add(format, "mu");
+      }
+    }
+  }
+
+  if (format->attr_len == 0) {
+    GPU_vertformat_attr_add(format, "dummy", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    return false;
+  }
+
+  return true;
+}
+}
+
 namespace blender::draw {
 
 /* ---------------------------------------------------------------------- */
@@ -38,50 +99,11 @@ static void extract_uv_init(const MeshRenderData *mr,
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPUVertFormat format = {0};
-  GPU_vertformat_deinterleave(&format);
 
   CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
-  uint32_t uv_layers = cache->cd_used.uv;
-  /* HACK to fix T68857 */
-  if (mr->extract_type == MR_EXTRACT_BMESH && cache->cd_used.edit_uv == 1) {
-    int layer = CustomData_get_active_layer(cd_ldata, CD_MLOOPUV);
-    if (layer != -1) {
-      uv_layers |= (1 << layer);
-    }
-  }
-
-  for (int i = 0; i < MAX_MTFACE; i++) {
-    if (uv_layers & (1 << i)) {
-      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-      const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_MLOOPUV, i);
-
-      GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
-      /* UV layer name. */
-      BLI_snprintf(attr_name, sizeof(attr_name), "u%s", attr_safe_name);
-      GPU_vertformat_attr_add(&format, attr_name, GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-      /* Auto layer name. */
-      BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
-      GPU_vertformat_alias_add(&format, attr_name);
-      /* Active render layer name. */
-      if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPUV)) {
-        GPU_vertformat_alias_add(&format, "u");
-      }
-      /* Active display layer name. */
-      if (i == CustomData_get_active_layer(cd_ldata, CD_MLOOPUV)) {
-        GPU_vertformat_alias_add(&format, "au");
-        /* Alias to `pos` for edit uvs. */
-        GPU_vertformat_alias_add(&format, "pos");
-      }
-      /* Stencil mask uv layer name. */
-      if (i == CustomData_get_stencil_layer(cd_ldata, CD_MLOOPUV)) {
-        GPU_vertformat_alias_add(&format, "mu");
-      }
-    }
-  }
-
   int v_len = mr->loop_len;
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+  uint32_t uv_layers = cache->cd_used.uv;
+  if (!mesh_extract_uv_format_init(&format, cache, cd_ldata, mr->extract_type, &uv_layers)) {
     /* VBO will not be used, only allocate minimum of memory. */
     v_len = 1;
   }

@@ -69,6 +69,7 @@
 #include "draw_cache_extract.h"
 #include "draw_cache_extract_mesh_private.h"
 #include "draw_cache_inline.h"
+#include "draw_subdivision.h"
 
 #include "draw_cache_impl.h" /* own include */
 
@@ -1499,6 +1500,15 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
 
   const bool do_uvcage = is_editmode && !me->edit_mesh->mesh_eval_final->runtime.is_original;
 
+  int required_mode = eModifierMode_Realtime;
+  if (DRW_state_is_scene_render()) {
+    required_mode |= eModifierMode_Render;
+  }
+  if (is_editmode) {
+    required_mode |= eModifierMode_Editmode;
+  }
+  const bool do_subdivision = BKE_modifier_subsurf_can_do_gpu_subdiv(scene, ob, required_mode);
+
   MeshBufferCache *mbufcache = &cache->final;
 
   /* Initialize batches and request VBO's & IBO's. */
@@ -1798,6 +1808,10 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
                                        scene,
                                        ts,
                                        true);
+  }
+
+  if (do_subdivision) {
+    DRW_create_subdivision(scene, ob, me, cache, &cache->final);
   }
 
   mesh_buffer_cache_create_requested(task_graph,

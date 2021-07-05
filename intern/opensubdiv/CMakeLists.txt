@@ -75,6 +75,8 @@ if(WITH_OPENSUBDIV)
     internal/evaluator/evaluator_capi.cc
     internal/evaluator/evaluator_impl.cc
     internal/evaluator/evaluator_impl.h
+    internal/evaluator/patch_map.cc
+    internal/evaluator/patch_map.h
 
     # Topology.
     internal/topology/mesh_topology.cc

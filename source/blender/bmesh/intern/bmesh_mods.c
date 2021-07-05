@@ -700,11 +700,6 @@ BMVert *BM_edge_split(BMesh *bm, BMEdge *e, BMVert *v, BMEdge **r_e, float fac)
     BLI_array_free(oldfaces);
   }
 
-  const int cd_vertex_crease_offset = CustomData_get_offset(&bm->vdata, CD_CREASE);
-  if (cd_vertex_crease_offset != -1) {
-    BM_ELEM_CD_SET_FLOAT(v_new, cd_vertex_crease_offset, 0.0f);
-  }
-
   return v_new;
 }
 

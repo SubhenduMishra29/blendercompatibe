@@ -32,6 +32,8 @@ struct OpenSubdiv_BufferInterface;
 struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 
+class PatchMap;
+
 namespace blender {
 namespace opensubdiv {
 
@@ -48,7 +50,7 @@ class GpuEvalOutput;
 class CpuEvalOutputAPI {
  public:
   // NOTE: API object becomes an owner of evaluator. Patch we are referencing.
-  CpuEvalOutputAPI(CpuEvalOutput *implementation, OpenSubdiv::Far::PatchMap *patch_map);
+  CpuEvalOutputAPI(CpuEvalOutput *implementation, PatchMap *patch_map);
   ~CpuEvalOutputAPI();
 
   // Set coarse positions from a continuous array of coordinates.
@@ -134,13 +136,13 @@ class CpuEvalOutputAPI {
 
  protected:
   CpuEvalOutput *implementation_;
-  OpenSubdiv::Far::PatchMap *patch_map_;
+  PatchMap *patch_map_;
 };
 
 class GpuEvalOutputAPI {
  public:
   // NOTE: API object becomes an owner of evaluator. Patch we are referencing.
-  GpuEvalOutputAPI(GpuEvalOutput *implementation, OpenSubdiv::Far::PatchMap *patch_map);
+  GpuEvalOutputAPI(GpuEvalOutput *implementation, PatchMap *patch_map);
   ~GpuEvalOutputAPI();
 
   // Set coarse positions from a continuous array of coordinates.
@@ -233,11 +235,20 @@ class GpuEvalOutputAPI {
                               OpenSubdiv_BufferInterface *buffer);
 
   void evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
-                            OpenSubdiv_BufferInterface *P);
+                            OpenSubdiv_BufferInterface *P,
+                            OpenSubdiv_BufferInterface *dPdu,
+                            OpenSubdiv_BufferInterface *dPdv);
+
+  void getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
+                   OpenSubdiv_BufferInterface *patch_map_quadtree,
+                   int *min_patch_face,
+                   int *max_patch_face,
+                   int *max_depth,
+                   int *patches_are_triangular);
 
  protected:
   GpuEvalOutput *implementation_;
-  OpenSubdiv::Far::PatchMap *patch_map_;
+  PatchMap *patch_map_;
 };
 
 }  // namespace opensubdiv
@@ -250,7 +261,7 @@ struct OpenSubdiv_EvaluatorImpl {
 
   blender::opensubdiv::GpuEvalOutputAPI *eval_output_gpu;
   blender::opensubdiv::CpuEvalOutputAPI *eval_output;
-  const OpenSubdiv::Far::PatchMap *patch_map;
+  const PatchMap *patch_map;
   const OpenSubdiv::Far::PatchTable *patch_table;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorImpl");

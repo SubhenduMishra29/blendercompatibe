@@ -187,13 +187,9 @@ typedef struct Subdiv {
   /* Statistics for debugging. */
   SubdivStats stats;
 
-  /* Patch coordinates used to interpolate data. */
-  struct OpenSubdiv_PatchCoord *patch_coords;
-  uint num_patch_coords;
-  uint patch_resolution;
-
+  /* Cached data for the draw code. */
   void (*free_draw_cache)(void *);
-  void *patch_coords_draw_cache;
+  void *draw_cache;
 
   /* Cached values, are not supposed to be accessed directly. */
   struct {

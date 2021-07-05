@@ -552,14 +552,19 @@ void BKE_modifier_blend_read_data(struct BlendDataReader *reader,
                                   struct Object *ob);
 void BKE_modifier_blend_read_lib(struct BlendLibReader *reader, struct Object *ob);
 
-bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(struct Object *ob, SubsurfModifierData *smd);
-bool BKE_modifier_subsurf_can_do_gpu_subdiv(struct Object *ob);
+bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const struct Object *ob,
+                                               const SubsurfModifierData *smd);
+bool BKE_modifier_subsurf_can_do_gpu_subdiv(const struct Scene *scene,
+                                            const struct Object *ob,
+                                            const int required_mode);
 
 struct Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(
-    SubsurfModifierData *smd,
+    const SubsurfModifierData *smd,
     const struct SubdivSettings *subdiv_settings,
     const struct Mesh *mesh,
-    bool for_draw_code);
+    const bool for_draw_code);
+
+struct SubsurfRuntimeData *BKE_modifier_subsurf_ensure_runtime(SubsurfModifierData *smd);
 
 #ifdef __cplusplus
 }

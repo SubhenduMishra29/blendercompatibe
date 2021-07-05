@@ -34,6 +34,8 @@ typedef struct OpenSubdiv_BufferInterface {
 
   int (*num_vertices)(struct OpenSubdiv_BufferInterface *buffer);
 
+  int buffer_offset;
+
   void *data;
 } OpenSubdiv_BufferInterface;
 
@@ -139,12 +141,22 @@ typedef struct OpenSubdiv_Evaluator {
 
   void (*evaluatePatchesLimitFromBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                          struct OpenSubdiv_BufferInterface *patch_coords,
-                                         struct OpenSubdiv_BufferInterface *P);
+                                         struct OpenSubdiv_BufferInterface *P,
+                                         struct OpenSubdiv_BufferInterface *dPdu,
+                                         struct OpenSubdiv_BufferInterface *dPdv);
 
   void (*buildPatchCoordsBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                  const struct OpenSubdiv_PatchCoord *patch_coords,
                                  int num_patch_coords,
                                  struct OpenSubdiv_BufferInterface *buffer);
+
+  void (*getPatchMap)(struct OpenSubdiv_Evaluator *evaluator,
+                      struct OpenSubdiv_BufferInterface *patch_map_handles,
+                      struct OpenSubdiv_BufferInterface *patch_map_quadtree,
+                      int *min_patch_face,
+                      int *max_patch_face,
+                      int *max_depth,
+                      int *patches_are_triangular);
 
   // Implementation of the evaluator.
   struct OpenSubdiv_EvaluatorImpl *impl;

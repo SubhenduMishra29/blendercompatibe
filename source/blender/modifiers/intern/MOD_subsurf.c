@@ -206,16 +206,6 @@ static Mesh *subdiv_as_ccg(SubsurfModifierData *smd,
   return result;
 }
 
-static SubsurfRuntimeData *subsurf_ensure_runtime(SubsurfModifierData *smd)
-{
-  SubsurfRuntimeData *runtime_data = (SubsurfRuntimeData *)smd->modifier.runtime;
-  if (runtime_data == NULL) {
-    runtime_data = MEM_callocN(sizeof(*runtime_data), "subsurf runtime");
-    smd->modifier.runtime = runtime_data;
-  }
-  return runtime_data;
-}
-
 /* Modifier itself. */
 
 static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
@@ -232,9 +222,10 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   if (subdiv_settings.level == 0) {
     return result;
   }
-  SubsurfRuntimeData *runtime_data = subsurf_ensure_runtime(smd);
+  SubsurfRuntimeData *runtime_data = BKE_modifier_subsurf_ensure_runtime(smd);
 
-  /* Delay evaluation to the draw code if possible, provided we do not have to apply the modifier. */
+  /* Delay evaluation to the draw code if possible, provided we do not have to apply the modifier.
+   */
   if ((ctx->flag & MOD_APPLY_TO_BASE_MESH) == 0) {
     if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ctx->object, smd)) {
       return result;
@@ -302,7 +293,7 @@ static void deformMatrices(ModifierData *md,
   if (subdiv_settings.level == 0) {
     return;
   }
-  SubsurfRuntimeData *runtime_data = subsurf_ensure_runtime(smd);
+  SubsurfRuntimeData *runtime_data = BKE_modifier_subsurf_ensure_runtime(smd);
   Subdiv *subdiv = BKE_modifier_subsurf_subdiv_descriptor_ensure(
       smd, &subdiv_settings, mesh, false);
   if (subdiv == NULL) {

@@ -50,12 +50,6 @@ struct Mesh *BKE_subdiv_to_mesh(struct Subdiv *subdiv,
                                 const SubdivToMeshSettings *settings,
                                 const struct Mesh *coarse_mesh);
 
-struct OpenSubdiv_PatchCoord *BKE_subdiv_build_patch_coords_array(
-    struct Mesh *mesh,
-    struct SubdivToMeshSettings *to_mesh_settings,
-    struct Subdiv *subdiv,
-    uint *num_patch_coords);
-
 #ifdef __cplusplus
 }
 #endif

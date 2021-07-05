@@ -558,6 +558,7 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         col.enabled = obj is not None and obj.mode != 'EDIT'
         col.prop(me, "use_customdata_vertex_bevel", text="Vertex Bevel Weight")
         col.prop(me, "use_customdata_edge_bevel", text="Edge Bevel Weight")
+        col.prop(me, "use_customdata_vertex_crease", text="Vertex Crease")
         col.prop(me, "use_customdata_edge_crease", text="Edge Crease")
 
 
@@ -650,6 +651,35 @@ class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
         layout.label(text="Name Collisions: {}".format(", ".join(colliding_names)), icon='INFO')
 
 
+class DATA_PT_subdivision(MeshButtonsPanel, Panel):
+    bl_label = "Subdivision"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES'}
+
+    def draw_header(self, context):
+        mesh = context.mesh
+        self.layout.prop(mesh, "use_subdivision", text="")
+
+    def draw(self, context):
+        mesh = context.mesh
+
+        layout = self.layout
+        layout.use_property_decorate = False
+        layout.active = mesh.use_subdivision
+
+        layout.prop(mesh, "subdivision_type", expand=True)
+
+        col = layout.column()
+        col.use_property_split = True
+        col.prop(mesh, "adaptive_subdivision")
+        col.prop(mesh, "preview_subdivision_levels")
+        col.prop(mesh, "render_subdivision_levels")
+        col.prop(mesh, "use_limit_surface")
+        col.prop(mesh, "subdivision_quality")
+        col.prop(mesh, "uv_smooth")
+        col.prop(mesh, "boundary_smooth")
+
+
 classes = (
     MESH_MT_vertex_group_context_menu,
     MESH_MT_shape_key_context_menu,
@@ -672,6 +702,7 @@ classes = (
     DATA_PT_remesh,
     DATA_PT_customdata,
     DATA_PT_custom_props_mesh,
+    # DATA_PT_subdivision,
 )
 
 if __name__ == "__main__":  # only for live edit.

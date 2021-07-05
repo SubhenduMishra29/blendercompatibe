@@ -216,11 +216,8 @@ void BKE_subdiv_free(Subdiv *subdiv)
   if (subdiv->cache_.face_ptex_offset != NULL) {
     MEM_freeN(subdiv->cache_.face_ptex_offset);
   }
-  if (subdiv->patch_coords) {
-    MEM_freeN(subdiv->patch_coords);
-  }
   if (subdiv->free_draw_cache) {
-    subdiv->free_draw_cache(subdiv->patch_coords_draw_cache);
+    subdiv->free_draw_cache(subdiv->draw_cache);
   }
   MEM_freeN(subdiv);
 }

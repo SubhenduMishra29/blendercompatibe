@@ -687,9 +687,13 @@ extern void (*BKE_mesh_batch_cache_dirty_tag_cb)(struct Mesh *me, eMeshBatchDirt
 extern void (*BKE_mesh_batch_cache_free_cb)(struct Mesh *me);
 
 /* Subdivision. */
-int BKE_mesh_get_subdivision_level(const struct Scene *scene, const struct Mesh *me, const bool is_final_render);
+int BKE_mesh_get_subdivision_level(const struct Scene *scene,
+                                   const struct Mesh *me,
+                                   const bool is_final_render);
 
-bool BKE_mesh_uses_subdivision(const struct Scene *scene, const struct Mesh *me, const bool is_final_render);
+bool BKE_mesh_uses_subdivision(const struct Scene *scene,
+                               const struct Mesh *me,
+                               const bool is_final_render);
 
 void BKE_mesh_subdivision_mesh_free(struct Mesh *me);
 

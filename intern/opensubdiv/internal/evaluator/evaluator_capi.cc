@@ -158,10 +158,12 @@ void evaluatePatchesLimit(OpenSubdiv_Evaluator *evaluator,
 
 void evaluatePatchesLimitFromBuffer(OpenSubdiv_Evaluator *evaluator,
                                     OpenSubdiv_BufferInterface *patch_coords,
-                                    OpenSubdiv_BufferInterface *P)
+                                    OpenSubdiv_BufferInterface *P,
+                                    OpenSubdiv_BufferInterface *dPdu,
+                                    OpenSubdiv_BufferInterface *dPdv)
 {
   if (evaluator->impl->eval_output_gpu) {
-    evaluator->impl->eval_output_gpu->evaluatePatchesLimit(patch_coords, P);
+    evaluator->impl->eval_output_gpu->evaluatePatchesLimit(patch_coords, P, dPdu, dPdv);
     return;
   }
 }
@@ -219,6 +221,25 @@ void buildPatchCoordsBuffer(OpenSubdiv_Evaluator *evaluator,
   }
 }
 
+void getPatchMap(struct OpenSubdiv_Evaluator *evaluator,
+                 struct OpenSubdiv_BufferInterface *patch_map_handles,
+                 struct OpenSubdiv_BufferInterface *patch_map_quadtree,
+                 int *min_patch_face,
+                 int *max_patch_face,
+                 int *max_depth,
+                 int *patches_are_triangular)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->getPatchMap(patch_map_handles,
+                                                  patch_map_quadtree,
+                                                  min_patch_face,
+                                                  max_patch_face,
+                                                  max_depth,
+                                                  patches_are_triangular);
+    return;
+  }
+}
+
 void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
 {
   evaluator->setCoarsePositions = setCoarsePositions;
@@ -240,6 +261,8 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
 
   evaluator->buildPatchCoordsBuffer = buildPatchCoordsBuffer;
   evaluator->evaluateFaceVaryingFromBuffer = evaluateFaceVaryingFromBuffer;
+
+  evaluator->getPatchMap = getPatchMap;
 }
 
 }  // namespace

@@ -25,11 +25,13 @@ extern "C" {
 struct Mesh;
 struct Object;
 struct Scene;
+struct MeshBatchCache;
 struct MeshBufferCache;
 
 void DRW_create_subdivision(const struct Scene *scene,
                             struct Object *ob,
                             struct Mesh *mesh,
+                            struct MeshBatchCache *batch_cache,
                             struct MeshBufferCache *mbc);
 
 void DRW_subdiv_free(void);
