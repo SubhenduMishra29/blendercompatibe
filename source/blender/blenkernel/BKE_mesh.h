@@ -128,7 +128,8 @@ struct Mesh *BKE_mesh_copy_for_eval(struct Mesh *source, bool reference);
 /* These functions construct a new Mesh,
  * contrary to BKE_mesh_from_nurbs which modifies ob itself. */
 struct Mesh *BKE_mesh_new_nomain_from_curve(struct Object *ob);
-struct Mesh *BKE_mesh_new_nomain_from_curve_displist(struct Object *ob, struct ListBase *dispbase);
+struct Mesh *BKE_mesh_new_nomain_from_curve_displist(const struct Object *ob,
+                                                     const struct ListBase *dispbase);
 
 bool BKE_mesh_ensure_facemap_customdata(struct Mesh *me);
 bool BKE_mesh_clear_facemap_customdata(struct Mesh *me);
@@ -151,7 +152,7 @@ int BKE_mesh_nurbs_to_mdata(struct Object *ob,
                             struct MPoly **r_allpoly,
                             int *r_totloop,
                             int *r_totpoly);
-int BKE_mesh_nurbs_displist_to_mdata(struct Object *ob,
+int BKE_mesh_nurbs_displist_to_mdata(const struct Object *ob,
                                      const struct ListBase *dispbase,
                                      struct MVert **r_allvert,
                                      int *r_totvert,
@@ -274,13 +275,6 @@ void BKE_mesh_vert_normals_apply(struct Mesh *mesh, const short (*vert_normals)[
 
 /* *** mesh_tessellate.c *** */
 
-void BKE_mesh_loops_to_tessdata(struct CustomData *fdata,
-                                struct CustomData *ldata,
-                                struct MFace *mface,
-                                const int *polyindices,
-                                unsigned int (*loopindices)[4],
-                                const int num_faces);
-
 int BKE_mesh_tessface_calc_ex(struct CustomData *fdata,
                               struct CustomData *ldata,
                               struct CustomData *pdata,
@@ -297,8 +291,15 @@ void BKE_mesh_recalc_looptri(const struct MLoop *mloop,
                              int totloop,
                              int totpoly,
                              struct MLoopTri *mlooptri);
+void BKE_mesh_recalc_looptri_with_normals(const struct MLoop *mloop,
+                                          const struct MPoly *mpoly,
+                                          const struct MVert *mvert,
+                                          int totloop,
+                                          int totpoly,
+                                          struct MLoopTri *mlooptri,
+                                          const float (*poly_normals)[3]);
 
-/* *** mesh_evaluate.c *** */
+/* *** mesh_normals.c *** */
 
 void BKE_mesh_calc_normals_mapping_simple(struct Mesh *me);
 void BKE_mesh_calc_normals_mapping(struct MVert *mverts,
@@ -492,6 +493,8 @@ void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh,
 
 void BKE_mesh_set_custom_normals(struct Mesh *mesh, float (*r_custom_loopnors)[3]);
 void BKE_mesh_set_custom_normals_from_vertices(struct Mesh *mesh, float (*r_custom_vertnors)[3]);
+
+/* *** mesh_evaluate.c *** */
 
 void BKE_mesh_calc_poly_normal(const struct MPoly *mpoly,
                                const struct MLoop *loopstart,

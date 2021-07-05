@@ -113,6 +113,7 @@ typedef enum {
   UI_WTYPE_LISTITEM,
   UI_WTYPE_PROGRESSBAR,
   UI_WTYPE_NODESOCKET,
+  UI_WTYPE_DATASETROW,
 } uiWidgetTypeEnum;
 
 /* Button state argument shares bits with 'uiBut.flag'.
@@ -236,7 +237,7 @@ typedef struct uiWidgetTrias {
 #define WIDGET_SIZE_MAX (WIDGET_CURVE_RESOLU * 4)
 
 typedef struct uiWidgetBase {
-  /* TODO remove these completely */
+  /* TODO: remove these completely. */
   int totvert, halfwayvert;
   float outer_v[WIDGET_SIZE_MAX][2];
   float inner_v[WIDGET_SIZE_MAX][2];
@@ -398,7 +399,7 @@ static struct {
   GPUBatch *roundbox_widget;
   GPUBatch *roundbox_shadow;
 
-  /* TODO remove */
+  /* TODO: remove. */
   GPUVertFormat format;
   uint vflag_id;
 } g_ui_batch_cache = {0};
@@ -522,7 +523,7 @@ void UI_draw_anti_tria(
 
   float draw_color[4];
   copy_v4_v4(draw_color, color);
-  /* Note: This won't give back the original color. */
+  /* NOTE: This won't give back the original color. */
   draw_color[3] *= 1.0f / WIDGET_AA_JITTER;
 
   GPU_blend(GPU_BLEND_ALPHA);
@@ -767,7 +768,7 @@ static void round_box__edges(
   BLI_rctf_rcti_copy(&wt->uniform_params.rect, rect);
   BLI_rctf_init(&wt->uniform_params.recti, minxi, maxxi, minyi, maxyi);
 
-  /* mult */
+  /* Multiply by radius. */
   for (int a = 0; a < WIDGET_CURVE_RESOLU; a++) {
     veci[a][0] = radi * cornervec[a][0];
     veci[a][1] = radi * cornervec[a][1];
@@ -1531,14 +1532,14 @@ static void ui_text_clip_right_ex(const uiFontStyle *fstyle,
   int l_end = BLF_width_to_strlen(fstyle->uifont_id, str, max_len, okwidth - sep_strwidth, NULL);
 
   if (l_end > 0) {
-    /* At least one character, so clip and add the ellipsis.  */
+    /* At least one character, so clip and add the ellipsis. */
     memcpy(str + l_end, sep, sep_len + 1); /* +1 for trailing '\0'. */
     if (r_final_len) {
       *r_final_len = (size_t)(l_end) + sep_len;
     }
   }
   else {
-    /* Otherwise fit as much as we can without adding an ellipsis.  */
+    /* Otherwise fit as much as we can without adding an ellipsis. */
     l_end = BLF_width_to_strlen(fstyle->uifont_id, str, max_len, okwidth, NULL);
     str[l_end] = '\0';
     if (r_final_len) {
@@ -1640,7 +1641,7 @@ float UI_text_clip_middle_ex(const uiFontStyle *fstyle,
         /* Corner case, the str already takes all available mem,
          * and the ellipsis chars would actually add more chars.
          * Better to just trim one or two letters to the right in this case...
-         * Note: with a single-char ellipsis, this should never happen! But better be safe
+         * NOTE: with a single-char ellipsis, this should never happen! But better be safe
          * here...
          */
         ui_text_clip_right_ex(
@@ -2005,7 +2006,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       drawstr_left_len = INT_MAX;
 
 #ifdef WITH_INPUT_IME
-      /* FIXME, IME is modifying 'const char *drawstr! */
+      /* FIXME: IME is modifying `const char *drawstr`! */
       ime_data = ui_but_ime_data_get(but);
 
       if (ime_data && ime_data->composite_len) {
@@ -2492,7 +2493,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
     ui_text_clip_middle(fstyle, but, rect);
   }
 
-  /* always draw text for textbutton cursor */
+  /* Always draw text for text-button cursor. */
   widget_draw_text(fstyle, wcol, but, rect);
 
   ui_but_text_password_hide(password_str, but, true);
@@ -3488,7 +3489,7 @@ static void widget_menubut(uiWidgetColors *wcol, rcti *rect, int UNUSED(state), 
 /**
  * Draw menu buttons still with triangles when field is not embossed
  */
-static void widget_menubut_embossn(uiBut *UNUSED(but),
+static void widget_menubut_embossn(const uiBut *UNUSED(but),
                                    uiWidgetColors *wcol,
                                    rcti *rect,
                                    int UNUSED(state),
@@ -3511,7 +3512,7 @@ static void widget_menubut_embossn(uiBut *UNUSED(but),
  * Draw number buttons still with triangles when field is not embossed
  */
 static void widget_numbut_embossn(
-    uiBut *UNUSED(but), uiWidgetColors *wcol, rcti *rect, int state, int roundboxalign)
+    const uiBut *UNUSED(but), uiWidgetColors *wcol, rcti *rect, int state, int roundboxalign)
 {
   widget_numbut_draw(wcol, rect, state, roundboxalign, true);
 }
@@ -3695,6 +3696,28 @@ static void widget_progressbar(
   /* raise text a bit */
   rect->xmin += (BLI_rcti_size_x(&rect_prog) / 2);
   rect->xmax += (BLI_rcti_size_x(&rect_prog) / 2);
+}
+
+static void widget_datasetrow(
+    uiBut *but, uiWidgetColors *wcol, rcti *rect, int state, int UNUSED(roundboxalign))
+{
+  uiButDatasetRow *but_componentrow = (uiButDatasetRow *)but;
+  uiWidgetBase wtb;
+  widget_init(&wtb);
+
+  /* no outline */
+  wtb.draw_outline = false;
+  const float rad = wcol->roundness * U.widget_unit;
+  round_box_edges(&wtb, UI_CNR_ALL, rect, rad);
+
+  if ((state & UI_ACTIVE) || (state & UI_SELECT)) {
+    widgetbase_draw(&wtb, wcol);
+  }
+
+  BLI_rcti_resize(rect,
+                  BLI_rcti_size_x(rect) - UI_UNIT_X * but_componentrow->indentation,
+                  BLI_rcti_size_y(rect));
+  BLI_rcti_translate(rect, 0.5f * UI_UNIT_X * but_componentrow->indentation, 0);
 }
 
 static void widget_nodesocket(
@@ -4283,7 +4306,7 @@ static void widget_draw_extra_mask(const bContext *C, uiBut *but, uiWidgetType *
   widget_init(&wtb);
 
   if (but->block->drawextra) {
-    /* note: drawextra can change rect +1 or -1, to match round errors of existing previews */
+    /* NOTE: drawextra can change rect +1 or -1, to match round errors of existing previews. */
     but->block->drawextra(
         C, but->poin, but->block->drawextra_arg1, but->block->drawextra_arg2, rect);
 
@@ -4467,6 +4490,10 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
     case UI_WTYPE_PROGRESSBAR:
       wt.wcol_theme = &btheme->tui.wcol_progress;
       wt.custom = widget_progressbar;
+      break;
+
+    case UI_WTYPE_DATASETROW:
+      wt.custom = widget_datasetrow;
       break;
 
     case UI_WTYPE_NODESOCKET:
@@ -4792,6 +4819,11 @@ void ui_draw_but(const bContext *C, struct ARegion *region, uiStyle *style, uiBu
         fstyle = &style->widgetlabel;
         break;
 
+      case UI_BTYPE_DATASETROW:
+        wt = widget_type(UI_WTYPE_DATASETROW);
+        fstyle = &style->widgetlabel;
+        break;
+
       case UI_BTYPE_SCROLL:
         wt = widget_type(UI_WTYPE_SCROLL);
         break;
@@ -4924,7 +4956,7 @@ void ui_draw_menu_back(uiStyle *UNUSED(style), uiBlock *block, rcti *rect)
 }
 
 /**
- * Uses the widget base drawing and colors from from the box widget, but ensures an opaque
+ * Uses the widget base drawing and colors from the box widget, but ensures an opaque
  * inner color.
  */
 void ui_draw_box_opaque(rcti *rect, int roundboxalign)

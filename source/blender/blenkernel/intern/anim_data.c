@@ -336,7 +336,7 @@ AnimData *BKE_animdata_copy(Main *bmain, AnimData *adt, const int flag)
      * BKE_id_copy_ex().
      * So in case we do copy the ID and its sub-IDs in bmain, silence the 'no usercount' flag for
      * the sub-IDs copying.
-     * Note: This is a bit weak, as usually when it comes to recursive ID copy. Should work for
+     * NOTE: This is a bit weak, as usually when it comes to recursive ID copy. Should work for
      * now, but we may have to revisit this at some point and add a proper extra flag to deal with
      * that situation. Or refactor completely the way we handle such recursion, by flattening it
      * e.g. */
@@ -946,7 +946,7 @@ static bool nlastrips_path_rename_fix(ID *owner_id,
       is_changed |= fcurves_path_rename_fix(
           owner_id, prefix, oldName, newName, oldKey, newKey, &strip->act->curves, verify_paths);
     }
-    /* Ignore own F-Curves, since those are local.  */
+    /* Ignore own F-Curves, since those are local. */
     /* Check sub-strips (if meta-strips). */
     is_changed |= nlastrips_path_rename_fix(
         owner_id, prefix, oldName, newName, oldKey, newKey, &strip->strips, verify_paths);
@@ -1422,7 +1422,7 @@ void BKE_animdata_fix_paths_rename_all(ID *ref_id,
  * NOTE: it is assumed that the structure we're replacing is <prefix><["><name><"]>
  *      i.e. pose.bones["Bone"]
  */
-/* TODO: use BKE_animdata_main_cb for looping over all data  */
+/* TODO: use BKE_animdata_main_cb for looping over all data. */
 void BKE_animdata_fix_paths_rename_all_ex(Main *bmain,
                                           ID *ref_id,
                                           const char *prefix,
@@ -1563,7 +1563,7 @@ void BKE_animdata_blend_write(BlendWriter *writer, struct AnimData *adt)
     BLO_write_string(writer, aor->rna_path);
   }
 
-  /* TODO write the remaps (if they are needed) */
+  /* TODO: write the remaps (if they are needed). */
 
   /* write NLA data */
   BKE_nla_blend_write(writer, &adt->nla_tracks);

@@ -68,7 +68,7 @@ static ScrArea *screen_addarea_ex(ScrAreaMap *area_map,
                                   ScrVert *top_left,
                                   ScrVert *top_right,
                                   ScrVert *bottom_right,
-                                  short spacetype)
+                                  const eSpace_Type space_type)
 {
   ScrArea *area = MEM_callocN(sizeof(ScrArea), "addscrarea");
 
@@ -76,7 +76,7 @@ static ScrArea *screen_addarea_ex(ScrAreaMap *area_map,
   area->v2 = top_left;
   area->v3 = top_right;
   area->v4 = bottom_right;
-  area->spacetype = spacetype;
+  area->spacetype = space_type;
 
   BLI_addtail(&area_map->areabase, area);
 
@@ -87,10 +87,10 @@ static ScrArea *screen_addarea(bScreen *screen,
                                ScrVert *left_top,
                                ScrVert *right_top,
                                ScrVert *right_bottom,
-                               short spacetype)
+                               const eSpace_Type space_type)
 {
   return screen_addarea_ex(
-      AREAMAP_FROM_SCREEN(screen), left_bottom, left_top, right_top, right_bottom, spacetype);
+      AREAMAP_FROM_SCREEN(screen), left_bottom, left_top, right_top, right_bottom, space_type);
 }
 
 static void screen_delarea(bContext *C, bScreen *screen, ScrArea *area)
@@ -125,9 +125,9 @@ ScrArea *area_split(const wmWindow *win,
     return NULL;
   }
 
-  /* note regarding (fac > 0.5f) checks below.
+  /* NOTE(campbell): regarding (fac > 0.5f) checks below.
    * normally it shouldn't matter which is used since the copy should match the original
-   * however with viewport rendering and python console this isn't the case. - campbell */
+   * however with viewport rendering and python console this isn't the case. */
 
   if (dir_axis == SCREEN_AXIS_H) {
     /* new vertices */
@@ -972,7 +972,7 @@ int ED_screen_area_active(const bContext *C)
  */
 static ScrArea *screen_area_create_with_geometry(ScrAreaMap *area_map,
                                                  const rcti *rect,
-                                                 short spacetype)
+                                                 eSpace_Type space_type)
 {
   ScrVert *bottom_left = screen_geom_vertex_add_ex(area_map, rect->xmin, rect->ymin);
   ScrVert *top_left = screen_geom_vertex_add_ex(area_map, rect->xmin, rect->ymax);
@@ -984,7 +984,7 @@ static ScrArea *screen_area_create_with_geometry(ScrAreaMap *area_map,
   screen_geom_edge_add_ex(area_map, top_right, bottom_right);
   screen_geom_edge_add_ex(area_map, bottom_right, bottom_left);
 
-  return screen_addarea_ex(area_map, bottom_left, top_left, top_right, bottom_right, spacetype);
+  return screen_addarea_ex(area_map, bottom_left, top_left, top_right, bottom_right, space_type);
 }
 
 static void screen_area_set_geometry_rect(ScrArea *area, const rcti *rect)
@@ -1001,7 +1001,7 @@ static void screen_area_set_geometry_rect(ScrArea *area, const rcti *rect)
 
 static void screen_global_area_refresh(wmWindow *win,
                                        bScreen *screen,
-                                       eSpace_Type space_type,
+                                       const eSpace_Type space_type,
                                        GlobalAreaAlign align,
                                        const rcti *rect,
                                        const short height_cur,
@@ -1564,6 +1564,14 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
   BLI_assert(CTX_wm_screen(C) == screen);
   BLI_assert(CTX_wm_area(C) == NULL); /* May have been freed. */
 
+  /* Setting the area is only needed for Python scripts that call
+   * operators in succession before returning to the main event loop.
+   * Without this, scripts can't run any operators that require
+   * an area after toggling full-screen for example (see: T89526).
+   * NOTE: an old comment stated this was "bad code",
+   * however it doesn't cause problems so leave as-is. */
+  CTX_wm_area_set(C, screen->areabase.first);
+
   return screen->areabase.first;
 }
 
@@ -1675,7 +1683,7 @@ void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)
 
     sad->region = CTX_wm_region(C);
     /* If start-frame is larger than current frame, we put current-frame on start-frame.
-     * note: first frame then is not drawn! (ton) */
+     * NOTE(ton): first frame then is not drawn! */
     if (PRVRANGEON) {
       if (scene->r.psfra > scene->r.cfra) {
         sad->sfra = scene->r.cfra;

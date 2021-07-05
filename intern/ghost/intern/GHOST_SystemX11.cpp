@@ -89,7 +89,7 @@
 /* see T34039 Fix Alt key glitch on Unity desktop */
 #define USE_UNITY_WORKAROUND
 
-/* Fix 'shortcut' part of keyboard reading code only ever using first defined keymap
+/* Fix 'shortcut' part of keyboard reading code only ever using first defined key-map
  * instead of active one. See T47228 and D1746 */
 #define USE_NON_LATIN_KB_WORKAROUND
 
@@ -302,9 +302,9 @@ GHOST_TUns8 GHOST_SystemX11::getNumDisplays() const
 void GHOST_SystemX11::getMainDisplayDimensions(GHOST_TUns32 &width, GHOST_TUns32 &height) const
 {
   if (m_display) {
-    /* note, for this to work as documented,
+    /* NOTE(campbell): for this to work as documented,
      * we would need to use Xinerama check r54370 for code that did this,
-     * we've since removed since its not worth the extra dep - campbell */
+     * we've since removed since its not worth the extra dependency. */
     getAllDisplayDimensions(width, height);
   }
 }
@@ -441,7 +441,8 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GLSettings glSetti
 
   for (int minor = 5; minor >= 0; --minor) {
 #if defined(WITH_GL_EGL)
-    context = new GHOST_ContextEGL(false,
+    context = new GHOST_ContextEGL(this,
+                                   false,
                                    EGLNativeWindowType(nullptr),
                                    EGLNativeDisplayType(m_display),
                                    profile_mask,
@@ -471,7 +472,8 @@ GHOST_IContext *GHOST_SystemX11::createOffscreenContext(GHOST_GLSettings glSetti
   }
 
 #if defined(WITH_GL_EGL)
-  context = new GHOST_ContextEGL(false,
+  context = new GHOST_ContextEGL(this,
+                                 false,
                                  EGLNativeWindowType(nullptr),
                                  EGLNativeDisplayType(m_display),
                                  profile_mask,
@@ -589,9 +591,7 @@ static void SleepTillEvent(Display *display, GHOST_TInt64 maxSleep)
   }
 }
 
-/* This function borrowed from Qt's X11 support
- * qclipboard_x11.cpp
- *  */
+/* This function borrowed from Qt's X11 support qclipboard_x11.cpp */
 struct init_timestamp_data {
   Time timestamp;
 };
@@ -1044,33 +1044,30 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
       GHOST_TKey gkey;
 
 #ifdef USE_NON_LATIN_KB_WORKAROUND
-      /* XXX Code below is kinda awfully convoluted... Issues are:
-       *
-       *     - In keyboards like latin ones, numbers need a 'Shift' to be accessed but key_sym
-       *       is unmodified (or anyone swapping the keys with xmodmap).
-       *
-       *     - XLookupKeysym seems to always use first defined keymap (see T47228), which generates
-       *       keycodes unusable by ghost_key_from_keysym for non-Latin-compatible keymaps.
+      /* XXX: Code below is kinda awfully convoluted... Issues are:
+       * - In keyboards like latin ones, numbers need a 'Shift' to be accessed but key_sym
+       *   is unmodified (or anyone swapping the keys with `xmodmap`).
+       * - #XLookupKeysym seems to always use first defined key-map (see T47228), which generates
+       *   key-codes unusable by ghost_key_from_keysym for non-Latin-compatible key-maps.
        *
        * To address this, we:
-       *
-       *     - Try to get a 'number' key_sym using XLookupKeysym (with virtual shift modifier),
-       *       in a very restrictive set of cases.
-       *     - Fallback to XLookupString to get a key_sym from active user-defined keymap.
+       * - Try to get a 'number' key_sym using #XLookupKeysym (with virtual shift modifier),
+       *   in a very restrictive set of cases.
+       * - Fallback to #XLookupString to get a key_sym from active user-defined key-map.
        *
        * Note that:
-       *     - This effectively 'lock' main number keys to always output number events
-       *       (except when using alt-gr).
-       *     - This enforces users to use an ASCII-compatible keymap with Blender -
-       *       but at least it gives predictable and consistent results.
+       * - This effectively 'lock' main number keys to always output number events
+       *   (except when using alt-gr).
+       * - This enforces users to use an ASCII-compatible key-map with Blender -
+       *   but at least it gives predictable and consistent results.
        *
        * Also, note that nothing in XLib sources [1] makes it obvious why those two functions give
-       * different key_sym results...
+       * different key_sym results.
        *
        * [1] http://cgit.freedesktop.org/xorg/lib/libX11/tree/src/KeyBind.c
        */
       KeySym key_sym_str;
-      /* Mode_switch 'modifier' is AltGr - when this one or Shift are enabled,
+      /* Mode_switch 'modifier' is `AltGr` - when this one or Shift are enabled,
        * we do not want to apply that 'forced number' hack. */
       const unsigned int mode_switch_mask = XkbKeysymToModifiers(xke->display, XK_Mode_switch);
       const unsigned int number_hack_forbidden_kmods_mask = mode_switch_mask | ShiftMask;
@@ -2563,7 +2560,7 @@ static bool is_filler_char(char c)
   return isspace(c) || c == '_' || c == '-' || c == ';' || c == ':';
 }
 
-/* These C functions are copied from Wine 3.12's wintab.c */
+/* These C functions are copied from Wine 3.12's `wintab.c` */
 static bool match_token(const char *haystack, const char *needle)
 {
   const char *h, *n;
@@ -2675,8 +2672,8 @@ void GHOST_SystemX11::refreshXInputDevices()
                   xtablet.PressureLevels = xvi->axes[2].max_value;
 
                   if (xvi->num_axes > 3) {
-                    /* this is assuming that the tablet has the same tilt resolution in both
-                     * positive and negative directions. It would be rather weird if it didn't.. */
+                    /* This is assuming that the tablet has the same tilt resolution in both
+                     * positive and negative directions. It would be rather weird if it didn't. */
                     xtablet.XtiltLevels = xvi->axes[3].max_value;
                     xtablet.YtiltLevels = xvi->axes[4].max_value;
                   }

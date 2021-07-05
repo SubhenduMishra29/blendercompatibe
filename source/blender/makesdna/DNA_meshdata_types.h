@@ -131,7 +131,7 @@ typedef struct MLoop {
 
 /**
  * Optionally store the order of selected elements.
- * This wont always be set since only some selection operations have an order.
+ * This won't always be set since only some selection operations have an order.
  *
  * Typically accessed from #Mesh.mselect
  */
@@ -152,7 +152,7 @@ enum {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Loop Tesselation Runtime Data
+/** \name Loop Tessellation Runtime Data
  * \{ */
 
 /**

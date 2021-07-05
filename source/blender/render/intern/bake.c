@@ -466,7 +466,16 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
   looptri = MEM_mallocN(sizeof(*looptri) * tottri, __func__);
   triangles = MEM_callocN(sizeof(TriTessFace) * tottri, __func__);
 
-  BKE_mesh_recalc_looptri(me->mloop, me->mpoly, me->mvert, me->totloop, me->totpoly, looptri);
+  const float(*precomputed_normals)[3] = CustomData_get_layer(&me->pdata, CD_NORMAL);
+  const bool calculate_normal = precomputed_normals ? false : true;
+
+  if (precomputed_normals != NULL) {
+    BKE_mesh_recalc_looptri_with_normals(
+        me->mloop, me->mpoly, me->mvert, me->totloop, me->totpoly, looptri, precomputed_normals);
+  }
+  else {
+    BKE_mesh_recalc_looptri(me->mloop, me->mpoly, me->mvert, me->totloop, me->totpoly, looptri);
+  }
 
   if (tangent) {
     BKE_mesh_ensure_normals_for_display(me_eval);
@@ -478,9 +487,6 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
 
     loop_normals = CustomData_get_layer(&me_eval->ldata, CD_NORMAL);
   }
-
-  const float(*precomputed_normals)[3] = CustomData_get_layer(&me->pdata, CD_NORMAL);
-  const bool calculate_normal = precomputed_normals ? false : true;
 
   for (i = 0; i < tottri; i++) {
     const MLoopTri *lt = &looptri[i];
@@ -544,7 +550,7 @@ bool RE_bake_pixels_populate_from_objects(struct Mesh *me_low,
   Mesh **me_highpoly;
   BVHTreeFromMesh *treeData;
 
-  /* Note: all coordinates are in local space */
+  /* NOTE: all coordinates are in local space. */
   TriTessFace *tris_low = NULL;
   TriTessFace *tris_cage = NULL;
   TriTessFace **tris_high;
@@ -577,7 +583,7 @@ bool RE_bake_pixels_populate_from_objects(struct Mesh *me_low,
     BKE_mesh_runtime_looptri_ensure(me_highpoly[i]);
 
     if (me_highpoly[i]->runtime.looptris.len != 0) {
-      /* Create a bvh-tree for each highpoly object */
+      /* Create a BVH-tree for each highpoly object. */
       BKE_bvhtree_from_mesh_get(&treeData[i], me_highpoly[i], BVHTREE_FROM_LOOPTRI, 2);
 
       if (treeData[i].tree == NULL) {
@@ -746,10 +752,10 @@ void RE_bake_pixels_populate(Mesh *me,
     for (int a = 0; a < 3; a++) {
       const float *uv = mloopuv[lt->tri[a]].uv;
 
-      /* Note, workaround for pixel aligned UVs which are common and can screw up our
+      /* NOTE(campbell): workaround for pixel aligned UVs which are common and can screw up our
        * intersection tests where a pixel gets in between 2 faces or the middle of a quad,
        * camera aligned quads also have this problem but they are less common.
-       * Add a small offset to the UVs, fixes bug T18685 - Campbell */
+       * Add a small offset to the UVs, fixes bug T18685. */
       vec[a][0] = uv[0] * (float)bd.bk_image->width - (0.5f + 0.001f);
       vec[a][1] = uv[1] * (float)bd.bk_image->height - (0.5f + 0.002f);
     }
@@ -918,7 +924,7 @@ void RE_bake_normal_world_to_tangent(const BakePixel pixel_array[],
     sign = (signs[0] * u + signs[1] * v + signs[2] * w) < 0 ? (-1.0f) : 1.0f;
 
     /* binormal */
-    /* B = sign * cross(N, T)  */
+    /* `B = sign * cross(N, T)` */
     cross_v3_v3v3(binormal, normal, tangent);
     mul_v3_fl(binormal, sign);
 

@@ -384,8 +384,9 @@ void BKE_particle_partdeflect_blend_read_lib(BlendLibReader *reader, ID *id, Par
 static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   ParticleSettings *part = (ParticleSettings *)id;
-  BLO_read_id_address(
-      reader, part->id.lib, &part->ipo); /* XXX deprecated - old animation system */
+
+  /* XXX: deprecated - old animation system. */
+  BLO_read_id_address(reader, part->id.lib, &part->ipo);
 
   BLO_read_id_address(reader, part->id.lib, &part->instance_object);
   BLO_read_id_address(reader, part->id.lib, &part->instance_collection);
@@ -1437,7 +1438,7 @@ static void do_particle_interpolation(ParticleSystem *psys,
   int point_vel = (point && point->keys->vel);
   float real_t, dfra, keytime, invdt = 1.0f;
 
-  /* billboards wont fill in all of these, so start cleared */
+  /* billboards won't fill in all of these, so start cleared */
   memset(keys, 0, sizeof(keys));
 
   /* interpret timing and find keys */
@@ -2461,7 +2462,7 @@ int do_guides(Depsgraph *depsgraph,
                                           (int)(data->strength * guidetime * 100.0f),
                                           100));
       }
-      else { /* curve size*/
+      else { /* Curve size. */
         if (cu->flag & CU_PATH_RADIUS) {
           mul_v3_fl(vec_to_point, radius);
         }
@@ -2810,7 +2811,7 @@ static void psys_task_init_path(ParticleTask *task, ParticleSimulationData *sim)
   task->rng_path = BLI_rng_new(seed);
 }
 
-/* note: this function must be thread safe, except for branching! */
+/* NOTE: this function must be thread safe, except for branching! */
 static void psys_thread_create_path(ParticleTask *task,
                                     struct ChildParticle *cpa,
                                     ParticleCacheKey *child_keys,
@@ -5399,8 +5400,8 @@ void BKE_particle_system_blend_read_lib(BlendLibReader *reader,
       BLO_read_id_address(reader, id->lib, &psys->target_ob);
 
       if (psys->clmd) {
-        /* XXX - from reading existing code this seems correct but intended usage of
-         * pointcache /w cloth should be added in 'ParticleSystem' - campbell */
+        /* XXX(campbell): from reading existing code this seems correct but intended usage of
+         * pointcache /w cloth should be added in 'ParticleSystem'. */
         psys->clmd->point_cache = psys->pointcache;
         psys->clmd->ptcaches.first = psys->clmd->ptcaches.last = NULL;
         BLO_read_id_address(reader, id->lib, &psys->clmd->coll_parms->group);

@@ -803,7 +803,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Sequence)) {
     /* Special case when we do this for 'Sequence.lock'.
-     * (if the sequence is locked, it wont be in "selected_editable_sequences"). */
+     * (if the sequence is locked, it won't be in "selected_editable_sequences"). */
     const char *prop_id = RNA_property_identifier(prop);
     if (STREQ(prop_id, "lock")) {
       *r_lb = CTX_data_collection_get(C, "selected_sequences");
@@ -921,7 +921,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
        * to handle situations like T41062... */
       if ((*r_path = RNA_path_resolve_from_type_to_property(ptr, prop, &RNA_Sequence)) != NULL) {
         /* Special case when we do this for 'Sequence.lock'.
-         * (if the sequence is locked, it wont be in "selected_editable_sequences"). */
+         * (if the sequence is locked, it won't be in "selected_editable_sequences"). */
         const char *prop_id = RNA_property_identifier(prop);
         if (STREQ(prop_id, "lock")) {
           *r_lb = CTX_data_collection_get(C, "selected_sequences");
@@ -1215,7 +1215,7 @@ static void UI_OT_jump_to_target_button(wmOperatorType *ot)
 
 /* ------------------------------------------------------------------------- */
 /* EditSource Utility funcs and operator,
- * note, this includes utility functions and button matching checks */
+ * NOTE: this includes utility functions and button matching checks. */
 
 typedef struct uiEditSourceStore {
   uiBut but_orig;
@@ -1340,7 +1340,7 @@ static int editsource_text_edit(bContext *C,
   txt_move_toline(text, line - 1, false);
 
   /* naughty!, find text area to set, not good behavior
-   * but since this is a dev tool lets allow it - campbell */
+   * but since this is a developer tool lets allow it - campbell */
   ScrArea *area = BKE_screen_find_big_area(CTX_wm_screen(C), SPACE_TEXT, 0);
   if (area) {
     SpaceText *st = area->spacedata.first;

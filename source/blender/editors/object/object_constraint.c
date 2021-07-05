@@ -547,7 +547,7 @@ static void test_constraint(
           else {
             Curve *cu = ct->tar->data;
 
-            /* auto-set 'Path' setting on curve so this works  */
+            /* auto-set 'Path' setting on curve so this works. */
             cu->flag |= CU_PATH;
           }
         }
@@ -1731,7 +1731,7 @@ static int pose_constraints_clear_exec(bContext *C, wmOperator *UNUSED(op))
   /* force depsgraph to get recalculated since relationships removed */
   DEG_relations_tag_update(bmain);
 
-  /* note, calling BIK_clear_data() isn't needed here */
+  /* NOTE: calling BIK_clear_data() isn't needed here. */
 
   return OPERATOR_FINISHED;
 }
@@ -1745,7 +1745,7 @@ void POSE_OT_constraints_clear(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = pose_constraints_clear_exec;
-  /* XXX - do we want to ensure there are selected bones too? */
+  /* XXX: do we want to ensure there are selected bones too? */
   ot->poll = ED_operator_object_active_local_editable_posemode_exclusive;
 }
 
@@ -1977,7 +1977,7 @@ static bool get_new_constraint_target(
             (!only_curve && !only_mesh)) {
 
           /* Only use the object & bone if the bone is visible & selected
-           * since we may have multiple objects in pose mode at once.  */
+           * since we may have multiple objects in pose mode at once. */
           bPoseChannel *pchan = BKE_pose_channel_active_or_first_selected(ob);
           if (pchan != NULL) {
             *tar_pchan = pchan;
@@ -2100,7 +2100,7 @@ static int constraint_add_exec(
     }
   }
 
-  /* do type-specific tweaking to the constraint settings  */
+  /* Do type-specific tweaking to the constraint settings. */
   switch (type) {
     case CONSTRAINT_TYPE_PYTHON: /* FIXME: this code is not really valid anymore */
     {
@@ -2461,7 +2461,7 @@ static int pose_ik_clear_exec(bContext *C, wmOperator *UNUSED(op))
       /* Refresh depsgraph. */
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
-      /* Note, notifier might evolve. */
+      /* NOTE: notifier might evolve. */
       WM_event_add_notifier(C, NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, ob);
     }
   }

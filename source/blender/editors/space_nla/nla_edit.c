@@ -65,7 +65,7 @@
 #include "UI_view2d.h"
 
 #include "nla_intern.h"  /* own include */
-#include "nla_private.h" /* FIXME... maybe this shouldn't be included? */
+#include "nla_private.h" /* FIXME: maybe this shouldn't be included? */
 
 /* -------------------------------------------------------------------- */
 /** \name Public Utilities
@@ -1157,7 +1157,7 @@ static int nlaedit_duplicate_exec(bContext *C, wmOperator *op)
     NlaStrip *strip, *nstrip, *next;
     NlaTrack *track;
 
-    /* Note: We allow this operator in override context because it is almost always (from possible
+    /* NOTE: We allow this operator in override context because it is almost always (from possible
      * default user interactions) paired with the transform one, which will ensure that the new
      * strip ends up in a valid (local) track. */
 
@@ -1397,7 +1397,7 @@ static void nlaedit_split_strip_actclip(
   nstrip->start = splitframe;
 
   if ((splitaframe > strip->actstart) && (splitaframe < strip->actend)) {
-    /* only do this if we're splitting down the middle...  */
+    /* only do this if we're splitting down the middle... */
     strip->actend = splitaframe;
     nstrip->actstart = splitaframe;
   }
@@ -1412,7 +1412,7 @@ static void nlaedit_split_strip_actclip(
 /* split a given Meta strip */
 static void nlaedit_split_strip_meta(NlaTrack *nlt, NlaStrip *strip)
 {
-  /* simply ungroup it for now...  */
+  /* simply ungroup it for now... */
   BKE_nlastrips_clear_metastrip(&nlt->strips, strip);
 }
 
@@ -1528,7 +1528,7 @@ static int nlaedit_toggle_mute_exec(bContext *C, wmOperator *UNUSED(op))
     NlaTrack *nlt = (NlaTrack *)ale->data;
     NlaStrip *strip;
 
-    /* for every selected strip, toggle muting  */
+    /* For every selected strip, toggle muting. */
     for (strip = nlt->strips.first; strip; strip = strip->next) {
       if (strip->flag & NLASTRIP_FLAG_SELECT) {
         /* just flip the mute flag for now */

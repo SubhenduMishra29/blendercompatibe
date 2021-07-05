@@ -36,7 +36,7 @@
 /* Returns the normal plane in NDC space. */
 static void gpencil_depth_plane(Object *ob, float r_plane[4])
 {
-  /* TODO put that into private data. */
+  /* TODO: put that into private data. */
   float viewinv[4][4];
   DRW_view_viewmat_get(NULL, viewinv, true);
   float *camera_z_axis = viewinv[2];
@@ -77,7 +77,7 @@ static void gpencil_depth_plane(Object *ob, float r_plane[4])
 
   transpose_m4(mat);
   /* mat is now a "normal" matrix which will transform
-   * BBox space normal to world space.  */
+   * BBox space normal to world space. */
   mul_mat3_m4_v3(mat, r_plane);
   normalize_v3(r_plane);
 
@@ -92,7 +92,7 @@ void OVERLAY_outline_init(OVERLAY_Data *vedata)
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
   if (DRW_state_is_fbo()) {
-    /* TODO only alloc if needed. */
+    /* TODO: only alloc if needed. */
     DRW_texture_ensure_fullscreen_2d(&txl->temp_depth_tx, GPU_DEPTH24_STENCIL8, 0);
     DRW_texture_ensure_fullscreen_2d(&txl->outlines_id_tx, GPU_R16UI, 0);
 

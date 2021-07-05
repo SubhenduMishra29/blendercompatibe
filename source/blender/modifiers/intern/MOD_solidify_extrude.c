@@ -199,7 +199,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
   const uint numLoops = (uint)mesh->totloop;
   uint newLoops = 0, newPolys = 0, newEdges = 0, newVerts = 0, rimVerts = 0;
 
-  /* only use material offsets if we have 2 or more materials  */
+  /* Only use material offsets if we have 2 or more materials. */
   const short mat_nr_max = ctx->object->totcol > 1 ? ctx->object->totcol - 1 : 0;
   const short mat_ofs = mat_nr_max ? smd->mat_ofs : 0;
   const short mat_ofs_rim = mat_nr_max ? smd->mat_ofs_rim : 0;
@@ -424,7 +424,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
     CustomData_copy_data(&mesh->pdata, &result->pdata, 0, 0, (int)numPolys);
   }
 
-  /* initializes: (i_end, do_shell_align, mv)  */
+  /* initializes: (i_end, do_shell_align, mv). */
 #define INIT_VERT_ARRAY_OFFSETS(test) \
   if (((ofs_new >= ofs_orig) == do_flip) == test) { \
     i_end = numVerts; \
@@ -505,7 +505,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
     }
   }
 
-  /* note, copied vertex layers don't have flipped normals yet. do this after applying offset */
+  /* NOTE: copied vertex layers don't have flipped normals yet. do this after applying offset. */
   if ((smd->flag & MOD_SOLIDIFY_EVEN) == 0) {
     /* no even thickness, very simple */
     float scalar_short;
@@ -1200,7 +1200,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
         short *nor_short;
         int k;
 
-        /* note, only the first vertex (lower half of the index) is calculated */
+        /* NOTE: only the first vertex (lower half of the index) is calculated. */
         BLI_assert(ed->v1 < numVerts);
         normalize_v3_v3(nor_cpy, edge_vert_nos[ed_orig->v1]);
 

@@ -567,7 +567,7 @@ static BMOpDefine bmo_contextual_create_def = {
   },
   /* slots_out */
   {{"faces.out", BMO_OP_SLOT_ELEMENT_BUF, {BM_FACE}}, /* newly-made face(s) */
-  /* note, this is for stand-alone edges only, not edges which are a part of newly created faces */
+  /* NOTE: this is for stand-alone edges only, not edges which are a part of newly created faces. */
    {"edges.out", BMO_OP_SLOT_ELEMENT_BUF, {BM_EDGE}}, /* newly-made edge(s) */
    {{'\0'}},
   },
@@ -1337,7 +1337,7 @@ static BMOpDefine bmo_bisect_plane_def = {
    {{'\0'}},
   },
   {{"geom_cut.out", BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT | BM_EDGE}},  /* output geometry aligned with the plane (new and existing) */
-   {"geom.out",     BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT | BM_EDGE | BM_FACE}},  /* input and output geometry (result of cut)  */
+   {"geom.out",     BMO_OP_SLOT_ELEMENT_BUF, {BM_VERT | BM_EDGE | BM_FACE}},  /* input and output geometry (result of cut). */
    {{'\0'}}},
   bmo_bisect_plane_exec,
   (BMO_OPTYPE_FLAG_UNTAN_MULTIRES |

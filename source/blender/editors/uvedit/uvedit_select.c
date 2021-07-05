@@ -1296,7 +1296,7 @@ static int uv_select_edgering(
         l_step = uvedit_loop_find_other_radial_loop_with_visible_face(
             scene, l_step_opposite, cd_loop_uv_offset);
         if (l_step == NULL) {
-          /* Ensure we touch the opposite edge if we cant walk over it. */
+          /* Ensure we touch the opposite edge if we can't walk over it. */
           l_step = l_step_opposite;
         }
       }
@@ -1351,7 +1351,7 @@ static void uv_select_linked_multi(Scene *scene,
 
     BM_mesh_elem_table_ensure(em->bm, BM_FACE); /* we can use this too */
 
-    /* Note, we had 'use winding' so we don't consider overlapping islands as connected, see T44320
+    /* NOTE: we had 'use winding' so we don't consider overlapping islands as connected, see T44320
      * this made *every* projection split the island into front/back islands.
      * Keep 'use_winding' to false, see: T50970.
      *

@@ -95,8 +95,11 @@ BLI_INLINE void bmesh_calc_tessellation_for_face_impl(BMLoop *(*looptris)[3],
             efa->no, l_ptr_a[0]->v->co, l_ptr_a[1]->v->co, l_ptr_a[2]->v->co, l_ptr_b[2]->v->co);
       }
 
-      if (UNLIKELY(is_quad_flip_v3_first_third_fast(
-              l_ptr_a[0]->v->co, l_ptr_a[1]->v->co, l_ptr_a[2]->v->co, l_ptr_b[2]->v->co))) {
+      if (UNLIKELY(is_quad_flip_v3_first_third_fast_with_normal(l_ptr_a[0]->v->co,
+                                                                l_ptr_a[1]->v->co,
+                                                                l_ptr_a[2]->v->co,
+                                                                l_ptr_b[2]->v->co,
+                                                                efa->no))) {
         /* Flip out of degenerate 0-2 state. */
         l_ptr_a[2] = l_ptr_b[2];
         l_ptr_b[0] = l_ptr_a[1];
@@ -403,6 +406,10 @@ void BM_mesh_calc_tessellation_with_partial_ex(BMesh *bm,
                                                const struct BMeshCalcTessellation_Params *params)
 {
   BLI_assert(bmpinfo->params.do_tessellate);
+  /* While harmless, exit early if there is nothing to do (avoids ensuring the index). */
+  if (UNLIKELY(bmpinfo->faces_len == 0)) {
+    return;
+  }
 
   BM_mesh_elem_index_ensure(bm, BM_LOOP | BM_FACE);
 

@@ -47,7 +47,7 @@
 /**
  * \section dna_genfile Overview
  *
- * - please note: no builtin security to detect input of double structs
+ * - please NOTE: no builtin security to detect input of double structs
  * - if you want a struct not to be in DNA file: add two hash marks above it `(#<enter>#<enter>)`.
  *
  * Structure DNA data is added to each blender file and to each executable, this to detect
@@ -855,7 +855,7 @@ static void cast_pointer_64_to_32(const int array_len,
                                   uint32_t *new_data)
 {
   /* WARNING: 32-bit Blender trying to load file saved by 64-bit Blender,
-   * pointers may lose uniqueness on truncation! (Hopefully this wont
+   * pointers may lose uniqueness on truncation! (Hopefully this won't
    * happen unless/until we ever get to multi-gigabyte .blend files...) */
   for (int a = 0; a < array_len; a++) {
     new_data[a] = old_data[a] >> 3;
@@ -1060,7 +1060,7 @@ void DNA_struct_switch_endian(const SDNA *sdna, int struct_nr, char *data)
           }
           case SDNA_TYPE_INT:
           case SDNA_TYPE_FLOAT: {
-            /* Note, intentionally ignore long/ulong, because these could be 4 or 8 bytes.
+            /* NOTE: intentionally ignore long/ulong, because these could be 4 or 8 bytes.
              * Fortunately, we only use these types for runtime variables and only once for a
              * struct type that is no longer used. */
             BLI_endian_switch_int32_array((int32_t *)member_data, member_array_length);

@@ -398,7 +398,7 @@ static void ntree_shader_groups_expand_inputs(bNodeTree *localtree)
         if (socket->link != NULL && !(socket->link->flag & NODE_LINK_MUTED)) {
           bNodeLink *link = socket->link;
           /* Fix the case where the socket is actually converting the data. (see T71374)
-           * We only do the case of lossy conversion to float.*/
+           * We only do the case of lossy conversion to float. */
           if ((socket->type == SOCK_FLOAT) && (link->fromsock->type != link->tosock->type)) {
             if (link->fromsock->type == SOCK_RGBA) {
               bNode *tmp = nodeAddStaticNode(NULL, localtree, SH_NODE_RGBTOBW);
@@ -790,7 +790,7 @@ static void ntree_shader_relink_displacement(bNodeTree *ntree, bNode *output_nod
    */
   nodeAddLink(ntree, displacement_node, displacement_socket, bump_node, bump_input_socket);
 
-  /* Tag as part of the new displacmeent tree. */
+  /* Tag as part of the new displacement tree. */
   dot_node->tmp_flag = -2;
   geo_node->tmp_flag = -2;
   bump_node->tmp_flag = -2;

@@ -816,7 +816,7 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list)
       /* only consider constraint if it is enabled, and has influence on result */
       if ((con->flag & CONSTRAINT_DISABLE) == 0 && (con->enforce != 0.0f)) {
         /* (affirmative) returns for specific constraints here... */
-        /* constraints that require this regardless  */
+        /* constraints that require this regardless. */
         if (ELEM(con->type,
                  CONSTRAINT_TYPE_FOLLOWPATH,
                  CONSTRAINT_TYPE_CLAMPTO,
@@ -849,8 +849,11 @@ bool constraints_list_needinv(TransInfo *t, ListBase *list)
           /* Copy Transforms constraint only does this in the Before mode. */
           bTransLikeConstraint *data = (bTransLikeConstraint *)con->data;
 
-          if (ELEM(data->mix_mode, TRANSLIKE_MIX_BEFORE) &&
+          if (ELEM(data->mix_mode, TRANSLIKE_MIX_BEFORE, TRANSLIKE_MIX_BEFORE_FULL) &&
               ELEM(t->mode, TFM_ROTATION, TFM_TRANSLATION)) {
+            return true;
+          }
+          if (ELEM(data->mix_mode, TRANSLIKE_MIX_BEFORE_SPLIT) && ELEM(t->mode, TFM_ROTATION)) {
             return true;
           }
         }

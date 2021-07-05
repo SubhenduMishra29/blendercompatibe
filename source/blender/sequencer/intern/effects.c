@@ -2414,19 +2414,19 @@ static void transform_image(int x,
 
   for (int yi = start_line; yi < start_line + total_lines; yi++) {
     for (int xi = 0; xi < x; xi++) {
-      /* translate point */
+      /* Translate point. */
       float xt = xi - translate_x;
       float yt = yi - translate_y;
 
-      /* rotate point with center ref */
+      /* Rotate point with center ref. */
       float xr = c * xt + s * yt;
       float yr = -s * xt + c * yt;
 
-      /* scale point with center ref */
+      /* Scale point with center ref. */
       xt = xr / scale_x;
       yt = yr / scale_y;
 
-      /* undo reference center point  */
+      /* Undo reference center point. */
       xt += (x / 2.0f);
       yt += (y / 2.0f);
 
@@ -2651,7 +2651,7 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
   swap = temp;
   temp = map; /* map = swap; */ /* UNUSED */
 
-  /* Tidy up   */
+  /* Tidy up. */
   MEM_freeN(filter);
   MEM_freeN(temp);
 }
@@ -3187,8 +3187,8 @@ void seq_effect_speed_rebuild_map(Scene *scene, Sequence *seq, bool force)
     return;
   }
 
-  /* XXX - new in 2.5x. should we use the animation system this way?
-   * The fcurve is needed because many frames need evaluating at once - campbell */
+  /* XXX(campbell): new in 2.5x. should we use the animation system this way?
+   * The fcurve is needed because many frames need evaluating at once. */
   fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "speed_factor", 0, NULL);
   if (!v->frameMap || v->length != seq->len) {
     if (v->frameMap) {
@@ -3214,7 +3214,7 @@ void seq_effect_speed_rebuild_map(Scene *scene, Sequence *seq, bool force)
   else {
     /* if there is no fcurve, use value as simple multiplier */
     if (!fcu) {
-      fallback_fac = seq->speed_fader; /* same as speed_factor in rna*/
+      fallback_fac = seq->speed_fader; /* Same as speed_factor in RNA. */
     }
   }
 

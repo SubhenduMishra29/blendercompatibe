@@ -699,7 +699,7 @@ static void drw_shgroup_bone_ik_spline_lines(ArmatureDrawContext *ctx,
 /* -------------------------------------------------------------------- */
 /** \name Drawing Theme Helpers
  *
- * Note, this section is duplicate of code in 'drawarmature.c'.
+ * \note this section is duplicate of code in 'drawarmature.c'.
  *
  * \{ */
 
@@ -1036,7 +1036,7 @@ static void draw_bone_update_disp_matrix_default(EditBone *eBone, bPoseChannel *
   float(*disp_mat)[4];
   float(*disp_tail_mat)[4];
 
-  /* TODO : This should be moved to depsgraph or armature refresh
+  /* TODO: This should be moved to depsgraph or armature refresh
    * and not be tight to the draw pass creation.
    * This would refresh armature without invalidating the draw cache */
   if (pchan) {
@@ -1200,9 +1200,9 @@ static void draw_bone_update_disp_matrix_bbone(EditBone *eBone, bPoseChannel *pc
   float(*bone_mat)[4];
   short bbone_segments;
 
-  /* TODO : This should be moved to depsgraph or armature refresh
+  /* TODO: This should be moved to depsgraph or armature refresh
    * and not be tight to the draw pass creation.
-   * This would refresh armature without invalidating the draw cache */
+   * This would refresh armature without invalidating the draw cache. */
   if (pchan) {
     length = pchan->bone->length;
     xwidth = pchan->bone->xwidth;
@@ -1268,7 +1268,7 @@ static void draw_bone_update_disp_matrix_custom(bPoseChannel *pchan)
   float(*disp_tail_mat)[4];
   float rot_mat[3][3];
 
-  /* See TODO above */
+  /* See TODO: above. */
   mul_v3_v3fl(bone_scale, pchan->custom_scale_xyz, PCHAN_CUSTOM_BONE_LENGTH(pchan));
   bone_mat = pchan->custom_tx ? pchan->custom_tx->pose_mat : pchan->pose_mat;
   disp_mat = pchan->disp_mat;
@@ -1889,7 +1889,7 @@ static void draw_bone_name(ArmatureDrawContext *ctx,
   bool highlight = (pchan && (arm->flag & ARM_POSEMODE) && (boneflag & BONE_SELECTED)) ||
                    (eBone && (eBone->flag & BONE_SELECTED));
 
-  /* Color Management: Exception here as texts are drawn in sRGB space directly.  */
+  /* Color Management: Exception here as texts are drawn in sRGB space directly. */
   UI_GetThemeColor4ubv(highlight ? TH_TEXT_HI : TH_TEXT, color);
 
   float *head = pchan ? pchan->pose_head : eBone->head;
@@ -2018,7 +2018,7 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
                  ((draw_ctx->object_mode == OB_MODE_OBJECT) &&
                   (scene->toolsettings->object_flag & SCE_OBJECT_MODE_LOCK) == 0) ||
                  /* Allow selection when in weight-paint mode
-                  * (selection code ensures this wont become active). */
+                  * (selection code ensures this won't become active). */
                  ((draw_ctx->object_mode & OB_MODE_ALL_WEIGHT_PAINT) &&
                   (draw_ctx->object_pose != NULL))))) &&
         DRW_state_is_select();

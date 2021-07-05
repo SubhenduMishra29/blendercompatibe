@@ -262,7 +262,7 @@ static AdrBit2Path *adrcode_bitmaps_to_paths(int blocktype, int adrcode, int *to
 /* Object types */
 static const char *ob_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -377,7 +377,7 @@ static const char *ob_adrcodes_to_paths(int adrcode, int *array_index)
  */
 static const char *pchan_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -434,7 +434,7 @@ static const char *pchan_adrcodes_to_paths(int adrcode, int *array_index)
 /* Constraint types */
 static const char *constraint_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -605,7 +605,7 @@ static const char *mtex_adrcodes_to_paths(int adrcode, int *UNUSED(array_index))
 /* Texture types */
 static const char *texture_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -692,7 +692,7 @@ static const char *texture_adrcodes_to_paths(int adrcode, int *array_index)
 /* Material Types */
 static const char *material_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -785,7 +785,7 @@ static const char *material_adrcodes_to_paths(int adrcode, int *array_index)
 /* Camera Types */
 static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -830,7 +830,7 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
 /* Light Types */
 static const char *light_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -875,7 +875,7 @@ static const char *light_adrcodes_to_paths(int adrcode, int *array_index)
 /* Sound Types */
 static const char *sound_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -901,7 +901,7 @@ static const char *sound_adrcodes_to_paths(int adrcode, int *array_index)
 /* World Types */
 static const char *world_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -947,7 +947,7 @@ static const char *world_adrcodes_to_paths(int adrcode, int *array_index)
 /* Particle Types */
 static const char *particle_adrcodes_to_paths(int adrcode, int *array_index)
 {
-  /* set array index like this in-case nothing sets it correctly  */
+  /* Set array index like this in-case nothing sets it correctly. */
   *array_index = 0;
 
   /* result depends on adrcode */
@@ -1135,7 +1135,7 @@ static char *get_rna_access(ID *id,
       /* special case for rotdiff drivers... we don't need a property for this... */
       break;
 
-    /* TODO... add other blocktypes... */
+    /* TODO: add other block-types. */
     default:
       CLOG_WARN(&LOG, "No path for blocktype %d, adrcode %d yet", blocktype, adrcode);
       break;
@@ -1162,7 +1162,7 @@ static char *get_rna_access(ID *id,
 
   /* 'buf' _must_ be initialized in this block */
   /* append preceding bits to path */
-  /* note, strings are not escapted and they should be! */
+  /* NOTE: strings are not escapted and they should be! */
   if ((actname && actname[0]) && (constname && constname[0])) {
     /* Constraint in Pose-Channel */
     char actname_esc[sizeof(((bActionChannel *)NULL)->name) * 2];
@@ -1305,7 +1305,7 @@ static ChannelDriver *idriver_to_cdriver(IpoDriver *idriver)
         dtar = &dvar->targets[1];
         dtar->id = (ID *)idriver->ob;
         dtar->idtype = ID_OB;
-        if (idriver->name[0]) { /* xxx... for safety */
+        if (idriver->name[0]) { /* XXX: for safety. */
           BLI_strncpy(
               dtar->pchan_name, idriver->name + DRIVER_NAME_OFFS, sizeof(dtar->pchan_name));
         }
@@ -1358,12 +1358,12 @@ static void fcurve_add_to_list(
     bActionGroup *agrp = NULL;
 
     /* init the temp action */
-    memset(&tmp_act, 0, sizeof(bAction)); /* XXX only enable this line if we get errors */
+    memset(&tmp_act, 0, sizeof(bAction)); /* XXX: Only enable this line if we get errors. */
     tmp_act.groups.first = groups->first;
     tmp_act.groups.last = groups->last;
     tmp_act.curves.first = list->first;
     tmp_act.curves.last = list->last;
-    /* ... xxx, the other vars don't need to be filled in */
+    /* XXX: The other vars don't need to be filled in. */
 
     /* get the group to use */
     agrp = BKE_action_group_find_name(&tmp_act, grpname);

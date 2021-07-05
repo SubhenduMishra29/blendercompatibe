@@ -187,7 +187,7 @@ static void view_pan_apply(bContext *C, wmOperator *op)
   view_pan_apply_ex(C, vpd, RNA_int_get(op->ptr, "deltax"), RNA_int_get(op->ptr, "deltay"));
 }
 
-/* cleanup temp customdata  */
+/* Cleanup temp custom-data. */
 static void view_pan_exit(wmOperator *op)
 {
   MEM_SAFE_FREE(op->customdata);
@@ -271,7 +271,7 @@ static int view_pan_modal(bContext *C, wmOperator *op, const wmEvent *event)
       view_pan_apply(C, op);
       break;
     }
-    /* XXX - Mode switching isn't implemented. See comments in 36818.
+    /* XXX: Mode switching isn't implemented. See comments in 36818.
      * switch to zoom */
 #if 0
     case LEFTMOUSE:
@@ -805,7 +805,7 @@ static void view_zoomstep_apply(bContext *C, wmOperator *op)
 /** \name View Zoom Operator (single step)
  * \{ */
 
-/* cleanup temp customdata  */
+/* Cleanup temp custom-data. */
 static void view_zoomstep_exit(wmOperator *op)
 {
   UI_view2d_zoom_cache_reset();
@@ -1034,7 +1034,7 @@ static void view_zoomdrag_apply(bContext *C, wmOperator *op)
   UI_view2d_sync(CTX_wm_screen(C), CTX_wm_area(C), v2d, V2D_LOCK_COPY);
 }
 
-/* cleanup temp customdata  */
+/* Cleanup temp custom-data. */
 static void view_zoomdrag_exit(bContext *C, wmOperator *op)
 {
   UI_view2d_zoom_cache_reset();
@@ -1527,7 +1527,7 @@ struct SmoothView2DStore {
 /**
  * function to get a factor out of a rectangle
  *
- * note: this doesn't always work as well as it might because the target size
+ * NOTE: this doesn't always work as well as it might because the target size
  *       may not be reached because of clamping the desired rect, we _could_
  *       attempt to clamp the rect before working out the zoom factor but its
  *       not really worthwhile for the few cases this happens.
@@ -1914,7 +1914,7 @@ static void scroller_activate_init(bContext *C,
   ED_region_tag_redraw_no_rebuild(region);
 }
 
-/* cleanup temp customdata  */
+/* Cleanup temp custom-data. */
 static void scroller_activate_exit(bContext *C, wmOperator *op)
 {
   if (op->customdata) {
@@ -2056,7 +2056,7 @@ static int scroller_activate_modal(bContext *C, wmOperator *op, const wmEvent *e
           return OPERATOR_FINISHED;
         }
 
-        /* otherwise, end the drag action  */
+        /* Otherwise, end the drag action. */
         if (vsm->lastx || vsm->lasty) {
           scroller_activate_exit(C, op);
           return OPERATOR_FINISHED;
@@ -2132,7 +2132,7 @@ static int scroller_activate_invoke(bContext *C, wmOperator *op, const wmEvent *
       scroller_activate_exit(C, op);
 
       /* can't catch this event for ourselves, so let it go to someone else? */
-      /* XXX note: if handlers use mask rect to clip input, input will fail for this case */
+      /* XXX NOTE: if handlers use mask rect to clip input, input will fail for this case. */
       return OPERATOR_PASS_THROUGH;
     }
 

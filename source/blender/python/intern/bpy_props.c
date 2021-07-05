@@ -210,7 +210,7 @@ static const EnumPropertyItem property_subtype_array_items[] = {
 /**
  * Store #PyObject data for a dynamically defined property.
  * Currently this is only used to store call-back functions.
- * Properties that don't use custom-callbacks wont allocate this struct.
+ * Properties that don't use custom callbacks won't allocate this struct.
  *
  * Memory/Reference Management
  * ---------------------------
@@ -1784,7 +1784,7 @@ static const EnumPropertyItem *enum_items_from_py(PyObject *seq_fast,
         (tmp.identifier = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(item, 0), &id_str_size)) &&
         (tmp.name = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(item, 1), &name_str_size)) &&
         (tmp.description = PyUnicode_AsUTF8AndSize(PyTuple_GET_ITEM(item, 2), &desc_str_size)) &&
-        /* TODO, number isn't ensured to be unique from the script author */
+        /* TODO: number isn't ensured to be unique from the script author. */
         (item_size != 4 || py_long_as_int(PyTuple_GET_ITEM(item, 3), &tmp.value)) &&
         (item_size != 5 || ((py_long_as_int(PyTuple_GET_ITEM(item, 3), &tmp.icon) ||
                              (tmp_icon = PyUnicode_AsUTF8(PyTuple_GET_ITEM(item, 3)))) &&
@@ -2264,7 +2264,7 @@ static void bpy_prop_callback_assign_enum(struct PropertyRNA *prop,
   } \
   (void)0
 
-/* terse macros for error checks shared between all funcs cant use function
+/* terse macros for error checks shared between all funcs can't use function
  * calls because of static strings passed to pyrna_set_to_enum_bitfield */
 #define BPY_PROPDEF_CHECK(_func, _property_flag_items, _property_flag_override_items) \
   if (UNLIKELY(id_len >= MAX_IDPROP_NAME)) { \
@@ -3509,7 +3509,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
       if (def) {
         /* Only support getting integer default values here. */
         if (!py_long_as_int(def, &defvalue)) {
-          /* note, using type error here is odd but python does this for invalid arguments */
+          /* NOTE: using type error here is odd but python does this for invalid arguments. */
           PyErr_SetString(
               PyExc_TypeError,
               "EnumProperty(...): 'default' can only be an integer when 'items' is a function");
@@ -3557,7 +3557,7 @@ static PyObject *BPy_EnumProperty(PyObject *self, PyObject *args, PyObject *kw)
     RNA_def_property_duplicate_pointers(srna, prop);
 
     if (is_itemf == false) {
-      /* note: this must be postponed until after #RNA_def_property_duplicate_pointers
+      /* NOTE: this must be postponed until after #RNA_def_property_duplicate_pointers
        * otherwise if this is a generator it may free the strings before we copy them */
       Py_DECREF(items_fast);
 

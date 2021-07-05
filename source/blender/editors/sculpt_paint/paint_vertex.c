@@ -179,7 +179,7 @@ static MDeformVert *defweight_prev_init(MDeformVert *dvert_prev,
  * (without evaluating modifiers) */
 static bool vertex_paint_use_fast_update_check(Object *ob)
 {
-  Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
+  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
 
   if (me_eval != NULL) {
     Mesh *me = BKE_mesh_from_object(ob);
@@ -725,7 +725,7 @@ typedef struct WeightPaintInfo {
    * length of defbase_tot */
   const bool *lock_flags;
   /* boolean array for selected bones,
-   * length of defbase_tot, cant be const because of how its passed */
+   * length of defbase_tot, can't be const because of how it's passed */
   const bool *defbase_sel;
   /* same as WeightPaintData.vgroup_validmap,
    * only added here for convenience */
@@ -917,7 +917,7 @@ static void do_weight_paint_vertex_single(
        * 'resist' so you couldn't instantly zero out other weights by painting 1.0 on the active.
        *
        * However this gave a problem since applying mirror, then normalize both verts
-       * the resulting weight wont match on both sides.
+       * the resulting weight won't match on both sides.
        *
        * If this 'resisting', slower normalize is nicer, we could call
        * do_weight_paint_normalize_all() and only use...
@@ -941,13 +941,13 @@ static void do_weight_paint_vertex_single(
            * - Auto normalize is enabled.
            * - The group you are painting onto has a L / R version.
            *
-           * We want L/R vgroups to have the same weight but this cant be if both are over 0.5,
+           * We want L/R vgroups to have the same weight but this can't be if both are over 0.5,
            * We _could_ have special check for that, but this would need its own
            * normalize function which holds 2 groups from changing at once.
            *
            * So! just balance out the 2 weights, it keeps them equal and everything normalized.
            *
-           * While it wont hit the desired weight immediately as the user waggles their mouse,
+           * While it won't hit the desired weight immediately as the user waggles their mouse,
            * constant painting and re-normalizing will get there. this is also just simpler logic.
            * - campbell */
           dw_mirr->weight = dw->weight = (dw_mirr->weight + dw->weight) * 0.5f;
@@ -996,7 +996,7 @@ static void do_weight_paint_vertex_multi(
       dv, wpi->defbase_tot, wpi->defbase_sel, wpi->defbase_tot_sel, wpi->is_normalized);
 
   if (curw == 0.0f) {
-    /* note: no weight to assign to this vertex, could add all groups? */
+    /* NOTE: no weight to assign to this vertex, could add all groups? */
     return;
   }
 
@@ -2025,7 +2025,7 @@ static void do_wpaint_brush_draw_task_cb_ex(void *__restrict userdata,
 
   const Brush *brush = data->brush;
   const StrokeCache *cache = ss->cache;
-  /* note: normally `BKE_brush_weight_get(scene, brush)` is used,
+  /* NOTE: normally `BKE_brush_weight_get(scene, brush)` is used,
    * however in this case we calculate a new weight each time. */
   const float paintweight = data->strength;
   float brush_size_pressure, brush_alpha_value, brush_alpha_pressure;
@@ -2046,7 +2046,7 @@ static void do_wpaint_brush_draw_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
     /* Test to see if the vertex coordinates are within the spherical brush region. */
     if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-      /* Note: grids are 1:1 with corners (aka loops).
+      /* NOTE: grids are 1:1 with corners (aka loops).
        * For multires, take the vert whose loop corresponds to the current grid.
        * Otherwise, take the current vert. */
       const int v_index = has_grids ? data->me->mloop[vd.grid_indices[vd.g]].v :
@@ -2750,11 +2750,11 @@ static bool vpaint_stroke_test_start(bContext *C, struct wmOperator *op, const f
    * if not we can skip face map trickiness */
   if (vertex_paint_use_fast_update_check(ob)) {
     vpd->use_fast_update = true;
-    /*      printf("Fast update!\n");*/
+    // printf("Fast update!\n");
   }
   else {
     vpd->use_fast_update = false;
-    /*      printf("No fast update!\n");*/
+    // printf("No fast update!\n");
   }
 
   /* to keep tracked of modified loops for shared vertex color blending */
@@ -2885,7 +2885,7 @@ static void do_vpaint_brush_draw_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
     /* Test to see if the vertex coordinates are within the spherical brush region. */
     if (sculpt_brush_test_sq_fn(&test, vd.co)) {
-      /* Note: Grids are 1:1 with corners (aka loops).
+      /* NOTE: Grids are 1:1 with corners (aka loops).
        * For grid based pbvh, take the vert whose loop corresponds to the current grid.
        * Otherwise, take the current vert. */
       const int v_index = has_grids ? data->me->mloop[vd.grid_indices[vd.g]].v :
@@ -2912,7 +2912,7 @@ static void do_vpaint_brush_draw_task_cb_ex(void *__restrict userdata,
           /* If we're painting with a texture, sample the texture color and alpha. */
           float tex_alpha = 1.0;
           if (data->vpd->is_texbrush) {
-            /* Note: we may want to paint alpha as vertex color alpha. */
+            /* NOTE: we may want to paint alpha as vertex color alpha. */
             tex_alpha = tex_color_alpha_ubyte(
                 data, data->vpd->vertexcosnos[v_index].co, &color_final);
           }

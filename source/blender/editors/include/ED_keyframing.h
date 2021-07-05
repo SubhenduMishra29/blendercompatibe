@@ -434,7 +434,7 @@ void ANIM_copy_as_driver(struct ID *target_id, const char *target_path, const ch
 /* check if auto-keyframing is enabled (per scene takes precedence) */
 #define IS_AUTOKEY_ON(scene) \
   ((scene) ? ((scene)->toolsettings->autokey_mode & AUTOKEY_ON) : (U.autokey_mode & AUTOKEY_ON))
-/* check the mode for auto-keyframing (per scene takes precedence)  */
+/* Check the mode for auto-keyframing (per scene takes precedence). */
 #define IS_AUTOKEY_MODE(scene, mode) \
   ((scene) ? ((scene)->toolsettings->autokey_mode == AUTOKEY_MODE_##mode) : \
              (U.autokey_mode == AUTOKEY_MODE_##mode))
@@ -452,7 +452,7 @@ bool autokeyframe_cfra_can_key(const struct Scene *scene, struct ID *id);
 /* Lesser Keyframe Checking API call:
  * - Used for the buttons to check for keyframes...
  */
-bool fcurve_frame_has_keyframe(struct FCurve *fcu, float frame, short filter);
+bool fcurve_frame_has_keyframe(const struct FCurve *fcu, float frame, short filter);
 
 /* Lesser Keyframe Checking API call:
  * - Returns whether the current value of a given property differs from the interpolated value.

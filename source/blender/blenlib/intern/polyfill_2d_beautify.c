@@ -175,7 +175,7 @@ float BLI_polyfill_beautify_quad_rotate_calc_ex(const float v1[2],
       len_13 = len_v2v2(v1, v3);
       len_24 = len_v2v2(v2, v4);
 
-      /* note, area is in fact (area * 2),
+      /* NOTE: area is in fact (area * 2),
        * but in this case its OK, since we're comparing ratios */
 
       /* edge (2-4), current state */
@@ -320,7 +320,7 @@ static void polyedge_rotate(struct HalfEdge *edges, struct HalfEdge *e)
  * The intention is that this calculates the output of #BLI_polyfill_calc
  * \note assumes the \a coords form a boundary,
  * so any edges running along contiguous (wrapped) indices,
- * are ignored since the edges wont share 2 faces.
+ * are ignored since the edges won't share 2 faces.
  */
 void BLI_polyfill_beautify(const float (*coords)[2],
                            const uint coords_tot,

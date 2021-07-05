@@ -182,7 +182,7 @@ static void do_version_workspaces_create_from_screens(Main *bmain)
       workspace = BKE_workspace_add(bmain, screen->id.name + 2);
     }
     if (workspace == NULL) {
-      continue; /* Not much we can do.. */
+      continue; /* Not much we can do. */
     }
     BKE_workspace_layout_add(bmain, workspace, screen, screen->id.name + 2);
   }
@@ -1268,7 +1268,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
 
     /* We need to assign lib pointer to generated hidden collections *after* all have been
      * created, otherwise we'll end up with several data-blocks sharing same name/library,
-     * which is FORBIDDEN! Note: we need this to be recursive, since a child collection may be
+     * which is FORBIDDEN! NOTE: we need this to be recursive, since a child collection may be
      * sorted before its parent in bmain. */
     for (Collection *collection = bmain->collections.first; collection != NULL;
          collection = collection->id.next) {
@@ -1652,7 +1652,7 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
      * which exact version fully deprecated tessfaces, so think we can keep that one here, no
      * harm to be expected anyway for being over-conservative. */
     for (Mesh *me = bmain->meshes.first; me != NULL; me = me->id.next) {
-      /*check if we need to convert mfaces to mpolys*/
+      /* Check if we need to convert mfaces to mpolys. */
       if (me->totface && !me->totpoly) {
         /* temporarily switch main so that reading from
          * external CustomData works */
@@ -1912,7 +1912,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     FOREACH_NODETREE_END;
 
     if (error & NTREE_DOVERSION_NEED_OUTPUT) {
-      BKE_report(fd->reports, RPT_ERROR, "Eevee material conversion problem. Error in console");
+      BKE_report(fd->reports != NULL ? fd->reports->reports : NULL,
+                 RPT_ERROR,
+                 "Eevee material conversion problem. Error in console");
       printf(
           "You need to connect Principled and Eevee Specular shader nodes to new material "
           "output "
@@ -1920,7 +1922,9 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     }
 
     if (error & NTREE_DOVERSION_TRANSPARENCY_EMISSION) {
-      BKE_report(fd->reports, RPT_ERROR, "Eevee material conversion problem. Error in console");
+      BKE_report(fd->reports != NULL ? fd->reports->reports : NULL,
+                 RPT_ERROR,
+                 "Eevee material conversion problem. Error in console");
       printf(
           "You need to combine transparency and emission shaders to the converted Principled "
           "shader nodes.\n");
@@ -2432,41 +2436,42 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         switch (scene->toolsettings->snap_mode) {
           case 0:
-            scene->toolsettings->snap_mode = SCE_SNAP_MODE_INCREMENT;
+            scene->toolsettings->snap_mode = (1 << 4); /* SCE_SNAP_MODE_INCREMENT */
             break;
           case 1:
-            scene->toolsettings->snap_mode = SCE_SNAP_MODE_VERTEX;
+            scene->toolsettings->snap_mode = (1 << 0); /* SCE_SNAP_MODE_VERTEX */
             break;
           case 2:
-            scene->toolsettings->snap_mode = SCE_SNAP_MODE_EDGE;
+            scene->toolsettings->snap_mode = (1 << 1); /* SCE_SNAP_MODE_EDGE */
             break;
           case 3:
-            scene->toolsettings->snap_mode = SCE_SNAP_MODE_FACE;
+            scene->toolsettings->snap_mode = (1 << 2); /* SCE_SNAP_MODE_FACE */
             break;
           case 4:
-            scene->toolsettings->snap_mode = SCE_SNAP_MODE_VOLUME;
+            scene->toolsettings->snap_mode = (1 << 3); /* SCE_SNAP_MODE_VOLUME */
             break;
         }
         switch (scene->toolsettings->snap_node_mode) {
           case 5:
-            scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_NODE_X;
+            scene->toolsettings->snap_node_mode = (1 << 5); /* SCE_SNAP_MODE_NODE_X */
             break;
           case 6:
-            scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_NODE_Y;
+            scene->toolsettings->snap_node_mode = (1 << 6); /* SCE_SNAP_MODE_NODE_Y */
             break;
           case 7:
-            scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_NODE_X | SCE_SNAP_MODE_NODE_Y;
+            scene->toolsettings->snap_node_mode =
+                (1 << 5) | (1 << 6); /* SCE_SNAP_MODE_NODE_X | SCE_SNAP_MODE_NODE_Y */
             break;
           case 8:
-            scene->toolsettings->snap_node_mode = SCE_SNAP_MODE_GRID;
+            scene->toolsettings->snap_node_mode = (1 << 7); /* SCE_SNAP_MODE_GRID */
             break;
         }
         switch (scene->toolsettings->snap_uv_mode) {
           case 0:
-            scene->toolsettings->snap_uv_mode = SCE_SNAP_MODE_INCREMENT;
+            scene->toolsettings->snap_uv_mode = (1 << 4); /* SCE_SNAP_MODE_INCREMENT */
             break;
           case 1:
-            scene->toolsettings->snap_uv_mode = SCE_SNAP_MODE_VERTEX;
+            scene->toolsettings->snap_uv_mode = (1 << 0); /* SCE_SNAP_MODE_VERTEX */
             break;
         }
       }
@@ -3543,7 +3548,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Grease pencil cutter/select segment intersection threshold  */
+    /* Grease pencil cutter/select segment intersection threshold. */
     if (!DNA_struct_elem_find(fd->filesdna, "GP_Sculpt_Settings", "float", "isect_threshold")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         GP_Sculpt_Settings *gset = &scene->toolsettings->gp_sculpt;
@@ -3553,7 +3558,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Fix anamorphic bokeh eevee rna limits.*/
+    /* Fix anamorphic bokeh eevee rna limits. */
     for (Camera *ca = bmain->cameras.first; ca; ca = ca->id.next) {
       if (ca->gpu_dof.ratio < 0.01f) {
         ca->gpu_dof.ratio = 0.01f;
@@ -4920,7 +4925,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Corrective smooth modifier scale*/
+    /* Corrective smooth modifier scale. */
     if (!DNA_struct_elem_find(fd->filesdna, "CorrectiveSmoothModifierData", "float", "scale")) {
       for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
@@ -4969,7 +4974,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
       }
     }
 
-    /* Surface deform modifier strength*/
+    /* Surface deform modifier strength. */
     if (!DNA_struct_elem_find(fd->filesdna, "SurfaceDeformModifierData", "float", "strength")) {
       for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {

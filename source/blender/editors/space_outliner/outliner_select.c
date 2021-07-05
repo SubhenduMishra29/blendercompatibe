@@ -1654,7 +1654,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
   return OPERATOR_FINISHED;
 }
 
-/* event can enterkey, then it opens/closes */
+/* Event can enter-key, then it opens/closes. */
 static int outliner_item_activate_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool extend = RNA_boolean_get(op->ptr, "extend");
@@ -1816,7 +1816,7 @@ static TreeElement *outliner_find_rightmost_visible_child(SpaceOutliner *space_o
   return te;
 }
 
-/* Find previous visible element in the tree  */
+/* Find previous visible element in the tree. */
 static TreeElement *outliner_find_previous_element(SpaceOutliner *space_outliner, TreeElement *te)
 {
   if (te->prev) {

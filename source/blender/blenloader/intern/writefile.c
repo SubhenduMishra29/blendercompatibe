@@ -262,7 +262,7 @@ typedef struct {
   size_t write_len;
 #endif
 
-  /** Set on unlikely case of an error (ignores further file writing).  */
+  /** Set on unlikely case of an error (ignores further file writing). */
   bool error;
 
   /** #MemFile writing (used for undo). */
@@ -605,7 +605,7 @@ static void writelist_id(WriteData *wd, int filecode, const char *structname, co
  * \{ */
 
 /**
- * Take care using 'use_active_win', since we wont want the currently active window
+ * Take care using 'use_active_win', since we won't want the currently active window
  * to change which scene renders (currently only used for undo).
  */
 static void current_screen_compat(Main *mainvar,
@@ -896,9 +896,10 @@ static void write_global(WriteData *wd, int fileflags, Main *mainvar)
   writestruct(wd, GLOB, FileGlobal, 1, &fg);
 }
 
-/* preview image, first 2 values are width and height
- * second are an RGBA image (uchar)
- * note, this uses 'TEST' since new types will segfault on file load for older blender versions.
+/**
+ * Preview image, first 2 values are width and height
+ * second are an RGBA image (uchar).
+ * \note this uses 'TEST' since new types will segfault on file load for older blender versions.
  */
 static void write_thumb(WriteData *wd, const BlendThumbnail *thumb)
 {

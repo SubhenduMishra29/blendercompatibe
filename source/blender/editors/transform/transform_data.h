@@ -149,6 +149,8 @@ typedef struct TransData {
   short protectflag;
 } TransData;
 
+#define TRANSDATA_THREAD_LIMIT 1024
+
 /** #TransData.flag */
 enum {
   TD_SELECTED = 1 << 0,
@@ -173,10 +175,12 @@ enum {
   /** For Graph Editor - curves that can only have int-values
    * need their keyframes tagged with this. */
   TD_INTVALUES = 1 << 11,
+#define TD_MIRROR_AXIS_SHIFT 12
   /** For editmode mirror. */
   TD_MIRROR_X = 1 << 12,
   TD_MIRROR_Y = 1 << 13,
   TD_MIRROR_Z = 1 << 14,
+#define TD_MIRROR_EDGE_AXIS_SHIFT 12
   /** For editmode mirror, clamp axis to 0 */
   TD_MIRROR_EDGE_X = 1 << 12,
   TD_MIRROR_EDGE_Y = 1 << 13,

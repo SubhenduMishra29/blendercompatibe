@@ -127,8 +127,8 @@ static void nla_action_draw_keyframes(
   immRectf(pos_id, f1, ymin + 2, f2, ymax - 2);
   immUnbindProgram();
 
-  /* count keys before drawing */
-  /* Note: It's safe to cast DLRBT_Tree, as it's designed to degrade down to a ListBase */
+  /* Count keys before drawing. */
+  /* NOTE: It's safe to cast #DLRBT_Tree, as it's designed to degrade down to a #ListBase. */
   uint key_len = BLI_listbase_count((ListBase *)&keys);
 
   if (key_len > 0) {
@@ -734,7 +734,7 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
   int height = NLACHANNEL_TOT_HEIGHT(ac, items);
   v2d->tot.ymin = -height;
 
-  /* loop through channels, and set up drawing depending on their type  */
+  /* Loop through channels, and set up drawing depending on their type. */
   float ymax = NLACHANNEL_FIRST_TOP(ac);
 
   for (bAnimListElem *ale = anim_data.first; ale; ale = ale->next, ymax -= NLACHANNEL_STEP(snla)) {
@@ -894,7 +894,7 @@ void draw_nla_channel_list(const bContext *C, bAnimContext *ac, ARegion *region)
     /* set blending again, as may not be set in previous step */
     GPU_blend(GPU_BLEND_ALPHA);
 
-    /* loop through channels, and set up drawing depending on their type  */
+    /* Loop through channels, and set up drawing depending on their type. */
     for (ale = anim_data.first; ale;
          ale = ale->next, ymax -= NLACHANNEL_STEP(snla), channel_index++) {
       float ymin = ymax - NLACHANNEL_HEIGHT(snla);

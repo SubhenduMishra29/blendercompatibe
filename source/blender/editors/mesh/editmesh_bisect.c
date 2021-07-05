@@ -280,7 +280,7 @@ static int mesh_bisect_exec(bContext *C, wmOperator *op)
 
   /* -------------------------------------------------------------------- */
   /* Modal support */
-  /* Note: keep this isolated, exec can work without this */
+  /* NOTE: keep this isolated, exec can work without this. */
   if (opdata != NULL) {
     mesh_bisect_interactive_calc(C, op, plane_co, plane_no);
     /* Write back to the props. */
@@ -347,7 +347,7 @@ static int mesh_bisect_exec(bContext *C, wmOperator *op)
       BMOperator bmop_attr;
 
       /* The fill normal sign is ignored as the face-winding is defined by surrounding faces.
-       * The normal is passed so triangle fill wont have to calculate it. */
+       * The normal is passed so triangle fill won't have to calculate it. */
       normalize_v3_v3(normal_fill, plane_no_local);
 
       /* Fill */

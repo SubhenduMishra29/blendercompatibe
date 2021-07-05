@@ -20,6 +20,7 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from collections import defaultdict
 
 
 class MESH_MT_vertex_group_context_menu(Menu):
@@ -117,7 +118,7 @@ class MESH_UL_shape_keys(UIList):
             split = layout.split(factor=0.66, align=False)
             split.prop(key_block, "name", text="", emboss=False, icon_value=icon)
             row = split.row(align=True)
-            row.emboss = 'UI_EMBOSS_NONE_OR_STATUS'
+            row.emboss = 'NONE_OR_STATUS'
             if key_block.mute or (obj.mode == 'EDIT' and not (obj.use_shape_key_edit_mode and obj.type == 'MESH')):
                 row.active = False
             if not item.id_data.use_relative:
@@ -517,7 +518,6 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.prop(mesh, "remesh_voxel_size")
             col.prop(mesh, "remesh_voxel_adaptivity")
             col.prop(mesh, "use_remesh_fix_poles")
-            col.prop(mesh, "use_remesh_smooth_normals")
 
             col = layout.column(heading="Preserve")
             col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
@@ -558,7 +558,6 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         col.enabled = obj is not None and obj.mode != 'EDIT'
         col.prop(me, "use_customdata_vertex_bevel", text="Vertex Bevel Weight")
         col.prop(me, "use_customdata_edge_bevel", text="Edge Bevel Weight")
-        col.prop(me, "use_customdata_vertex_crease", text="Vertex Crease")
         col.prop(me, "use_customdata_edge_crease", text="Edge Crease")
 
 
@@ -568,33 +567,87 @@ class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):
     _property_type = bpy.types.Mesh
 
 
-class DATA_PT_subdivision(MeshButtonsPanel, Panel):
-    bl_label = "Subdivision"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES'}
+class MESH_UL_attributes(UIList):
+    display_domain_names = {
+        'POINT': "Vertex",
+        'EDGE': "Edge",
+        'FACE': "Face",
+        'CORNER': "Face Corner",
+    }
 
-    def draw_header(self, context):
-        mesh = context.mesh
-        self.layout.prop(mesh, "use_subdivision", text="")
+    def draw_item(self, _context, layout, _data, attribute, _icon, _active_data, _active_propname, _index):
+        data_type = attribute.bl_rna.properties['data_type'].enum_items[attribute.data_type]
+
+        domain_name = self.display_domain_names.get(attribute.domain, "")
+
+        split = layout.split(factor=0.50)
+        split.emboss = 'NONE'
+        split.prop(attribute, "name", text="")
+        sub = split.row()
+        sub.alignment = 'RIGHT'
+        sub.active = False
+        sub.label(text="%s ▶ %s" % (domain_name, data_type.name))
+
+
+class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
+    bl_label = "Attributes"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         mesh = context.mesh
 
         layout = self.layout
-        layout.use_property_decorate = False
-        layout.active = mesh.use_subdivision
+        row = layout.row()
 
-        layout.prop(mesh, "subdivision_type", expand=True)
+        col = row.column()
+        col.template_list(
+            "MESH_UL_attributes",
+            "attributes",
+            mesh,
+            "attributes",
+            mesh.attributes,
+            "active_index",
+            rows=3,
+        )
 
-        col = layout.column()
-        col.use_property_split = True
-        col.prop(mesh, "adaptive_subdivision")
-        col.prop(mesh, "preview_subdivision_levels")
-        col.prop(mesh, "render_subdivision_levels")
-        col.prop(mesh, "use_limit_surface")
-        col.prop(mesh, "subdivision_quality")
-        col.prop(mesh, "uv_smooth")
-        col.prop(mesh, "boundary_smooth")
+        col = row.column(align=True)
+        col.operator("geometry.attribute_add", icon='ADD', text="")
+        col.operator("geometry.attribute_remove", icon='REMOVE', text="")
+
+        self.draw_attribute_warnings(context, layout)
+
+    def draw_attribute_warnings(self, context, layout):
+        attributes_by_name = defaultdict(list)
+
+        ob = context.object
+        mesh = ob.data
+
+        builtin_attribute = object()
+
+        def add_builtin(name):
+            attributes_by_name[name].append(builtin_attribute)
+
+        def add_attributes(layers):
+            for layer in layers:
+                attributes_by_name[layer.name].append(layer)
+
+        add_builtin("position")
+        add_builtin("material_index")
+        add_builtin("shade_smooth")
+        add_builtin("normal")
+        add_builtin("crease")
+
+        add_attributes(mesh.attributes)
+        add_attributes(mesh.uv_layers)
+        add_attributes(mesh.vertex_colors)
+        add_attributes(ob.vertex_groups)
+
+        colliding_names = [name for name, layers in attributes_by_name.items() if len(layers) >= 2]
+        if len(colliding_names) == 0:
+            return
+
+        layout.label(text="Name Collisions: {}".format(", ".join(colliding_names)), icon='INFO')
 
 
 classes = (
@@ -605,6 +658,7 @@ classes = (
     MESH_UL_shape_keys,
     MESH_UL_uvmaps,
     MESH_UL_vcols,
+    MESH_UL_attributes,
     DATA_PT_context_mesh,
     DATA_PT_vertex_groups,
     DATA_PT_shape_keys,
@@ -612,12 +666,12 @@ classes = (
     DATA_PT_vertex_colors,
     DATA_PT_sculpt_vertex_colors,
     DATA_PT_face_maps,
+    DATA_PT_mesh_attributes,
     DATA_PT_normals,
     DATA_PT_texture_space,
     DATA_PT_remesh,
     DATA_PT_customdata,
     DATA_PT_custom_props_mesh,
-    # DATA_PT_subdivision,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -668,7 +668,7 @@ void BKE_rigidbody_calc_volume(Object *ob, float *r_vol)
     radius = max_fff(size[0], size[1], size[2]) * 0.5f;
   }
 
-  /* calculate volume as appropriate  */
+  /* Calculate volume as appropriate. */
   switch (rbo->shape) {
     case RB_SHAPE_BOX:
       volume = size[0] * size[1] * size[2];
@@ -744,10 +744,10 @@ void BKE_rigidbody_calc_center_of_mass(Object *ob, float r_center[3])
    *   (i.e. Object pivot is centralized in boundbox)
    * - boundbox gives full width
    */
-  /* XXX: all dimensions are auto-determined now... later can add stored settings for this */
+  /* XXX: all dimensions are auto-determined now... later can add stored settings for this. */
   BKE_object_dimensions_get(ob, size);
 
-  /* calculate volume as appropriate  */
+  /* Calculate volume as appropriate. */
   switch (rbo->shape) {
     case RB_SHAPE_BOX:
     case RB_SHAPE_SPHERE:
@@ -1787,7 +1787,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
 
   rigidbody_update_sim_world(scene, rbw);
 
-  /* XXX TODO For rebuild: remove all constraints first.
+  /* XXX TODO: For rebuild: remove all constraints first.
    * Otherwise we can end up deleting objects that are still
    * referenced by constraints, corrupting bullet's internal list.
    *
@@ -1811,7 +1811,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
       /* validate that we've got valid object set up here... */
       RigidBodyOb *rbo = ob->rigidbody_object;
 
-      /* TODO remove this whole block once we are sure we never get NULL rbo here anymore. */
+      /* TODO: remove this whole block once we are sure we never get NULL rbo here anymore. */
       /* This cannot be done in CoW evaluation context anymore... */
       if (rbo == NULL) {
         BLI_assert(!"CoW object part of RBW object collection without RB object data, "
@@ -1868,7 +1868,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
     /* validate that we've got valid object set up here... */
     RigidBodyCon *rbc = ob->rigidbody_constraint;
 
-    /* TODO remove this whole block once we are sure we never get NULL rbo here anymore. */
+    /* TODO: remove this whole block once we are sure we never get NULL rbo here anymore. */
     /* This cannot be done in CoW evaluation context anymore... */
     if (rbc == NULL) {
       BLI_assert(!"CoW object part of RBW constraints collection without RB constraint data, "

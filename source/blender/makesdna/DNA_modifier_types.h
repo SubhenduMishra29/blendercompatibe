@@ -224,7 +224,7 @@ typedef struct LatticeModifierData {
   char _pad[2];
 } LatticeModifierData;
 
-/*Lattice modifier flags */
+/* Lattice modifier flags. */
 enum {
   MOD_LATTICE_INVERT_VGROUP = (1 << 0),
 };
@@ -306,13 +306,13 @@ enum {
 typedef struct ArrayModifierData {
   ModifierData modifier;
 
-  /* the object with which to cap the start of the array  */
+  /* the object with which to cap the start of the array. */
   struct Object *start_cap;
-  /* the object with which to cap the end of the array  */
+  /* the object with which to cap the end of the array. */
   struct Object *end_cap;
-  /* the curve object to use for MOD_ARR_FITCURVE */
+  /* the curve object to use for MOD_ARR_FITCURVE. */
   struct Object *curve_ob;
-  /* the object to use for object offset */
+  /* the object to use for object offset. */
   struct Object *offset_ob;
   /* a constant duplicate offset;
    * 1 means the duplicates are 1 unit apart
@@ -1847,7 +1847,7 @@ typedef struct CorrectiveSmoothModifierData {
    * use for MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND */
   float (*bind_coords)[3];
 
-  /* note: -1 is used to bind */
+  /* NOTE: -1 is used to bind. */
   unsigned int bind_coords_num;
 
   float lambda, scale;

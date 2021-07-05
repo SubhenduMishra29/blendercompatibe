@@ -30,6 +30,7 @@
 #include "DNA_object_types.h"
 
 #include "BLI_math_geom.h"
+#include "BLI_task.h"
 #include "BLI_threads.h"
 
 #include "BKE_bvhutils.h"
@@ -154,8 +155,18 @@ int BKE_mesh_runtime_looptri_len(const Mesh *mesh)
   return looptri_len;
 }
 
-/* This is a ported copy of dm_getLoopTriArray(dm). */
-const MLoopTri *BKE_mesh_runtime_looptri_ensure(Mesh *mesh)
+static void mesh_runtime_looptri_recalc_isolated(void *userdata)
+{
+  Mesh *mesh = userdata;
+  BKE_mesh_runtime_looptri_recalc(mesh);
+}
+
+/**
+ * \note This function only fills a cache, and therefore the mesh argument can
+ * be considered logically const. Concurrent access is protected by a mutex.
+ * \note This is a ported copy of dm_getLoopTriArray(dm).
+ */
+const MLoopTri *BKE_mesh_runtime_looptri_ensure(const Mesh *mesh)
 {
   ThreadMutex *mesh_eval_mutex = (ThreadMutex *)mesh->runtime.eval_mutex;
   BLI_mutex_lock(mesh_eval_mutex);
@@ -166,7 +177,8 @@ const MLoopTri *BKE_mesh_runtime_looptri_ensure(Mesh *mesh)
     BLI_assert(BKE_mesh_runtime_looptri_len(mesh) == mesh->runtime.looptris.len);
   }
   else {
-    BKE_mesh_runtime_looptri_recalc(mesh);
+    /* Must isolate multithreaded tasks while holding a mutex lock. */
+    BLI_task_isolate(mesh_runtime_looptri_recalc_isolated, (void *)mesh);
     looptri = mesh->runtime.looptris.array;
   }
 
@@ -290,7 +302,7 @@ static void mesh_runtime_debug_info_layers(DynStr *dynstr, CustomData *cd)
 
   for (type = 0; type < CD_NUMTYPES; type++) {
     if (CustomData_has_layer(cd, type)) {
-      /* note: doesn't account for multiple layers */
+      /* NOTE: doesn't account for multiple layers. */
       const char *name = CustomData_layertype_name(type);
       const int size = CustomData_sizeof(type);
       const void *pt = CustomData_get_layer(cd, type);

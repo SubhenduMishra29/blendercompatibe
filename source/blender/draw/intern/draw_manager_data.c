@@ -94,7 +94,7 @@ void drw_resource_buffer_finish(ViewportMemoryPool *vmempool)
   int ubo_len = 1 + chunk_id - ((elem_id == 0) ? 1 : 0);
   size_t list_size = sizeof(GPUUniformBuf *) * ubo_len;
 
-  /* TODO find a better system. currently a lot of obinfos UBO are going to be unused
+  /* TODO: find a better system. currently a lot of obinfos UBO are going to be unused
    * if not rendering with Eevee. */
 
   if (vmempool->matrices_ubo == NULL) {
@@ -782,7 +782,7 @@ static void drw_command_set_mutable_state(DRWShadingGroup *shgroup,
                                           DRWState enable,
                                           DRWState disable)
 {
-  /* TODO Restrict what state can be changed. */
+  /* TODO: Restrict what state can be changed. */
   DRWCommandSetMutableState *cmd = drw_command_create(shgroup, DRW_CMD_DRWSTATE);
   cmd->enable = enable;
   cmd->disable = disable;
@@ -1263,7 +1263,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
         shgroup, model_ubo_location, DRW_UNIFORM_BLOCK_OBMATS, NULL, 0, 0, 1);
   }
   else {
-    /* Note: This is only here to support old hardware fallback where uniform buffer is still
+    /* NOTE: This is only here to support old hardware fallback where uniform buffer is still
      * too slow or buggy. */
     int model = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL);
     int modelinverse = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_MODEL_INV);
@@ -1456,7 +1456,7 @@ void DRW_shgroup_stencil_set(DRWShadingGroup *shgroup,
   drw_command_set_stencil_mask(shgroup, write_mask, reference, compare_mask);
 }
 
-/* TODO remove this function. */
+/* TODO: remove this function. */
 void DRW_shgroup_stencil_mask(DRWShadingGroup *shgroup, uint mask)
 {
   drw_command_set_stencil_mask(shgroup, 0xFF, mask, 0xFF);
@@ -1572,8 +1572,8 @@ static void draw_frustum_culling_planes_calc(const float (*persmat)[4], float (*
   planes_from_projmat(persmat,
                       frustum_planes[0],
                       frustum_planes[5],
-                      frustum_planes[3],
                       frustum_planes[1],
+                      frustum_planes[3],
                       frustum_planes[4],
                       frustum_planes[2]);
 
@@ -2117,8 +2117,8 @@ void DRW_pass_sort_shgroup_z(DRWPass *pass)
         }
       }
     }
-    /* To be sorted a shgroup needs to have at least one draw command.  */
-    /* FIXME(fclem) In some case, we can still have empty shading group to sort. However their
+    /* To be sorted a shgroup needs to have at least one draw command. */
+    /* FIXME(fclem): In some case, we can still have empty shading group to sort. However their
      * final order is not well defined.
      * (see T76730 & D7729). */
     // BLI_assert(handle != 0);
