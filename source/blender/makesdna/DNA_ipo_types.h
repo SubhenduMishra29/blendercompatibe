@@ -287,6 +287,8 @@ typedef struct Ipo {
 #define SEQ_FAC1 1
 #define SEQ_FAC_SPEED 2
 #define SEQ_FAC_OPACITY 3
+#define SEQ_FAC_SPEED_FRAME_NUMBER 4
+#define SEQ_FAC_SPEED_LENGTH 5
 
 /* ********* Curve (ID_CU) *********** */
 

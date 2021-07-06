@@ -199,6 +199,39 @@ static void version_node_socket_name(bNodeTree *ntree,
   }
 }
 
+static void do_versions_sequencer_speed_effect_recursive(const ListBase *seqbase)
+{
+  LISTBASE_FOREACH (Sequence *, seq, seqbase) {
+    if (seq->type == SEQ_TYPE_SPEED) {
+      SpeedControlVars *v = (SpeedControlVars *)seq->effectdata;
+      if (seq->flag & SEQ_USE_EFFECT_DEFAULT_FADE) {
+        v->speed_control_type = SEQ_SPEED_STRETCH;
+      }
+
+      /* Old SpeedControlVars->flags. */
+#define SEQ_SPEED_INTEGRATE (1 << 0)
+#define SEQ_SPEED_COMPRESS_IPO_Y (1 << 2)
+      else if (v->flags & SEQ_SPEED_INTEGRATE) {
+        v->speed_control_type = SEQ_SPEED_MULTIPLY;
+      }
+      else if (v->flags & SEQ_SPEED_COMPRESS_IPO_Y) {
+        v->speed_control_type = SEQ_SPEED_LENGTH;
+        seq->speed_fader_length = seq->speed_fader * 100;
+      }
+      else {
+        v->speed_control_type = SEQ_SPEED_FRAME_NUMBER;
+        seq->speed_fader_frame_number = (int)seq->speed_fader;
+      }
+      v->flags &= ~(SEQ_SPEED_INTEGRATE | SEQ_SPEED_COMPRESS_IPO_Y);
+#undef SEQ_SPEED_INTEGRATE
+#undef SEQ_SPEED_COMPRESS_IPO_Y
+    }
+    else if (seq->type == SEQ_TYPE_META) {
+      do_versions_sequencer_speed_effect_recursive(&seq->seqbase);
+    }
+  }
+}
+
 static bool replace_bbone_len_scale_rnapath(char **p_old_path, int *p_index)
 {
   char *old_path = *p_old_path;
@@ -478,6 +511,11 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
   {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != NULL) {
+        do_versions_sequencer_speed_effect_recursive(&scene->ed->seqbase);
+      }
+    }
     /* Keep this block, even when empty. */
   }
 }

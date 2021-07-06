@@ -791,15 +791,15 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
   /* result depends on adrcode */
   switch (adrcode) {
     case CAM_LENS:
-#if 0  /* XXX this cannot be resolved easily... \
-        * perhaps we assume camera is perspective (works for most cases... */
+#if 0 /* XXX this cannot be resolved easily... \
+       * perhaps we assume camera is perspective (works for most cases... */
       if (ca->type == CAM_ORTHO) {
         return "ortho_scale";
       }
       else {
         return "lens";
       }
-#else  /* XXX lazy hack for now... */
+#else /* XXX lazy hack for now... */
       return "lens";
 #endif /* XXX this cannot be resolved easily */
 
@@ -808,7 +808,7 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *array_index)
     case CAM_END:
       return "clip_end";
 
-#if 0  /* XXX these are not defined in RNA */
+#if 0 /* XXX these are not defined in RNA */
     case CAM_YF_APERT:
       poin = &(ca->YF_aperture);
       break;
@@ -1121,6 +1121,12 @@ static char *get_rna_access(ID *id,
           break;
         case SEQ_FAC_SPEED:
           propname = "speed_fader";
+          break;
+        case SEQ_FAC_SPEED_FRAME_NUMBER:
+          propname = "speed_fader_frame_number";
+          break;
+        case SEQ_FAC_SPEED_LENGTH:
+          propname = "speed_fader_length";
           break;
         case SEQ_FAC_OPACITY:
           propname = "blend_alpha";
@@ -2307,6 +2313,7 @@ void do_versions_ipos_to_animato(Main *bmain)
          * to different DNA variables later
          * (semi-hack (tm) )
          */
+        SpeedControlVars *v;
         switch (seq->type) {
           case SEQ_TYPE_IMAGE:
           case SEQ_TYPE_META:
@@ -2316,7 +2323,16 @@ void do_versions_ipos_to_animato(Main *bmain)
             adrcode = SEQ_FAC_OPACITY;
             break;
           case SEQ_TYPE_SPEED:
-            adrcode = SEQ_FAC_SPEED;
+            v = (SpeedControlVars *)seq->effectdata;
+            if (ELEM(v->speed_control_type, SEQ_SPEED_MULTIPLY, SEQ_SPEED_STRETCH)) {
+              adrcode = SEQ_FAC_SPEED;
+            }
+            else if (v->speed_control_type == SEQ_SPEED_FRAME_NUMBER) {
+              adrcode = SEQ_FAC_SPEED_FRAME_NUMBER;
+            }
+            else if (v->speed_control_type == SEQ_SPEED_LENGTH) {
+              adrcode = SEQ_FAC_SPEED_LENGTH;
+            }
             break;
         }
         icu->adrcode = adrcode;

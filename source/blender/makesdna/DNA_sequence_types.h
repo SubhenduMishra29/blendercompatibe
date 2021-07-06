@@ -202,6 +202,8 @@ typedef struct Sequence {
 
   float effect_fader;
   float speed_fader;
+  float speed_fader_length;
+  int speed_fader_frame_number;
 
   /* pointers for effects: */
   struct Sequence *seq1, *seq2, *seq3;
@@ -339,7 +341,17 @@ typedef struct SpeedControlVars {
   int flags;
   int length;
   int lastValidFrame;
+  int speed_control_type;
+  int _pad0;
 } SpeedControlVars;
+
+/* SpeedControlVars.speed_control_type */
+enum {
+  SEQ_SPEED_STRETCH = 0,
+  SEQ_SPEED_MULTIPLY = 1,
+  SEQ_SPEED_LENGTH = 2,
+  SEQ_SPEED_FRAME_NUMBER = 3,
+};
 
 typedef struct GaussianBlurVars {
   float size_x;
@@ -485,9 +497,9 @@ typedef struct SequencerScopes {
 #define SEQ_EDIT_PROXY_DIR_STORAGE 1
 
 /* SpeedControlVars->flags */
-#define SEQ_SPEED_INTEGRATE (1 << 0)
+#define SEQ_SPEED_UNUSED_2 (1 << 0) /* cleared */
 #define SEQ_SPEED_UNUSED_1 (1 << 1) /* cleared */
-#define SEQ_SPEED_COMPRESS_IPO_Y (1 << 2)
+#define SEQ_SPEED_UNUSED_3 (1 << 2) /* cleared */
 #define SEQ_SPEED_USE_INTERPOLATION (1 << 3)
 
 /* ***************** SEQUENCE ****************** */
