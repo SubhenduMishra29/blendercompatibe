@@ -558,6 +558,8 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv(const struct Scene *scene,
                                             const struct Object *ob,
                                             const int required_mode);
 
+extern void (*BKE_modifier_subsurf_free_gpu_cache_cb)(struct Subdiv *subdiv);
+
 struct Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(
     const SubsurfModifierData *smd,
     const struct SubdivSettings *subdiv_settings,

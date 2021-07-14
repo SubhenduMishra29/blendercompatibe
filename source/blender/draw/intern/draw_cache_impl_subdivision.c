@@ -30,8 +30,11 @@
 #include "BKE_subdiv_foreach.h"
 #include "BKE_subdiv_mesh.h"
 
+#include "BLI_linklist.h"
+
 #include "BLI_string.h"
 
+#include "DRW_engine.h"
 #include "DRW_render.h"
 
 #include "GPU_capabilities.h"
@@ -1698,4 +1701,32 @@ void DRW_subdiv_free(void)
   for (int i = 0; i < NUM_SHADERS; ++i) {
     GPU_shader_free(g_subdiv_shaders[i]);
   }
+
+  DRW_cache_free_old_subdiv();
+}
+
+static LinkNode *gpu_subdiv_free_queue = NULL;
+static ThreadMutex gpu_subdiv_queue_mutex = BLI_MUTEX_INITIALIZER;
+
+void DRW_subdiv_cache_free(Subdiv *subdiv)
+{
+  BLI_mutex_lock(&gpu_subdiv_queue_mutex);
+  BLI_linklist_prepend(&gpu_subdiv_free_queue, subdiv);
+  BLI_mutex_unlock(&gpu_subdiv_queue_mutex);
+}
+
+void DRW_cache_free_old_subdiv()
+{
+  if (gpu_subdiv_free_queue == NULL) {
+    return;
+  }
+
+  BLI_mutex_lock(&gpu_subdiv_queue_mutex);
+
+  while (gpu_subdiv_free_queue != NULL) {
+    Subdiv *subdiv = BLI_linklist_pop(&gpu_subdiv_free_queue);
+    BKE_subdiv_free(subdiv);
+  }
+
+  BLI_mutex_unlock(&gpu_subdiv_queue_mutex);
 }

@@ -27,6 +27,7 @@ struct Object;
 struct Scene;
 struct MeshBatchCache;
 struct MeshBufferCache;
+struct Subdiv;
 struct ToolSettings;
 
 void DRW_create_subdivision(const struct Scene *scene,
@@ -37,6 +38,8 @@ void DRW_create_subdivision(const struct Scene *scene,
                             const struct ToolSettings *toolsettings);
 
 void DRW_subdiv_free(void);
+
+void DRW_subdiv_cache_free(struct Subdiv *subdiv);
 
 #ifdef __cplusplus
 }

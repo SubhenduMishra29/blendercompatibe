@@ -1636,6 +1636,8 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv(const Scene *scene,
 #endif
 }
 
+void (*BKE_modifier_subsurf_free_gpu_cache_cb)(Subdiv *subdiv) = NULL;
+
 /* Main goal of this function is to give usable subdivision surface descriptor
  * which matches settings and topology. */
 Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(const SubsurfModifierData *smd,
@@ -1645,7 +1647,16 @@ Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(const SubsurfModifierData 
 {
   SubsurfRuntimeData *runtime_data = (SubsurfRuntimeData *)smd->modifier.runtime;
   if (runtime_data->subdiv && runtime_data->set_by_draw_code != for_draw_code) {
-    BKE_subdiv_free(runtime_data->subdiv);
+    // Not nice but needed until there is a better way of handling this.
+    // Essentially, when evaluating modifiers in a separate thread after adding a modifier
+    // or moving the subsurf modifier, we need to ensure that the OpenGL data is freed by the thread
+    // which created it.
+    if (runtime_data->set_by_draw_code) {
+      BKE_modifier_subsurf_free_gpu_cache_cb(runtime_data->subdiv);
+    }
+    else {
+      BKE_subdiv_free(runtime_data->subdiv);
+    }
     runtime_data->subdiv = NULL;
   }
   Subdiv *subdiv = BKE_subdiv_update_from_mesh(runtime_data->subdiv, subdiv_settings, mesh);

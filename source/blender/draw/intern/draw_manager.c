@@ -2972,6 +2972,8 @@ void DRW_engines_register(void)
 
     BKE_volume_batch_cache_dirty_tag_cb = DRW_volume_batch_cache_dirty_tag;
     BKE_volume_batch_cache_free_cb = DRW_volume_batch_cache_free;
+
+    BKE_modifier_subsurf_free_gpu_cache_cb = DRW_subdiv_cache_free;
   }
 }
 
