@@ -1689,11 +1689,7 @@ void DRW_create_subdivision(const Scene *scene,
                             const ToolSettings *toolsettings)
 {
   if (!draw_subdiv_create_requested_buffers(scene, ob, mesh, batch_cache, mbc, toolsettings)) {
-    // TODO(kevindietrich): fill the regular mesh buffer cache.
-    // We should still initialize the buffers.
-    // TODO(kevindietrich): Error: Not freed memory blocks: 2, total unfreed memory 0.000000 MB
-    GPU_vertbuf_init_build_on_device(mbc->vbo.pos_nor, get_render_format(), 0);
-    GPU_indexbuf_init_build_on_device(mbc->ibo.tris, 0);
+    fprintf(stderr, "Cannot evaluate subdivision on the GPU, falling back to the regular draw code.\n");
   }
 }
 
