@@ -329,6 +329,11 @@ GPUVertBufStatus GPU_vertbuf_get_status(const GPUVertBuf *verts)
   return unwrap(verts)->flag;
 }
 
+void GPU_vertbuf_tag_dirty(GPUVertBuf *verts)
+{
+  unwrap(verts)->flag |= GPU_VERTBUF_DATA_DIRTY;
+}
+
 uint GPU_vertbuf_get_memory_usage()
 {
   return VertBuf::memory_usage;

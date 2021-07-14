@@ -1160,6 +1160,7 @@ OpenSubdiv_EvaluatorImpl::OpenSubdiv_EvaluatorImpl()
 OpenSubdiv_EvaluatorImpl::~OpenSubdiv_EvaluatorImpl()
 {
   delete eval_output;
+  delete eval_output_gpu;
   delete patch_map;
   delete patch_table;
 }

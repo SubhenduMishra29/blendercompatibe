@@ -1822,7 +1822,7 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
   }
 
   if (do_subdivision) {
-    DRW_create_subdivision(scene, ob, me, cache, &cache->final);
+    DRW_create_subdivision(scene, ob, me, cache, &cache->final, ts);
   }
 
   mesh_buffer_cache_create_requested(task_graph,

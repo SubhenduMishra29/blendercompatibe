@@ -44,7 +44,7 @@ static void extract_edituv_data_init(const MeshRenderData *mr,
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* WARNING: Adjust #EditLoopData struct accordingly. */
-    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U8, 4, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U16, 4, GPU_FETCH_INT);
     GPU_vertformat_alias_add(&format, "flag");
   }
 

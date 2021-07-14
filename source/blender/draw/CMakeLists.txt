@@ -209,8 +209,8 @@ set(SRC
   intern/draw_manager_profiling.h
   intern/draw_manager_testing.h
   intern/draw_manager_text.h
-  intern/draw_subdivision.h
   intern/draw_shader.h
+  intern/draw_subdivision.h
   intern/draw_view.h
   intern/smaa_textures.h
   engines/basic/basic_engine.h
@@ -373,6 +373,8 @@ data_to_c_simple(intern/shaders/common_subdiv_buffer_lines_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_subdiv_buffer_lnor_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_subdiv_patch_handles_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_subdiv_buffer_points_comp.glsl SRC)
+data_to_c_simple(intern/shaders/common_subdiv_face_dots_comp.glsl SRC)
+data_to_c_simple(intern/shaders/common_subdiv_tris_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_fullscreen_vert.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_frag.glsl SRC)

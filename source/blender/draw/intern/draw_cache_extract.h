@@ -106,16 +106,13 @@ typedef struct MeshBufferCache {
    * For some VBOs, it extends to (in this exact order) :
    * loops + loose_edges*2 + loose_verts */
   struct {
-    GPUVertBuf *pos_nor;    /* extend */
-    GPUVertBuf *subdiv_pos; /* extend */
-    GPUVertBuf *lnor;       /* extend */
-    GPUVertBuf *edge_fac;   /* extend */
-    GPUVertBuf *weights;    /* extend */
+    GPUVertBuf *pos_nor;  /* extend */
+    GPUVertBuf *lnor;     /* extend */
+    GPUVertBuf *edge_fac; /* extend */
+    GPUVertBuf *weights;  /* extend */
     GPUVertBuf *uv;
-    GPUVertBuf *subdiv_uv;
     GPUVertBuf *tan;
     GPUVertBuf *vcol;
-    GPUVertBuf *subdiv_vcol;
     GPUVertBuf *sculpt_data;
     GPUVertBuf *orco;
     /* Only for edit mode. */
@@ -140,8 +137,7 @@ typedef struct MeshBufferCache {
    * Only need to be updated when topology changes. */
   struct {
     /* Indices to vloops. */
-    GPUIndexBuf *tris; /* Ordered per material. */
-    GPUIndexBuf *subdiv_tris;
+    GPUIndexBuf *tris;        /* Ordered per material. */
     GPUIndexBuf *lines;       /* Loose edges last. */
     GPUIndexBuf *lines_loose; /* sub buffer of `lines` only containing the loose edges. */
     GPUIndexBuf *points;

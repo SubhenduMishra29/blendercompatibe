@@ -27,12 +27,14 @@ struct Object;
 struct Scene;
 struct MeshBatchCache;
 struct MeshBufferCache;
+struct ToolSettings;
 
 void DRW_create_subdivision(const struct Scene *scene,
                             struct Object *ob,
                             struct Mesh *mesh,
                             struct MeshBatchCache *batch_cache,
-                            struct MeshBufferCache *mbc);
+                            struct MeshBufferCache *mbc,
+                            const struct ToolSettings *toolsettings);
 
 void DRW_subdiv_free(void);
 

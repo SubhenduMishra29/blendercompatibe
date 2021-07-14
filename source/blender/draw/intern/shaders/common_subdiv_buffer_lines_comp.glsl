@@ -11,11 +11,13 @@ layout(std430, binding = 1) writeonly buffer outputLinesIndices
   uint output_lines[];
 };
 
+uniform bool optimal_display;
+
 void emit_line(uint line_offset, uint start_loop_index, uint corner_index)
 {
   uint vertex_index = start_loop_index + corner_index;
 
-  if (input_origindex[vertex_index] == ORIGINDEX_NONE) {
+  if (input_origindex[vertex_index] == ORIGINDEX_NONE && optimal_display) {
     output_lines[line_offset + 0] = 0xffffffff;
     output_lines[line_offset + 1] = 0xffffffff;
   }

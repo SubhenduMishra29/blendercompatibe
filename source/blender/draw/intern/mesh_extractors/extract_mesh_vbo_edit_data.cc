@@ -30,91 +30,6 @@ namespace blender::draw {
 /** \name Extract Edit Mode Data / Flags
  * \{ */
 
-static void mesh_render_data_edge_flag(const MeshRenderData *mr,
-                                       const BMEdge *eed,
-                                       EditLoopData *eattr)
-{
-  const ToolSettings *ts = mr->toolsettings;
-  const bool is_vertex_select_mode = (ts != nullptr) && (ts->selectmode & SCE_SELECT_VERTEX) != 0;
-  const bool is_face_only_select_mode = (ts != nullptr) && (ts->selectmode == SCE_SELECT_FACE);
-
-  if (eed == mr->eed_act) {
-    eattr->e_flag |= VFLAG_EDGE_ACTIVE;
-  }
-  if (!is_vertex_select_mode && BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
-    eattr->e_flag |= VFLAG_EDGE_SELECTED;
-  }
-  if (is_vertex_select_mode && BM_elem_flag_test(eed->v1, BM_ELEM_SELECT) &&
-      BM_elem_flag_test(eed->v2, BM_ELEM_SELECT)) {
-    eattr->e_flag |= VFLAG_EDGE_SELECTED;
-    eattr->e_flag |= VFLAG_VERT_SELECTED;
-  }
-  if (BM_elem_flag_test(eed, BM_ELEM_SEAM)) {
-    eattr->e_flag |= VFLAG_EDGE_SEAM;
-  }
-  if (!BM_elem_flag_test(eed, BM_ELEM_SMOOTH)) {
-    eattr->e_flag |= VFLAG_EDGE_SHARP;
-  }
-
-  /* Use active edge color for active face edges because
-   * specular highlights make it hard to see T55456#510873.
-   *
-   * This isn't ideal since it can't be used when mixing edge/face modes
-   * but it's still better than not being able to see the active face. */
-  if (is_face_only_select_mode) {
-    if (mr->efa_act != nullptr) {
-      if (BM_edge_in_face(eed, mr->efa_act)) {
-        eattr->e_flag |= VFLAG_EDGE_ACTIVE;
-      }
-    }
-  }
-
-  /* Use a byte for value range */
-  if (mr->edge_crease_ofs != -1) {
-    float crease = BM_ELEM_CD_GET_FLOAT(eed, mr->edge_crease_ofs);
-    if (crease > 0) {
-      eattr->e_flag |= VFLAG_EDGE_CREASE;
-      eattr->crease = (ushort)(crease * 255.0f);
-    }
-  }
-  /* Use two bytes for value range */
-  if (mr->bweight_ofs != -1) {
-    float bweight = BM_ELEM_CD_GET_FLOAT(eed, mr->bweight_ofs);
-    if (bweight > 0) {
-      eattr->bweight = (ushort)(bweight * 65535.0f);
-    }
-  }
-#ifdef WITH_FREESTYLE
-  if (mr->freestyle_edge_ofs != -1) {
-    const FreestyleEdge *fed = (const FreestyleEdge *)BM_ELEM_CD_GET_VOID_P(
-        eed, mr->freestyle_edge_ofs);
-    if (fed->flag & FREESTYLE_EDGE_MARK) {
-      eattr->e_flag |= VFLAG_EDGE_FREESTYLE;
-    }
-  }
-#endif
-}
-
-static void mesh_render_data_vert_flag(const MeshRenderData *mr,
-                                       const BMVert *eve,
-                                       EditLoopData *eattr)
-{
-  if (eve == mr->eve_act) {
-    eattr->e_flag |= VFLAG_VERT_ACTIVE;
-  }
-  if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
-    eattr->e_flag |= VFLAG_VERT_SELECTED;
-  }
-  /* Use a byte for value range */
-  if (mr->vert_crease_ofs != -1) {
-    float crease = BM_ELEM_CD_GET_FLOAT(eve, mr->vert_crease_ofs);
-    if (crease > 0) {
-      eattr->e_flag |= VFLAG_VERT_CREASE;
-      eattr->crease |= (ushort)(crease * 255.0f) << 8;
-    }
-  }
-}
-
 static void extract_edit_data_init(const MeshRenderData *mr,
                                    struct MeshBatchCache *UNUSED(cache),
                                    void *buf,
@@ -124,7 +39,7 @@ static void extract_edit_data_init(const MeshRenderData *mr,
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* WARNING: Adjust #EditLoopData struct accordingly. */
-    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U8, 4, GPU_FETCH_INT);
+    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U16, 4, GPU_FETCH_INT);
     GPU_vertformat_alias_add(&format, "flag");
   }
   GPU_vertbuf_init_with_format(vbo, &format);

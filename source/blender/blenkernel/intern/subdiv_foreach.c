@@ -1910,7 +1910,9 @@ bool BKE_subdiv_foreach_subdiv_geometry(Subdiv *subdiv,
                                 ctx.num_subdiv_vertices,
                                 ctx.num_subdiv_edges,
                                 ctx.num_subdiv_loops,
-                                ctx.num_subdiv_polygons)) {
+                                ctx.num_subdiv_polygons,
+                                ctx.face_ptex_offset,
+                                ctx.subdiv_polygon_offset)) {
       subdiv_foreach_ctx_free(&ctx);
       return false;
     }
@@ -1932,9 +1934,16 @@ bool BKE_subdiv_foreach_subdiv_geometry(Subdiv *subdiv,
    * NOTE: Watch out for callbacks which needs to run for loose geometry as they
    * currently are relying on the fact that face/grid callbacks will tag non-
    * loose geometry. */
-
+#if 0
+  for (int i = 0; i < coarse_mesh->totpoly; i++) {
+    TaskParallelTLS tls;
+    tls.userdata_chunk = &parallel_range_settings;
+    subdiv_foreach_task(&ctx, i, &tls);
+  }
+#else
   BLI_task_parallel_range(
       0, coarse_mesh->totpoly, &ctx, subdiv_foreach_task, &parallel_range_settings);
+#endif
   if (context->vertex_loose != NULL) {
     BLI_task_parallel_range(0,
                             coarse_mesh->totvert,

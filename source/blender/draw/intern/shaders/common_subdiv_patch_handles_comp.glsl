@@ -147,5 +147,6 @@ void main()
   uint index = gl_GlobalInvocationID.x;
 
   BlenderPatchCoord patch_co = patch_coords[index];
-  output_patch_coords[index] = get_patch_coord(patch_co.patch_index, patch_co.u, patch_co.v);
+  vec2 uv = decode_uv(patch_co.encoded_uv);
+  output_patch_coords[index] = get_patch_coord(patch_co.patch_index, uv.x, uv.y);
 }

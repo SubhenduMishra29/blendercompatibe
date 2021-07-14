@@ -2,9 +2,15 @@
 /* This structure is a carbon copy of OpenSubDiv's PatchCoord. */
 struct BlenderPatchCoord {
   int patch_index;
-  float u;
-  float v;
+  uint encoded_uv;
 };
+
+vec2 decode_uv(uint encoded_uv)
+{
+  float u = float((encoded_uv >> 16) & 0xffff) / 65535.0;
+  float v = float((encoded_uv) & 0xffff) / 65535.0;
+  return vec2(u, v);
+}
 
 /* This structure is a carbon copy of OpenSubDiv's PatchTable::PatchHandle. */
 struct PatchHandle {

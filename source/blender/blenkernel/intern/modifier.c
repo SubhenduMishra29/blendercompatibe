@@ -1585,8 +1585,13 @@ void BKE_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
   }
 }
 
+#undef DO_CPU_SUBSURF
+
 bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Object *ob, const SubsurfModifierData *smd)
 {
+#ifdef DO_CPU_SUBSURF
+  return false;
+#else
   if (smd != ob->modifiers.last) {
     return false;
   }
@@ -1601,12 +1606,16 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Object *ob, const SubsurfMo
   }
 
   return true;
+#endif
 }
 
 bool BKE_modifier_subsurf_can_do_gpu_subdiv(const Scene *scene,
                                             const Object *ob,
                                             const int required_mode)
 {
+#ifdef DO_CPU_SUBSURF
+  return false;
+#else
   ModifierData *md = ob->modifiers.last;
 
   if (!md) {
@@ -1624,6 +1633,7 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv(const Scene *scene,
   }
 
   return BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ob, (SubsurfModifierData *)md);
+#endif
 }
 
 /* Main goal of this function is to give usable subdivision surface descriptor
