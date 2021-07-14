@@ -37,7 +37,6 @@ struct Collection;
 struct ID;
 struct Image;
 struct ListBase;
-struct NodeTreeUIStorage;
 struct bGPdata;
 struct bNodeInstanceHash;
 struct bNodeLink;
@@ -516,8 +515,6 @@ typedef struct bNodeTree {
   int (*test_break)(void *);
   void (*update_draw)(void *);
   void *tbh, *prh, *sdh, *udh;
-
-  struct NodeTreeUIStorage *ui_storage;
 } bNodeTree;
 
 /* ntree->type, index */
@@ -1358,6 +1355,11 @@ typedef struct NodeSwitch {
   uint8_t input_type;
 } NodeSwitch;
 
+typedef struct NodeGeometryCurvePrimitiveLine {
+  /* GeometryNodeCurvePrimitiveLineMode. */
+  uint8_t mode;
+} NodeGeometryCurvePrimitiveLine;
+
 typedef struct NodeGeometryCurvePrimitiveBezierSegment {
   /* GeometryNodeCurvePrimitiveBezierSegmentMode. */
   uint8_t mode;
@@ -1367,6 +1369,11 @@ typedef struct NodeGeometryCurvePrimitiveCircle {
   /* GeometryNodeCurvePrimitiveMode. */
   uint8_t mode;
 } NodeGeometryCurvePrimitiveCircle;
+
+typedef struct NodeGeometryCurvePrimitiveQuad {
+  /* GeometryNodeCurvePrimitiveQuadMode. */
+  uint8_t mode;
+} NodeGeometryCurvePrimitiveQuad;
 
 typedef struct NodeGeometryCurveResample {
   /* GeometryNodeCurveSampleMode. */
@@ -1688,6 +1695,14 @@ typedef enum FloatCompareOperation {
   NODE_FLOAT_COMPARE_NOT_EQUAL = 5,
 } FloatCompareOperation;
 
+/* Float to Int node operations. */
+typedef enum FloatToIntRoundingMode {
+  FN_NODE_FLOAT_TO_INT_ROUND = 0,
+  FN_NODE_FLOAT_TO_INT_FLOOR = 1,
+  FN_NODE_FLOAT_TO_INT_CEIL = 2,
+  FN_NODE_FLOAT_TO_INT_TRUNCATE = 3,
+} FloatToIntRoundingMode;
+
 /* Clamp node types. */
 enum {
   NODE_CLAMP_MINMAX = 0,
@@ -1904,6 +1919,19 @@ typedef enum GeometryNodeMeshLineCountMode {
   GEO_NODE_MESH_LINE_COUNT_TOTAL = 0,
   GEO_NODE_MESH_LINE_COUNT_RESOLUTION = 1,
 } GeometryNodeMeshLineCountMode;
+
+typedef enum GeometryNodeCurvePrimitiveLineMode {
+  GEO_NODE_CURVE_PRIMITIVE_LINE_MODE_POINTS = 0,
+  GEO_NODE_CURVE_PRIMITIVE_LINE_MODE_DIRECTION = 1
+} GeometryNodeCurvePrimitiveLineMode;
+
+typedef enum GeometryNodeCurvePrimitiveQuadMode {
+  GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_RECTANGLE = 0,
+  GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_PARALLELOGRAM = 1,
+  GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_TRAPEZOID = 2,
+  GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_KITE = 3,
+  GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_POINTS = 4,
+} GeometryNodeCurvePrimitiveQuadMode;
 
 typedef enum GeometryNodeCurvePrimitiveBezierSegmentMode {
   GEO_NODE_CURVE_PRIMITIVE_BEZIER_SEGMENT_POSITION = 0,

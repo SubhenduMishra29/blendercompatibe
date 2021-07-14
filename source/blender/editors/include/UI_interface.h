@@ -58,6 +58,7 @@ struct bNodeTree;
 struct bScreen;
 struct rctf;
 struct rcti;
+struct uiBlockInteraction_Handle;
 struct uiButSearch;
 struct uiFontStyle;
 struct uiList;
@@ -245,7 +246,7 @@ enum {
 #define UI_PANEL_BOX_STYLE_MARGIN (U.widget_unit * 0.2f)
 
 /* but->drawflag - these flags should only affect how the button is drawn. */
-/* NOTE: currently, these flags _are not passed_ to the widget's state() or draw() functions
+/* NOTE: currently, these flags *are not passed* to the widget's state() or draw() functions
  *       (except for the 'align' ones)!
  */
 enum {
@@ -514,6 +515,54 @@ typedef int (*uiButPushedStateFunc)(struct uiBut *but, const void *arg);
 
 typedef void (*uiBlockHandleFunc)(struct bContext *C, void *arg, int event);
 
+/* -------------------------------------------------------------------- */
+/** \name Custom Interaction
+ *
+ * Sometimes it's useful to create data that remains available
+ * while the user interacts with a button.
+ *
+ * A common case is dragging a number button or slider
+ * however this could be used in other cases too.
+ * \{ */
+
+struct uiBlockInteraction_Params {
+  /**
+   * When true, this interaction is not modal
+   * (user clicking on a number button arrows or pasting a value for example).
+   */
+  bool is_click;
+  /**
+   * Array of unique event ID's (values from #uiBut.retval).
+   * There may be more than one for multi-button editing (see #UI_BUT_DRAG_MULTI).
+   */
+  int *unique_retval_ids;
+  uint unique_retval_ids_len;
+};
+
+/** Returns 'user_data', freed by #uiBlockInteractionEndFn. */
+typedef void *(*uiBlockInteractionBeginFn)(struct bContext *C,
+                                           const struct uiBlockInteraction_Params *params,
+                                           void *arg1);
+typedef void (*uiBlockInteractionEndFn)(struct bContext *C,
+                                        const struct uiBlockInteraction_Params *params,
+                                        void *arg1,
+                                        void *user_data);
+typedef void (*uiBlockInteractionUpdateFn)(struct bContext *C,
+                                           const struct uiBlockInteraction_Params *params,
+                                           void *arg1,
+                                           void *user_data);
+
+typedef struct uiBlockInteraction_CallbackData {
+  uiBlockInteractionBeginFn begin_fn;
+  uiBlockInteractionEndFn end_fn;
+  uiBlockInteractionUpdateFn update_fn;
+  void *arg1;
+} uiBlockInteraction_CallbackData;
+
+void UI_block_interaction_set(uiBlock *block, uiBlockInteraction_CallbackData *callbacks);
+
+/** \} */
+
 /* Menu Callbacks */
 
 typedef void (*uiMenuCreateFunc)(struct bContext *C, struct uiLayout *layout, void *arg1);
@@ -663,7 +712,7 @@ enum {
   UI_BLOCK_THEME_STYLE_POPUP = 1,
 };
 void UI_block_theme_style_set(uiBlock *block, char theme_style);
-char UI_block_emboss_get(uiBlock *block);
+eUIEmbossType UI_block_emboss_get(uiBlock *block);
 void UI_block_emboss_set(uiBlock *block, eUIEmbossType emboss);
 bool UI_block_is_search_only(const uiBlock *block);
 void UI_block_set_search_only(uiBlock *block, bool search_only);
@@ -678,7 +727,7 @@ void UI_block_region_set(uiBlock *block, struct ARegion *region);
 void UI_block_lock_set(uiBlock *block, bool val, const char *lockstr);
 void UI_block_lock_clear(uiBlock *block);
 
-/* automatic aligning, horiz or verical */
+/* Automatic aligning, horizontal or vertical. */
 void UI_block_align_begin(uiBlock *block);
 void UI_block_align_end(uiBlock *block);
 

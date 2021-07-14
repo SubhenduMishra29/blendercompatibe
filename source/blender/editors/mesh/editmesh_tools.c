@@ -44,6 +44,7 @@
 #include "BLI_string.h"
 
 #include "BKE_context.h"
+#include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_key.h"
@@ -973,7 +974,7 @@ static int edbm_add_edge_face_exec(bContext *C, wmOperator *op)
 #ifdef USE_FACE_CREATE_SEL_EXTEND
     /* normally we would want to leave the new geometry selected,
      * but being able to press F many times to add geometry is too useful! */
-    if (ele_desel && (BMO_slot_buffer_count(bmop.slots_out, "faces.out") == 1) &&
+    if (ele_desel && (BMO_slot_buffer_len(bmop.slots_out, "faces.out") == 1) &&
         (ele_desel_face = BMO_slot_buffer_get_first(bmop.slots_out, "faces.out"))) {
       edbm_add_edge_face_exec__tricky_finalize_sel(em->bm, ele_desel, ele_desel_face);
     }
@@ -1284,7 +1285,7 @@ static bool edbm_connect_vert_pair(BMEditMesh *em, struct Mesh *me, wmOperator *
     }
     else if (failure) {
       len = 0;
-      EDBM_redo_state_free(&em_backup, em, true);
+      EDBM_redo_state_restore_and_free(&em_backup, em, true);
       em_backup_free = false;
     }
     else {
@@ -1302,7 +1303,7 @@ static bool edbm_connect_vert_pair(BMEditMesh *em, struct Mesh *me, wmOperator *
     }
 
     if (em_backup_free) {
-      EDBM_redo_state_free(&em_backup, NULL, false);
+      EDBM_redo_state_free(&em_backup);
     }
   }
   MEM_freeN(verts);
@@ -2344,7 +2345,7 @@ static int edbm_edge_rotate_selected_exec(bContext *C, wmOperator *op)
     BMO_slot_buffer_hflag_enable(
         em->bm, bmop.slots_out, "edges.out", BM_EDGE, BM_ELEM_SELECT, true);
 
-    const int tot_rotate = BMO_slot_buffer_count(bmop.slots_out, "edges.out");
+    const int tot_rotate = BMO_slot_buffer_len(bmop.slots_out, "edges.out");
     const int tot_failed = tot - tot_rotate;
 
     tot_rotate_all += tot_rotate;
@@ -3121,10 +3122,8 @@ static int edbm_rotate_uvs_exec(bContext *C, wmOperator *op)
 
     BMOperator bmop;
 
-    /* initialize the bmop using EDBM api, which does various ui error reporting and other stuff */
     EDBM_op_init(em, &bmop, op, "rotate_uvs faces=%hf use_ccw=%b", BM_ELEM_SELECT, use_ccw);
 
-    /* execute the operator */
     BMO_op_exec(em->bm, &bmop);
 
     if (!EDBM_op_finish(em, &bmop, op, true)) {
@@ -3159,13 +3158,10 @@ static int edbm_reverse_uvs_exec(bContext *C, wmOperator *op)
 
     BMOperator bmop;
 
-    /* initialize the bmop using EDBM api, which does various ui error reporting and other stuff */
     EDBM_op_init(em, &bmop, op, "reverse_uvs faces=%hf", BM_ELEM_SELECT);
 
-    /* execute the operator */
     BMO_op_exec(em->bm, &bmop);
 
-    /* finish the operator */
     if (!EDBM_op_finish(em, &bmop, op, true)) {
       continue;
     }
@@ -3200,13 +3196,10 @@ static int edbm_rotate_colors_exec(bContext *C, wmOperator *op)
 
     BMOperator bmop;
 
-    /* initialize the bmop using EDBM api, which does various ui error reporting and other stuff */
     EDBM_op_init(em, &bmop, op, "rotate_colors faces=%hf use_ccw=%b", BM_ELEM_SELECT, use_ccw);
 
-    /* execute the operator */
     BMO_op_exec(em->bm, &bmop);
 
-    /* finish the operator */
     if (!EDBM_op_finish(em, &bmop, op, true)) {
       continue;
     }
@@ -3242,13 +3235,10 @@ static int edbm_reverse_colors_exec(bContext *C, wmOperator *op)
 
     BMOperator bmop;
 
-    /* initialize the bmop using EDBM api, which does various ui error reporting and other stuff */
     EDBM_op_init(em, &bmop, op, "reverse_colors faces=%hf", BM_ELEM_SELECT);
 
-    /* execute the operator */
     BMO_op_exec(em->bm, &bmop);
 
-    /* finish the operator */
     if (!EDBM_op_finish(em, &bmop, op, true)) {
       continue;
     }
@@ -5846,7 +5836,7 @@ static int edbm_decimate_exec(bContext *C, wmOperator *op)
     float *vweights = MEM_mallocN(sizeof(*vweights) * bm->totvert, __func__);
     {
       const int cd_dvert_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-      const int defbase_act = obedit->actdef - 1;
+      const int defbase_act = BKE_object_defgroup_active_index_get(obedit) - 1;
 
       if (use_vertex_group && (cd_dvert_offset == -1)) {
         BKE_report(op->reports, RPT_WARNING, "No active vertex group");
@@ -6667,7 +6657,7 @@ enum {
 typedef struct BMElemSort {
   /** Sort factor */
   float srt;
-  /** Original index of this element _in its mempool_ */
+  /** Original index of this element (in its #BLI_mempool). */
   int org_idx;
 } BMElemSort;
 

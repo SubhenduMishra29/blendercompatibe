@@ -2704,8 +2704,8 @@ static void mesh_to_softbody(Object *ob)
   bp = sb->bpoint;
 
   defgroup_index = me->dvert ? (sb->vertgroup - 1) : -1;
-  defgroup_index_mass = me->dvert ? BKE_object_defgroup_name_index(ob, sb->namedVG_Mass) : -1;
-  defgroup_index_spring = me->dvert ? BKE_object_defgroup_name_index(ob, sb->namedVG_Spring_K) :
+  defgroup_index_mass = me->dvert ? BKE_id_defgroup_name_index(&me->id, sb->namedVG_Mass) : -1;
+  defgroup_index_spring = me->dvert ? BKE_id_defgroup_name_index(&me->id, sb->namedVG_Spring_K) :
                                       -1;
 
   for (a = 0; a < me->totvert; a++, bp++) {
@@ -2934,8 +2934,8 @@ static void lattice_to_softbody(Object *ob)
   bp = sb->bpoint;
 
   defgroup_index = lt->dvert ? (sb->vertgroup - 1) : -1;
-  defgroup_index_mass = lt->dvert ? BKE_object_defgroup_name_index(ob, sb->namedVG_Mass) : -1;
-  defgroup_index_spring = lt->dvert ? BKE_object_defgroup_name_index(ob, sb->namedVG_Spring_K) :
+  defgroup_index_mass = lt->dvert ? BKE_id_defgroup_name_index(&lt->id, sb->namedVG_Mass) : -1;
+  defgroup_index_spring = lt->dvert ? BKE_id_defgroup_name_index(&lt->id, sb->namedVG_Spring_K) :
                                       -1;
 
   /* same code used as for mesh vertices */
@@ -3086,7 +3086,7 @@ static void softbody_to_object(Object *ob, float (*vertexCos)[3], int numVerts, 
     if (sb->solverflags & SBSO_ESTIMATEIPO) {
       SB_estimate_transform(ob, sb->lcom, sb->lrot, sb->lscale);
     }
-    /* inverse matrix is not uptodate... */
+    /* Inverse matrix is not up to date. */
     invert_m4_m4(ob->imat, ob->obmat);
 
     for (a = 0; a < numVerts; a++, bp++) {

@@ -938,8 +938,8 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
   Depsgraph *depsgraph = p->depsgraph;
   Object *obact = (Object *)p->ownerPtr.data;
   RegionView3D *rv3d = p->region->regiondata;
-  const int def_nr = obact->actdef - 1;
-  const bool have_weight = (bool)BLI_findlink(&obact->defbase, def_nr);
+  const int def_nr = gpd->vertex_group_active_index - 1;
+  const bool have_weight = (bool)BLI_findlink(&gpd->vertex_group_names, def_nr);
   const char align_flag = ts->gpencil_v3d_align;
   const bool is_depth = (bool)(align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
   const bool is_lock_axis_view = (bool)(ts->gp_sculpt.lock_axis == 0);
@@ -1579,7 +1579,7 @@ static void gpencil_stroke_eraser_dostroke(tGPsdata *p,
           ((!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1])) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1]))) {
         /* Check if point segment of stroke had anything to do with
          * eraser region  (either within stroke painted, or on its lines)
-         * - this assumes that linewidth is irrelevant
+         * - this assumes that line-width is irrelevant.
          */
         if (gpencil_stroke_inside_circle(mval, radius, pc0[0], pc0[1], pc2[0], pc2[1])) {
 

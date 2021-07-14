@@ -1377,8 +1377,6 @@ static int ui_but_draw_menu_icon(const uiBut *but)
 static void widget_draw_icon(
     const uiBut *but, BIFIconID icon, float alpha, const rcti *rect, const uchar mono_color[4])
 {
-  float xs = 0.0f, ys = 0.0f;
-
   if (but->flag & UI_BUT_ICON_PREVIEW) {
     GPU_blend(GPU_BLEND_ALPHA);
     widget_draw_preview(icon, alpha, rect);
@@ -1420,6 +1418,7 @@ static void widget_draw_icon(
 
   if (icon && icon != ICON_BLANK1) {
     const float ofs = 1.0f / aspect;
+    float xs, ys;
 
     if (but->drawflag & UI_BUT_ICON_LEFT) {
       /* special case - icon_only pie buttons */
@@ -2013,7 +2012,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
         /* insert composite string into cursor pos */
         BLI_snprintf((char *)drawstr,
                      UI_MAX_DRAW_STR,
-                     "%s%s%s",
+                     "%.*s%s%s",
+                     but->pos,
                      but->editstr,
                      ime_data->str_composite,
                      but->editstr + but->pos);
@@ -2029,8 +2029,11 @@ static void widget_draw_text(const uiFontStyle *fstyle,
   /* text button selection, cursor, composite underline */
   if (but->editstr && but->pos != -1) {
     int but_pos_ofs;
-    /* Shape of the cursor for drawing. */
-    rcti but_cursor_shape;
+
+#ifdef WITH_INPUT_IME
+    bool ime_reposition_window = false;
+    int ime_win_x, ime_win_y;
+#endif
 
     /* text button selection */
     if ((but->selend - but->selsta) > 0) {
@@ -2055,14 +2058,28 @@ static void widget_draw_text(const uiFontStyle *fstyle,
             immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
         immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 
+        rcti selection_shape;
+        selection_shape.xmin = rect->xmin + selsta_draw;
+        selection_shape.xmax = min_ii(rect->xmin + selwidth_draw, rect->xmax - 2);
+        selection_shape.ymin = rect->ymin + U.pixelsize;
+        selection_shape.ymax = rect->ymax - U.pixelsize;
         immUniformColor4ubv(wcol->item);
         immRecti(pos,
-                 rect->xmin + selsta_draw,
-                 rect->ymin + U.pixelsize,
-                 min_ii(rect->xmin + selwidth_draw, rect->xmax - 2),
-                 rect->ymax - U.pixelsize);
+                 selection_shape.xmin,
+                 selection_shape.ymin,
+                 selection_shape.xmax,
+                 selection_shape.ymax);
 
         immUnbindProgram();
+
+#ifdef WITH_INPUT_IME
+        /* IME candidate window uses selection position. */
+        if (!ime_reposition_window) {
+          ime_reposition_window = true;
+          ime_win_x = selection_shape.xmin;
+          ime_win_y = selection_shape.ymin;
+        }
+#endif
       }
     }
 
@@ -2070,7 +2087,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     but_pos_ofs = but->pos;
 
 #ifdef WITH_INPUT_IME
-    /* if is ime compositing, move the cursor */
+    /* If is IME compositing, move the cursor. */
     if (ime_data && ime_data->composite_len && ime_data->cursor_pos != -1) {
       but_pos_ofs += ime_data->cursor_pos;
     }
@@ -2095,6 +2112,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
 
       immUniformThemeColor(TH_WIDGET_TEXT_CURSOR);
 
+      /* Shape of the cursor for drawing. */
+      rcti but_cursor_shape;
       but_cursor_shape.xmin = (rect->xmin + t) - U.pixelsize;
       but_cursor_shape.ymin = rect->ymin + U.pixelsize;
       but_cursor_shape.xmax = (rect->xmin + t) + U.pixelsize;
@@ -2108,16 +2127,24 @@ static void widget_draw_text(const uiFontStyle *fstyle,
                but_cursor_shape.ymax);
 
       immUnbindProgram();
+
+#ifdef WITH_INPUT_IME
+      /* IME candidate window uses cursor position. */
+      if (!ime_reposition_window) {
+        ime_reposition_window = true;
+        ime_win_x = but_cursor_shape.xmax + 5;
+        ime_win_y = but_cursor_shape.ymin + 3;
+      }
+#endif
     }
 
 #ifdef WITH_INPUT_IME
+    /* IME cursor following. */
+    if (ime_reposition_window) {
+      ui_but_ime_reposition(but, ime_win_x, ime_win_y, false);
+    }
     if (ime_data && ime_data->composite_len) {
-      /* ime cursor following */
-      if (but->pos >= but->ofs) {
-        ui_but_ime_reposition(but, but_cursor_shape.xmax + 5, but_cursor_shape.ymin + 3, false);
-      }
-
-      /* composite underline */
+      /* Composite underline. */
       widget_draw_text_ime_underline(fstyle, wcol, but, rect, ime_data, drawstr);
     }
 #endif
@@ -3692,10 +3719,6 @@ static void widget_progressbar(
   /* "slider" bar color */
   copy_v3_v3_uchar(wcol->inner, wcol->item);
   widgetbase_draw(&wtb_bar, wcol);
-
-  /* raise text a bit */
-  rect->xmin += (BLI_rcti_size_x(&rect_prog) / 2);
-  rect->xmax += (BLI_rcti_size_x(&rect_prog) / 2);
 }
 
 static void widget_datasetrow(

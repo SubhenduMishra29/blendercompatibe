@@ -172,12 +172,6 @@ typedef struct Object_Runtime {
   struct GeometrySet *geometry_set_eval;
 
   /**
-   * A GHash that contains geometry sets for intermediate stages of evaluation. The keys are just a
-   * hash and are not owned by the map. The geometry sets are owned.
-   */
-  void *geometry_set_previews;
-
-  /**
    * Mesh structure created during object evaluation.
    * It has deformation only modifiers applied on it.
    */
@@ -278,8 +272,7 @@ typedef struct Object {
 
   ListBase constraintChannels DNA_DEPRECATED; /* XXX deprecated... old animation system */
   ListBase effect DNA_DEPRECATED;             /* XXX deprecated... keep for readfile */
-  /** List of bDeformGroup (vertex groups) names and flag only. */
-  ListBase defbase;
+  ListBase defbase DNA_DEPRECATED;            /* Only for versioning, moved to object data. */
   /** List of ModifierData structures. */
   ListBase modifiers;
   /** List of GpencilModifierData structures. */
@@ -381,7 +374,7 @@ typedef struct Object {
   /** Custom index, for renderpasses. */
   short index;
   /** Current deformation group, NOTE: index starts at 1. */
-  unsigned short actdef;
+  unsigned short actdef DNA_DEPRECATED;
   /** Current face map, NOTE: index starts at 1. */
   unsigned short actfmap;
   char _pad2[2];

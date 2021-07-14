@@ -19,7 +19,7 @@
  *
  * BM mesh normal calculation functions.
  *
- * \see mesh_normals.c for the equivalent #Mesh functionality.
+ * \see mesh_normals.cc for the equivalent #Mesh functionality.
  */
 
 #include "MEM_guardedalloc.h"
@@ -33,6 +33,7 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
 #include "BKE_mesh.h"
@@ -525,7 +526,7 @@ bool BM_loop_check_cyclic_smooth_fan(BMLoop *l_curr)
 }
 
 /**
- * BMesh version of BKE_mesh_normals_loop_split() in mesh_evaluate.c
+ * BMesh version of BKE_mesh_normals_loop_split() in `mesh_evaluate.cc`
  * Will use first clnors_data array, and fallback to cd_loop_clnors_offset
  * (use NULL and -1 to not use clnors).
  *
@@ -630,10 +631,13 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
           {
             const BMVert *v_pivot = l_curr->v;
             const float *co_pivot = vcos ? vcos[BM_elem_index_get(v_pivot)] : v_pivot->co;
-            const BMVert *v_1 = BM_edge_other_vert(l_curr->e, v_pivot);
+            const BMVert *v_1 = l_curr->next->v;
             const float *co_1 = vcos ? vcos[BM_elem_index_get(v_1)] : v_1->co;
-            const BMVert *v_2 = BM_edge_other_vert(l_curr->prev->e, v_pivot);
+            const BMVert *v_2 = l_curr->prev->v;
             const float *co_2 = vcos ? vcos[BM_elem_index_get(v_2)] : v_2->co;
+
+            BLI_assert(v_1 == BM_edge_other_vert(l_curr->e, v_pivot));
+            BLI_assert(v_2 == BM_edge_other_vert(l_curr->prev->e, v_pivot));
 
             sub_v3_v3v3(vec_curr, co_1, co_pivot);
             normalize_v3(vec_curr);
@@ -700,8 +704,10 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
         /* Only need to compute previous edge's vector once,
          * then we can just reuse old current one! */
         {
-          const BMVert *v_2 = BM_edge_other_vert(e_next, v_pivot);
+          const BMVert *v_2 = lfan_pivot->next->v;
           const float *co_2 = vcos ? vcos[BM_elem_index_get(v_2)] : v_2->co;
+
+          BLI_assert(v_2 == BM_edge_other_vert(e_next, v_pivot));
 
           sub_v3_v3v3(vec_org, co_2, co_pivot);
           normalize_v3(vec_org);

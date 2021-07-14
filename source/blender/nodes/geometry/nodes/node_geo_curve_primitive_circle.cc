@@ -83,9 +83,10 @@ static bool colinear_f3_f3_f3(const float3 p1, const float3 p2, const float3 p3)
 }
 
 static std::unique_ptr<CurveEval> create_point_circle_curve(
-    const float3 p1, const float3 p2, const float3 p3, const int resolution, float center_out[3])
+    const float3 p1, const float3 p2, const float3 p3, const int resolution, float3 &r_center)
 {
   if (colinear_f3_f3_f3(p1, p2, p3)) {
+    r_center = float3(0);
     return nullptr;
   }
 
@@ -118,6 +119,7 @@ static std::unique_ptr<CurveEval> create_point_circle_curve(
 
   /* If the 3 planes do not intersect at one point, just return empty geometry. */
   if (!isect_plane_plane_plane_v3(plane_1, plane_2, plane_3, center)) {
+    r_center = float3(0);
     return nullptr;
   }
 
@@ -126,7 +128,7 @@ static std::unique_ptr<CurveEval> create_point_circle_curve(
   const float theta_step = ((2 * M_PI) / (float)resolution);
   for (const int i : IndexRange(resolution)) {
 
-    /* Formula for a circle around a point and 2 unit vectors perpendicular.
+    /* Formula for a circle around a point and 2 unit vectors perpendicular
      * to each other and the axis of the circle from:
      * https://math.stackexchange.com/questions/73237/parametric-equation-of-a-circle-in-3d-space
      */
@@ -141,7 +143,7 @@ static std::unique_ptr<CurveEval> create_point_circle_curve(
   curve->add_spline(std::move(spline));
   curve->attributes.reallocate(curve->splines().size());
 
-  copy_v3_v3(center_out, center);
+  r_center = center;
   return curve;
 }
 
@@ -179,18 +181,13 @@ static void geo_node_curve_primitive_circle_exec(GeoNodeExecParams params)
 
   std::unique_ptr<CurveEval> curve;
   if (mode == GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_POINTS) {
-    float center_point[3];
+    float3 center_point;
     curve = create_point_circle_curve(params.extract_input<float3>("Point 1"),
                                       params.extract_input<float3>("Point 2"),
                                       params.extract_input<float3>("Point 3"),
                                       std::max(params.extract_input<int>("Resolution"), 3),
                                       center_point);
-    if (curve) {
-      params.set_output("Center", float3(center_point));
-    }
-    else {
-      params.set_output("Center", float3(0, 0, 0));
-    }
+    params.set_output("Center", center_point);
   }
   else if (mode == GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_RADIUS) {
     curve = create_radius_circle_curve(std::max(params.extract_input<int>("Resolution"), 3),
@@ -210,7 +207,8 @@ static void geo_node_curve_primitive_circle_exec(GeoNodeExecParams params)
 void register_node_type_geo_curve_primitive_circle()
 {
   static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_CURVE_PRIMITIVE_CIRCLE, "Circle", NODE_CLASS_GEOMETRY, 0);
+  geo_node_type_base(
+      &ntype, GEO_NODE_CURVE_PRIMITIVE_CIRCLE, "Curve Circle", NODE_CLASS_GEOMETRY, 0);
   node_type_socket_templates(
       &ntype, geo_node_curve_primitive_circle_in, geo_node_curve_primitive_circle_out);
 
