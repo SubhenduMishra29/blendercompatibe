@@ -2366,16 +2366,10 @@ static StructRNA *rna_FunctionNode_register(Main *bmain,
   return nt->rna_ext.srna;
 }
 
-static IDProperty *rna_Node_idprops(PointerRNA *ptr, bool create)
+static IDProperty **rna_Node_idprops(PointerRNA *ptr)
 {
   bNode *node = ptr->data;
-
-  if (create && !node->prop) {
-    IDPropertyTemplate val = {0};
-    node->prop = IDP_New(IDP_GROUP, &val, "RNA_Node ID properties");
-  }
-
-  return node->prop;
+  return &node->prop;
 }
 
 static void rna_Node_parent_set(PointerRNA *ptr,
@@ -2834,16 +2828,10 @@ static char *rna_NodeSocket_path(PointerRNA *ptr)
   }
 }
 
-static IDProperty *rna_NodeSocket_idprops(PointerRNA *ptr, bool create)
+static IDProperty **rna_NodeSocket_idprops(PointerRNA *ptr)
 {
   bNodeSocket *sock = ptr->data;
-
-  if (create && !sock->prop) {
-    IDPropertyTemplate val = {0};
-    sock->prop = IDP_New(IDP_GROUP, &val, "RNA_NodeSocket ID properties");
-  }
-
-  return sock->prop;
+  return &sock->prop;
 }
 
 static PointerRNA rna_NodeSocket_node_get(PointerRNA *ptr)
@@ -3150,16 +3138,10 @@ static char *rna_NodeSocketInterface_path(PointerRNA *ptr)
   return NULL;
 }
 
-static IDProperty *rna_NodeSocketInterface_idprops(PointerRNA *ptr, bool create)
+static IDProperty **rna_NodeSocketInterface_idprops(PointerRNA *ptr)
 {
   bNodeSocket *sock = ptr->data;
-
-  if (create && !sock->prop) {
-    IDPropertyTemplate val = {0};
-    sock->prop = IDP_New(IDP_GROUP, &val, "RNA_NodeSocketInterface ID properties");
-  }
-
-  return sock->prop;
+  return &sock->prop;
 }
 
 static void rna_NodeSocketInterface_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr)
@@ -4406,7 +4388,7 @@ static int point_density_particle_color_source_from_shader(
     case SHD_POINTDENSITY_COLOR_PARTVEL:
       return TEX_PD_COLOR_PARTVEL;
     default:
-      BLI_assert(!"Unknown color source");
+      BLI_assert_msg(0, "Unknown color source");
       return TEX_PD_COLOR_CONSTANT;
   }
 }
@@ -4422,7 +4404,7 @@ static int point_density_vertex_color_source_from_shader(
     case SHD_POINTDENSITY_COLOR_VERTNOR:
       return TEX_PD_COLOR_VERTNOR;
     default:
-      BLI_assert(!"Unknown color source");
+      BLI_assert_msg(0, "Unknown color source");
       return TEX_PD_COLOR_CONSTANT;
   }
 }
@@ -9950,7 +9932,7 @@ static void def_geo_switch(StructRNA *srna)
 static void def_geo_curve_primitive_quadrilateral(StructRNA *srna)
 {
   PropertyRNA *prop;
-  
+
   static EnumPropertyItem mode_items[] = {
       {GEO_NODE_CURVE_PRIMITIVE_QUAD_MODE_RECTANGLE,
        "RECTANGLE",

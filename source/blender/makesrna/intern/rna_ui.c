@@ -452,15 +452,10 @@ static unsigned int rna_UIList_filter_const_FILTER_ITEM_get(PointerRNA *UNUSED(p
   return UILST_FLT_ITEM;
 }
 
-static IDProperty *rna_UIList_idprops(PointerRNA *ptr, bool create)
+static IDProperty **rna_UIList_idprops(PointerRNA *ptr)
 {
   uiList *ui_list = (uiList *)ptr->data;
-  if (create && !ui_list->properties) {
-    IDPropertyTemplate val = {0};
-    ui_list->properties = IDP_New(IDP_GROUP, &val, "RNA_UIList IDproperties group");
-  }
-
-  return ui_list->properties;
+  return &ui_list->properties;
 }
 
 static void uilist_draw_item(uiList *ui_list,
@@ -1019,7 +1014,7 @@ static void rna_Panel_bl_description_set(PointerRNA *ptr, const char *value)
     BLI_strncpy(str, value, RNA_DYN_DESCR_MAX); /* utf8 already ensured */
   }
   else {
-    BLI_assert(!"setting the bl_description on a non-builtin panel");
+    BLI_assert_msg(0, "setting the bl_description on a non-builtin panel");
   }
 }
 
@@ -1031,7 +1026,7 @@ static void rna_Menu_bl_description_set(PointerRNA *ptr, const char *value)
     BLI_strncpy(str, value, RNA_DYN_DESCR_MAX); /* utf8 already ensured */
   }
   else {
-    BLI_assert(!"setting the bl_description on a non-builtin menu");
+    BLI_assert_msg(0, "setting the bl_description on a non-builtin menu");
   }
 }
 
