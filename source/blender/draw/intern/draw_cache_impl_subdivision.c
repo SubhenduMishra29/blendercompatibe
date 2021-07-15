@@ -1624,6 +1624,36 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     }
   }
 
+  if (DRW_ibo_requested(mbc->ibo.lines_adjacency)) {
+    GPUIndexBufBuilder builder;
+
+    /* For each polygon there is (loop + triangle - 1) edges. Since we only have quads, and a quad
+     * is split into 2 triangles, we have (loop + 2 - 1) = (loop + 1) edges for each quad, or in
+     * total: (number_of_loops + number_of_quads). */
+    GPU_indexbuf_init(&builder,
+                      GPU_PRIM_LINES_ADJ,
+                      subdiv_buffers.number_of_loops + subdiv_buffers.number_of_quads,
+                      subdiv_buffers.number_of_loops);
+
+    for (uint i = 0; i < subdiv_buffers.number_of_quads; i++) {
+      const uint loop_index = i * 4;
+      const uint l0 = loop_index + 0;
+      const uint l1 = loop_index + 1;
+      const uint l2 = loop_index + 2;
+      const uint l3 = loop_index + 3;
+
+      /* Outer edges of the quad. */
+      GPU_indexbuf_add_line_adj_verts(&builder, l0, l1, l2, l3);
+      GPU_indexbuf_add_line_adj_verts(&builder, l1, l2, l3, l0);
+      GPU_indexbuf_add_line_adj_verts(&builder, l2, l3, l0, l1);
+      GPU_indexbuf_add_line_adj_verts(&builder, l3, l0, l1, l2);
+      /* Diagonal. */
+      GPU_indexbuf_add_line_adj_verts(&builder, l3, l0, l2, l1);
+    }
+
+    GPU_indexbuf_build_in_place(&builder, mbc->ibo.lines_adjacency);
+  }
+
   free_buffers(&subdiv_buffers);
   return true;
 }
