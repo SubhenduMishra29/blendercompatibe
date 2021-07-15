@@ -1649,8 +1649,8 @@ Subdiv *BKE_modifier_subsurf_subdiv_descriptor_ensure(const SubsurfModifierData 
   if (runtime_data->subdiv && runtime_data->set_by_draw_code != for_draw_code) {
     // Not nice but needed until there is a better way of handling this.
     // Essentially, when evaluating modifiers in a separate thread after adding a modifier
-    // or moving the subsurf modifier, we need to ensure that the OpenGL data is freed by the thread
-    // which created it.
+    // or moving the subsurf modifier, we need to ensure that the OpenGL data is freed by the
+    // thread which created it.
     if (runtime_data->set_by_draw_code) {
       BKE_modifier_subsurf_free_gpu_cache_cb(runtime_data->subdiv);
     }

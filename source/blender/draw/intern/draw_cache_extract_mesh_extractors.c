@@ -104,10 +104,7 @@ const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor,
 /** \name Extract Edit Flag Utils
  * \{ */
 
-
-void mesh_render_data_edge_flag(const MeshRenderData *mr,
-                                const BMEdge *eed,
-                                EditLoopData *eattr)
+void mesh_render_data_edge_flag(const MeshRenderData *mr, const BMEdge *eed, EditLoopData *eattr)
 {
   const ToolSettings *ts = mr->toolsettings;
   const bool is_vertex_select_mode = (ts != NULL) && (ts->selectmode & SCE_SELECT_VERTEX) != 0;
@@ -170,9 +167,7 @@ void mesh_render_data_edge_flag(const MeshRenderData *mr,
 #endif
 }
 
-void mesh_render_data_vert_flag(const MeshRenderData *mr,
-                                const BMVert *eve,
-                                EditLoopData *eattr)
+void mesh_render_data_vert_flag(const MeshRenderData *mr, const BMVert *eve, EditLoopData *eattr)
 {
   if (eve == mr->eve_act) {
     eattr->e_flag |= VFLAG_VERT_ACTIVE;

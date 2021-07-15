@@ -209,8 +209,8 @@ typedef struct CompressedPatchCoord {
 MINLINE CompressedPatchCoord make_patch_coord(int ptex_face_index, float u, float v)
 {
   CompressedPatchCoord patch_coord = {
-    .ptex_face_index = ptex_face_index,
-    .encoded_uv = ((unsigned int)(u * 65535.0f) << 16) | (unsigned int)(v * 65535.0f),
+      .ptex_face_index = ptex_face_index,
+      .encoded_uv = ((unsigned int)(u * 65535.0f) << 16) | (unsigned int)(v * 65535.0f),
   };
   return patch_coord;
 }
@@ -249,7 +249,8 @@ static GPUVertFormat *get_quadtree_format(void)
   return &format;
 }
 
-/* Vertex format used for the patch coords buffer; corresponds to the PatchCoord struct from OSD. */
+/* Vertex format used for the patch coords buffer; corresponds to the PatchCoord struct from OSD.
+ */
 static GPUVertFormat *get_patch_coords_format(void)
 {
   static GPUVertFormat format = {0};
@@ -433,7 +434,7 @@ typedef struct DRWSubdivCache {
   uint num_patch_coords;
 
   int coarse_poly_count;
-  int num_vertices; // subdiv_vertex_count;
+  int num_vertices;  // subdiv_vertex_count;
 
   /* Maps subdivision loop to original coarse vertex index. */
   int *subdiv_loop_vert_index;
@@ -613,9 +614,11 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
                                        const int *subdiv_polygon_offset)
 {
   DRWCacheBuildingContext *ctx = (DRWCacheBuildingContext *)(foreach_context->user_data);
-  ctx->patch_coords = MEM_mallocN(num_loops * sizeof(CompressedPatchCoord), "CompressedPatchCoord");
+  ctx->patch_coords = MEM_mallocN(num_loops * sizeof(CompressedPatchCoord),
+                                  "CompressedPatchCoord");
   ctx->subdiv_loop_vert_index = MEM_mallocN(num_loops * sizeof(int), "subdiv_loop_vert_index");
-  ctx->subdiv_loop_subdiv_vert_index = MEM_mallocN(num_loops * sizeof(int), "subdiv_loop_subdiv_vert_index");
+  ctx->subdiv_loop_subdiv_vert_index = MEM_mallocN(num_loops * sizeof(int),
+                                                   "subdiv_loop_subdiv_vert_index");
   ctx->subdiv_loop_edge_index = MEM_mallocN(num_loops * sizeof(int), "subdiv_loop_edge_index");
   ctx->subdiv_loop_poly_index = MEM_mallocN(num_loops * sizeof(int), "subdiv_loop_poly_index");
 
@@ -645,14 +648,14 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
 }
 
 static void draw_subdiv_vertex_corner_cb(const SubdivForeachContext *foreach_context,
-                                      void *UNUSED(tls),
-                                      const int UNUSED(ptex_face_index),
-                                      const float UNUSED(u),
-                                      const float UNUSED(v),
-                                      const int coarse_vertex_index,
-                                      const int UNUSED(coarse_poly_index),
-                                      const int UNUSED(coarse_corner),
-                                      const int subdiv_vertex_index)
+                                         void *UNUSED(tls),
+                                         const int UNUSED(ptex_face_index),
+                                         const float UNUSED(u),
+                                         const float UNUSED(v),
+                                         const int coarse_vertex_index,
+                                         const int UNUSED(coarse_poly_index),
+                                         const int UNUSED(coarse_corner),
+                                         const int subdiv_vertex_index)
 {
   BLI_assert(coarse_vertex_index != ORIGINDEX_NONE);
   DRWCacheBuildingContext *ctx = (DRWCacheBuildingContext *)(foreach_context->user_data);
@@ -660,40 +663,40 @@ static void draw_subdiv_vertex_corner_cb(const SubdivForeachContext *foreach_con
 }
 
 static void draw_subdiv_vertex_edge_cb(const SubdivForeachContext *UNUSED(foreach_context),
-                                    void *UNUSED(tls_v),
-                                    const int UNUSED(ptex_face_index),
-                                    const float UNUSED(u),
-                                    const float UNUSED(v),
-                                    const int UNUSED(coarse_edge_index),
-                                    const int UNUSED(coarse_poly_index),
-                                    const int UNUSED(coarse_corner),
-                                    const int UNUSED(subdiv_vertex_index))
+                                       void *UNUSED(tls_v),
+                                       const int UNUSED(ptex_face_index),
+                                       const float UNUSED(u),
+                                       const float UNUSED(v),
+                                       const int UNUSED(coarse_edge_index),
+                                       const int UNUSED(coarse_poly_index),
+                                       const int UNUSED(coarse_corner),
+                                       const int UNUSED(subdiv_vertex_index))
 {
   /* Required if SubdivForeachContext.vertex_corner is also set. */
 }
 
 static void draw_subdiv_edge_cb(const SubdivForeachContext *foreach_context,
-                             void *UNUSED(tls),
-                             const int coarse_edge_index,
-                             const int subdiv_edge_index,
-                             const int UNUSED(subdiv_v1),
-                             const int UNUSED(subdiv_v2))
+                                void *UNUSED(tls),
+                                const int coarse_edge_index,
+                                const int subdiv_edge_index,
+                                const int UNUSED(subdiv_v1),
+                                const int UNUSED(subdiv_v2))
 {
   DRWCacheBuildingContext *ctx = (DRWCacheBuildingContext *)(foreach_context->user_data);
   ctx->edge_origindex_map[subdiv_edge_index] = coarse_edge_index;
 }
 
 static void draw_subdiv_loop_cb(const SubdivForeachContext *foreach_context,
-                              void *UNUSED(tls_v),
-                              const int ptex_face_index,
-                              const float u,
-                              const float v,
-                              const int UNUSED(coarse_loop_index),
-                              const int coarse_poly_index,
-                              const int UNUSED(coarse_corner),
-                              const int subdiv_loop_index,
-                              const int subdiv_vertex_index,
-                              const int subdiv_edge_index)
+                                void *UNUSED(tls_v),
+                                const int ptex_face_index,
+                                const float u,
+                                const float v,
+                                const int UNUSED(coarse_loop_index),
+                                const int coarse_poly_index,
+                                const int UNUSED(coarse_corner),
+                                const int subdiv_loop_index,
+                                const int subdiv_vertex_index,
+                                const int subdiv_edge_index)
 {
   DRWCacheBuildingContext *ctx = (DRWCacheBuildingContext *)(foreach_context->user_data);
   ctx->patch_coords[subdiv_loop_index] = make_patch_coord(ptex_face_index, u, v);
@@ -736,17 +739,19 @@ static void build_cached_data_from_subdiv(DRWCacheBuildingContext *cache_buildin
 
   /* Setup actual coarse edge index. */
   for (int i = 0; i < cache_building_context->num_patch_coords; i++) {
-    cache_building_context->subdiv_loop_edge_index[i] = cache_building_context->edge_origindex_map[cache_building_context->subdiv_loop_edge_index[i]];
+    cache_building_context->subdiv_loop_edge_index[i] =
+        cache_building_context
+            ->edge_origindex_map[cache_building_context->subdiv_loop_edge_index[i]];
   }
 }
 
 typedef struct GPUPatchMap {
-    GPUVertBuf *patch_map_handles;
-    GPUVertBuf *patch_map_quadtree;
-    int min_patch_face;
-    int max_patch_face;
-    int max_depth;
-    int patches_are_triangular;
+  GPUVertBuf *patch_map_handles;
+  GPUVertBuf *patch_map_quadtree;
+  int min_patch_face;
+  int max_patch_face;
+  int max_depth;
+  int patches_are_triangular;
 } GPUPatchMap;
 
 static void gpu_patch_map_build(GPUPatchMap *gpu_patch_map, Subdiv *subdiv)
@@ -796,8 +801,7 @@ static GPUVertBuf *build_patch_coords(GPUPatchMap *gpu_patch_map,
                                       uint num_patch_coords)
 {
   GPUVertBuf *result = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_build_on_device(
-      result, get_patch_coords_format(), num_patch_coords);
+  GPU_vertbuf_init_build_on_device(result, get_patch_coords_format(), num_patch_coords);
 
   GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_PATCH_COORDS, NULL);
   GPU_shader_bind(shader);
@@ -833,13 +837,16 @@ static GPUVertBuf *gpu_vertbuf_create_from_format(GPUVertFormat *format, uint le
   return verts;
 }
 
-static GPUVertBuf *gpu_vertbuf_from_blender_patch_coords(CompressedPatchCoord *patch_coords, uint len)
+static GPUVertBuf *gpu_vertbuf_from_blender_patch_coords(CompressedPatchCoord *patch_coords,
+                                                         uint len)
 {
   GPUVertBuf *blender_patch_coords = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(
       blender_patch_coords, get_blender_patch_coords_format(), GPU_USAGE_STATIC);
   GPU_vertbuf_data_alloc(blender_patch_coords, len);
-  memcpy(GPU_vertbuf_get_data(blender_patch_coords), patch_coords, len * sizeof(CompressedPatchCoord));
+  memcpy(GPU_vertbuf_get_data(blender_patch_coords),
+         patch_coords,
+         len * sizeof(CompressedPatchCoord));
   return blender_patch_coords;
 }
 
@@ -883,18 +890,20 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
   }
 
   GPUVertBuf *blender_patch_coords = gpu_vertbuf_from_blender_patch_coords(
-        cache_building_context.patch_coords,
-        cache_building_context.num_patch_coords);
+      cache_building_context.patch_coords, cache_building_context.num_patch_coords);
 
   /* Build buffers for the PatchMap. */
   GPUPatchMap gpu_patch_map;
   gpu_patch_map_build(&gpu_patch_map, subdiv);
 
-  GPUVertBuf *patch_coords = build_patch_coords(&gpu_patch_map, blender_patch_coords, cache_building_context.num_patch_coords);
+  GPUVertBuf *patch_coords = build_patch_coords(
+      &gpu_patch_map, blender_patch_coords, cache_building_context.num_patch_coords);
 
   // Build patch coordinates for all the face dots
-  GPUVertBuf *blender_fdots_patch_coords_buffer = gpu_vertbuf_create_from_format(get_blender_patch_coords_format(), mesh_eval->totpoly);
-  CompressedPatchCoord *blender_fdots_patch_coords = (CompressedPatchCoord *)GPU_vertbuf_get_data(blender_fdots_patch_coords_buffer);
+  GPUVertBuf *blender_fdots_patch_coords_buffer = gpu_vertbuf_create_from_format(
+      get_blender_patch_coords_format(), mesh_eval->totpoly);
+  CompressedPatchCoord *blender_fdots_patch_coords = (CompressedPatchCoord *)GPU_vertbuf_get_data(
+      blender_fdots_patch_coords_buffer);
   for (int i = 0; i < mesh_eval->totpoly; i++) {
     const int ptex_face_index = cache_building_context.face_ptex_offset[i];
     if (mesh_eval->mpoly[i].totloop == 4) {
@@ -905,7 +914,8 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
     }
   }
 
-  cache->fdots_patch_coords = build_patch_coords(&gpu_patch_map, blender_fdots_patch_coords_buffer, mesh_eval->totpoly);
+  cache->fdots_patch_coords = build_patch_coords(
+      &gpu_patch_map, blender_fdots_patch_coords_buffer, mesh_eval->totpoly);
   GPU_vertbuf_discard(blender_fdots_patch_coords_buffer);
 
   gpu_patch_map_free(&gpu_patch_map);
@@ -922,7 +932,8 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
 
   cache->face_ptex_offset = cache_building_context.face_ptex_offset;
 
-  cache->subdiv_polygon_offset_buffer = build_origindex_buffer(cache_building_context.subdiv_polygon_offset, mesh_eval->totpoly);
+  cache->subdiv_polygon_offset_buffer = build_origindex_buffer(
+      cache_building_context.subdiv_polygon_offset, mesh_eval->totpoly);
   cache->subdiv_polygon_offset = cache_building_context.subdiv_polygon_offset;
   cache->coarse_poly_count = mesh_eval->totpoly;
   cache->point_indices = cache_building_context.point_indices;
@@ -971,12 +982,10 @@ typedef struct DRWSubdivBuffers {
 static void ensure_work_dPdu_dPdv(DRWSubdivBuffers *buffers, uint len)
 {
   buffers->work_dPdu = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_build_on_device(
-      buffers->work_dPdu, get_work_vertex_format(), len);
+  GPU_vertbuf_init_build_on_device(buffers->work_dPdu, get_work_vertex_format(), len);
 
   buffers->work_dPdv = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_build_on_device(
-      buffers->work_dPdv, get_work_vertex_format(), len);
+  GPU_vertbuf_init_build_on_device(buffers->work_dPdv, get_work_vertex_format(), len);
 }
 
 static void initialize_buffers(DRWSubdivBuffers *buffers,
@@ -1026,8 +1035,7 @@ static void free_buffers(DRWSubdivBuffers *buffers)
 
 // --------------------------------------------------------
 
-static void do_build_draw_buffer(DRWSubdivBuffers *buffers,
-                                 GPUVertBuf *subdiv_pos_nor)
+static void do_build_draw_buffer(DRWSubdivBuffers *buffers, GPUVertBuf *subdiv_pos_nor)
 {
   const bool do_smooth_normals = buffers->work_dPdu != NULL && buffers->work_dPdv != NULL;
 
@@ -1131,7 +1139,9 @@ static void do_build_fdots_buffer(DRWSubdivBuffers *buffers,
   GPU_shader_unbind();
 }
 
-static void do_build_lines_buffer(DRWSubdivBuffers *buffers, GPUIndexBuf *lines_indices, const bool optimal_display)
+static void do_build_lines_buffer(DRWSubdivBuffers *buffers,
+                                  GPUIndexBuf *lines_indices,
+                                  const bool optimal_display)
 {
   GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LINES, NULL);
   GPU_shader_bind(shader);
@@ -1381,7 +1391,10 @@ static void print_request(MeshBufferCache *mbc)
   }
 }
 
-static void update_edit_data(DRWSubdivCache *cache, Mesh *mesh, EditLoopData *edit_data, const ToolSettings *toolsettings)
+static void update_edit_data(DRWSubdivCache *cache,
+                             Mesh *mesh,
+                             EditLoopData *edit_data,
+                             const ToolSettings *toolsettings)
 {
   if (!mesh->edit_mesh) {
     return;
@@ -1454,11 +1467,13 @@ static void update_edit_data(DRWSubdivCache *cache, Mesh *mesh, EditLoopData *ed
  * | 0     0 | 4     4 | -4   -4 | 0     0 |
  * +---------+---------+---------+---------+
  *
- * The offsets are computed not based on the loops indices, but on the number of subdivided polygons
- * for each coarse polygon. We then only store a single offset for each coarse polygon, since all
- * subfaces are contiguous, they all share the same offset.
+ * The offsets are computed not based on the loops indices, but on the number of subdivided
+ * polygons for each coarse polygon. We then only store a single offset for each coarse polygon,
+ * since all subfaces are contiguous, they all share the same offset.
  */
-static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache, Mesh *mesh_eval, uint mat_len)
+static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache,
+                                                 Mesh *mesh_eval,
+                                                 uint mat_len)
 {
   draw_subdiv_cache_free_material_data(cache);
 
@@ -1479,7 +1494,8 @@ static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache, Mesh *me
   // TODO: parallel_reduce?
   for (int i = 0; i < mesh_eval->totpoly; i++) {
     const MPoly *mpoly = &mesh_eval->mpoly[i];
-    const int next_offset = (i == mesh_eval->totpoly - 1) ? number_of_quads : subdiv_polygon_offset[i + 1];
+    const int next_offset = (i == mesh_eval->totpoly - 1) ? number_of_quads :
+                                                            subdiv_polygon_offset[i + 1];
     const int quad_count = next_offset - subdiv_polygon_offset[i];
     const int mat_index = mpoly->mat_nr;
     mat_start[mat_index] += quad_count;
@@ -1496,14 +1512,16 @@ static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache, Mesh *me
 
   /* Compute per polygon offsets. */
   int *mat_end = MEM_dupallocN(mat_start);
-  int *per_polygon_mat_offset = MEM_mallocN(sizeof(int) * mesh_eval->totpoly, "per_polygon_mat_offset");
+  int *per_polygon_mat_offset = MEM_mallocN(sizeof(int) * mesh_eval->totpoly,
+                                            "per_polygon_mat_offset");
 
   for (int i = 0; i < mesh_eval->totpoly; i++) {
     const MPoly *mpoly = &mesh_eval->mpoly[i];
     const int mat_index = mpoly->mat_nr;
     const int single_material_index = subdiv_polygon_offset[i];
     const int material_offset = mat_end[mat_index];
-    const int next_offset = (i == mesh_eval->totpoly - 1) ? number_of_quads : subdiv_polygon_offset[i + 1];
+    const int next_offset = (i == mesh_eval->totpoly - 1) ? number_of_quads :
+                                                            subdiv_polygon_offset[i + 1];
     const int quad_count = next_offset - subdiv_polygon_offset[i];
     mat_end[mat_index] += quad_count;
 
@@ -1640,15 +1658,19 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   if (DRW_vbo_requested(mbc->vbo.vert_idx)) {
-    init_origindex_buffer(mbc->vbo.vert_idx, draw_cache->subdiv_loop_subdiv_vert_index, draw_cache->num_patch_coords);
+    init_origindex_buffer(mbc->vbo.vert_idx,
+                          draw_cache->subdiv_loop_subdiv_vert_index,
+                          draw_cache->num_patch_coords);
   }
 
   if (DRW_vbo_requested(mbc->vbo.edge_idx)) {
-    init_origindex_buffer(mbc->vbo.edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
+    init_origindex_buffer(
+        mbc->vbo.edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
   }
 
   if (DRW_vbo_requested(mbc->vbo.poly_idx)) {
-    init_origindex_buffer(mbc->vbo.poly_idx, draw_cache->subdiv_loop_poly_index, draw_cache->num_patch_coords);
+    init_origindex_buffer(
+        mbc->vbo.poly_idx, draw_cache->subdiv_loop_poly_index, draw_cache->num_patch_coords);
   }
 
   if (DRW_ibo_requested(mbc->ibo.points)) {

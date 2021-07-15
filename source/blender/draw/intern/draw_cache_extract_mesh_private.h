@@ -274,12 +274,8 @@ eMRIterType mesh_extract_iter_type(const MeshExtract *ext);
 const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor,
                                              const bool do_hq_normals,
                                              const bool do_single_mat);
-void mesh_render_data_edge_flag(const MeshRenderData *mr,
-                                const BMEdge *eed,
-                                EditLoopData *eattr);
-void mesh_render_data_vert_flag(const MeshRenderData *mr,
-                                const BMVert *eve,
-                                EditLoopData *eattr);
+void mesh_render_data_edge_flag(const MeshRenderData *mr, const BMEdge *eed, EditLoopData *eattr);
+void mesh_render_data_vert_flag(const MeshRenderData *mr, const BMVert *eve, EditLoopData *eattr);
 void mesh_render_data_face_flag(const MeshRenderData *mr,
                                 const BMFace *efa,
                                 const int cd_ofs,
