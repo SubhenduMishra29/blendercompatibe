@@ -1265,130 +1265,51 @@ static SubsurfModifierData *get_subsurf_modifier(Object *ob)
 }
 /* -------------------------------------------------------------------- */
 
-#if 0
-EXTRACT_ADD_REQUESTED(VBO, vbo, pos_nor); // done
-EXTRACT_ADD_REQUESTED(VBO, vbo, lnor); // done
-EXTRACT_ADD_REQUESTED(VBO, vbo, uv); // done
-EXTRACT_ADD_REQUESTED(VBO, vbo, tan);
-EXTRACT_ADD_REQUESTED(VBO, vbo, vcol);
-EXTRACT_ADD_REQUESTED(VBO, vbo, sculpt_data); // no need
-EXTRACT_ADD_REQUESTED(VBO, vbo, orco);
-EXTRACT_ADD_REQUESTED(VBO, vbo, edge_fac); // done
-EXTRACT_ADD_REQUESTED(VBO, vbo, weights);
-EXTRACT_ADD_REQUESTED(VBO, vbo, edit_data);
-EXTRACT_ADD_REQUESTED(VBO, vbo, edituv_data); // no need
-EXTRACT_ADD_REQUESTED(VBO, vbo, edituv_stretch_area); // no need
-EXTRACT_ADD_REQUESTED(VBO, vbo, edituv_stretch_angle); // no need
-EXTRACT_ADD_REQUESTED(VBO, vbo, mesh_analysis);
-EXTRACT_ADD_REQUESTED(VBO, vbo, fdots_pos);
-EXTRACT_ADD_REQUESTED(VBO, vbo, fdots_nor);
-EXTRACT_ADD_REQUESTED(VBO, vbo, fdots_uv);
-EXTRACT_ADD_REQUESTED(VBO, vbo, fdots_edituv_data);
-EXTRACT_ADD_REQUESTED(VBO, vbo, poly_idx);
-EXTRACT_ADD_REQUESTED(VBO, vbo, edge_idx);
-EXTRACT_ADD_REQUESTED(VBO, vbo, vert_idx);
-EXTRACT_ADD_REQUESTED(VBO, vbo, fdot_idx); // leave to mesh_extract
-EXTRACT_ADD_REQUESTED(VBO, vbo, skin_roots);
-
-EXTRACT_ADD_REQUESTED(IBO, ibo, tris); // done
-if (DRW_ibo_requested(mbc->ibo.lines)) { // done
-  const MeshExtract *extractor;
-  if (mbc->ibo.lines_loose != nullptr) {
-    /* Update #lines_loose ibo. */
-    extractor = &extract_lines_with_lines_loose;
-  }
-  else {
-    extractor = &extract_lines;
-  }
-  extractors.append(extractor);
-}
-else if (DRW_ibo_requested(mbc->ibo.lines_loose)) {
-  /* Note: #ibo.lines must have been created first. */
-  const MeshExtract *extractor = &extract_lines_loose_only;
-  extractors.append(extractor);
-}
-EXTRACT_ADD_REQUESTED(IBO, ibo, points);
-EXTRACT_ADD_REQUESTED(IBO, ibo, fdots);
-EXTRACT_ADD_REQUESTED(IBO, ibo, lines_paint_mask);
-EXTRACT_ADD_REQUESTED(IBO, ibo, lines_adjacency);
-EXTRACT_ADD_REQUESTED(IBO, ibo, edituv_tris);
-EXTRACT_ADD_REQUESTED(IBO, ibo, edituv_lines);
-EXTRACT_ADD_REQUESTED(IBO, ibo, edituv_points);
-EXTRACT_ADD_REQUESTED(IBO, ibo, edituv_fdots);
-#endif
-
-static void print_request(MeshBufferCache *mbc)
+static void print_requests(MeshBufferCache *mbc)
 {
-  fprintf(stderr, "HANDLING requests\n");
+  fprintf(stderr, "============== REQUESTS ==============\n");
 
-  if (DRW_vbo_requested(mbc->vbo.pos_nor) || DRW_ibo_requested(mbc->ibo.tris)) {
-    fprintf(stderr, "POS NOR requested\n");
-    fprintf(stderr, "TRIS requested\n");
+#define PRINT_VBO_REQUEST(request) if (DRW_vbo_requested(mbc->request)) fprintf(stderr, #request" requested\n")
+#define PRINT_IBO_REQUEST(request) if (DRW_ibo_requested(mbc->request)) fprintf(stderr, #request" requested\n")
 
-    if (mbc->tris_per_mat) {
-      fprintf(stderr, "TRIS PER MAT requested\n");
-    }
-  }
+  PRINT_VBO_REQUEST(vbo.lnor);
+  PRINT_VBO_REQUEST(vbo.pos_nor);
+  PRINT_VBO_REQUEST(vbo.uv);
+  PRINT_VBO_REQUEST(vbo.vcol);
+  PRINT_VBO_REQUEST(vbo.sculpt_data);
+  PRINT_VBO_REQUEST(vbo.weights);
+  PRINT_VBO_REQUEST(vbo.edge_fac);
+  PRINT_VBO_REQUEST(vbo.mesh_analysis);
+  PRINT_VBO_REQUEST(vbo.tan);
+  PRINT_VBO_REQUEST(vbo.orco);
+  PRINT_VBO_REQUEST(vbo.edit_data);
+  PRINT_VBO_REQUEST(vbo.fdots_pos);
+  PRINT_VBO_REQUEST(vbo.fdots_nor);
+  PRINT_VBO_REQUEST(vbo.skin_roots);
+  PRINT_VBO_REQUEST(vbo.vert_idx);
+  PRINT_VBO_REQUEST(vbo.edge_idx);
+  PRINT_VBO_REQUEST(vbo.poly_idx);
+  PRINT_VBO_REQUEST(vbo.fdot_idx);
+  PRINT_VBO_REQUEST(vbo.edituv_data);
+  PRINT_VBO_REQUEST(vbo.edituv_stretch_area);
+  PRINT_VBO_REQUEST(vbo.edituv_stretch_angle);
+  PRINT_VBO_REQUEST(vbo.fdots_uv);
+  PRINT_VBO_REQUEST(vbo.fdots_edituv_data);
 
-  if (DRW_vbo_requested(mbc->vbo.lnor)) {
-    fprintf(stderr, "LNOR requested\n");
-  }
+  PRINT_IBO_REQUEST(ibo.tris);
+  PRINT_IBO_REQUEST(ibo.lines);
+  PRINT_IBO_REQUEST(ibo.lines_loose);
+  PRINT_IBO_REQUEST(ibo.lines_adjacency);
+  PRINT_IBO_REQUEST(ibo.lines_paint_mask);
+  PRINT_IBO_REQUEST(ibo.points);
+  PRINT_IBO_REQUEST(ibo.fdots);
+  PRINT_IBO_REQUEST(ibo.edituv_tris);
+  PRINT_IBO_REQUEST(ibo.edituv_lines);
+  PRINT_IBO_REQUEST(ibo.edituv_points);
+  PRINT_IBO_REQUEST(ibo.edituv_fdots);
 
-  if (DRW_ibo_requested(mbc->ibo.fdots)) {
-    fprintf(stderr, "FDOTS requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.lines)) {
-    fprintf(stderr, "LINES requested\n");
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.edge_fac)) {
-    fprintf(stderr, "EDGE FAC requested\n");
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.vert_idx)) {
-    fprintf(stderr, "VERT IDX requested\n");
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.edge_idx)) {
-    fprintf(stderr, "EDGE IDX requested\n");
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.poly_idx)) {
-    fprintf(stderr, "POLY IDX requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.points)) {
-    fprintf(stderr, "POINTS requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.edituv_tris)) {
-    fprintf(stderr, "edituv_tris requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.edituv_lines)) {
-    fprintf(stderr, "edituv_lines requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.edituv_points)) {
-    fprintf(stderr, "edituv_points requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.edituv_fdots)) {
-    fprintf(stderr, "edituv_fdots requested\n");
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.lines_adjacency)) {
-    fprintf(stderr, "lines_adjacency requested\n");
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.edit_data)) {
-    fprintf(stderr, "edit_data requested\n");
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.uv)) {
-    fprintf(stderr, "UV requested\n");
-  }
+#undef PRINT_IBO_REQUEST
+#undef PRINT_VBO_REQUEST
 }
 
 static void update_edit_data(DRWSubdivCache *cache,
@@ -1586,7 +1507,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   DRWSubdivBuffers subdiv_buffers = {0};
   initialize_buffers(&subdiv_buffers, draw_cache, do_smooth);
 
-  // print_request(mbc);
+  // print_requests(mbc);
 
   if (DRW_ibo_requested(mbc->ibo.tris)) {
     /* Initialise the index buffer, it was already allocated, it will be filled on the device. */
