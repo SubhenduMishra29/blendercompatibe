@@ -1522,7 +1522,8 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  Mesh *mesh,
                                                  struct MeshBatchCache *batch_cache,
                                                  MeshBufferCache *mbc,
-                                                 const ToolSettings *toolsettings)
+                                                 const ToolSettings *toolsettings,
+                                                 OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
   SubsurfModifierData *smd = get_subsurf_modifier(ob);
   BLI_assert(smd);
@@ -1549,7 +1550,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   if (!BKE_subdiv_eval_begin_from_mesh(
-          subdiv, mesh_eval, NULL, OPENSUBDIV_EVALUATOR_GLSL_COMPUTE)) {
+          subdiv, mesh_eval, NULL, OPENSUBDIV_EVALUATOR_GLSL_COMPUTE, evaluator_cache)) {
     return false;
   }
 
@@ -1684,6 +1685,8 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   return true;
 }
 
+static OpenSubdiv_EvaluatorCache *g_evaluator_cache = NULL;
+
 void DRW_create_subdivision(const Scene *scene,
                             Object *ob,
                             Mesh *mesh,
@@ -1691,8 +1694,14 @@ void DRW_create_subdivision(const Scene *scene,
                             MeshBufferCache *mbc,
                             const ToolSettings *toolsettings)
 {
-  if (!draw_subdiv_create_requested_buffers(scene, ob, mesh, batch_cache, mbc, toolsettings)) {
-    fprintf(stderr, "Cannot evaluate subdivision on the GPU, falling back to the regular draw code.\n");
+  if (g_evaluator_cache == NULL) {
+    g_evaluator_cache = openSubdiv_createEvaluatorCache(OPENSUBDIV_EVALUATOR_GLSL_COMPUTE);
+  }
+
+  if (!draw_subdiv_create_requested_buffers(
+          scene, ob, mesh, batch_cache, mbc, toolsettings, g_evaluator_cache)) {
+    fprintf(stderr,
+            "Cannot evaluate subdivision on the GPU, falling back to the regular draw code.\n");
   }
 }
 
@@ -1703,6 +1712,11 @@ void DRW_subdiv_free(void)
   }
 
   DRW_cache_free_old_subdiv();
+
+  if (g_evaluator_cache) {
+    openSubdiv_deleteEvaluatorCache(g_evaluator_cache);
+    g_evaluator_cache = NULL;
+  }
 }
 
 static LinkNode *gpu_subdiv_free_queue = NULL;

@@ -38,7 +38,9 @@
 #include "opensubdiv_evaluator_capi.h"
 #include "opensubdiv_topology_refiner_capi.h"
 
-bool BKE_subdiv_eval_begin(Subdiv *subdiv, int evaluator_type)
+bool BKE_subdiv_eval_begin(Subdiv *subdiv,
+                           int evaluator_type,
+                           OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
   BKE_subdiv_stats_reset(&subdiv->stats, SUBDIV_STATS_EVALUATOR_CREATE);
   if (subdiv->topology_refiner == NULL) {
@@ -48,8 +50,8 @@ bool BKE_subdiv_eval_begin(Subdiv *subdiv, int evaluator_type)
   }
   if (subdiv->evaluator == NULL) {
     BKE_subdiv_stats_begin(&subdiv->stats, SUBDIV_STATS_EVALUATOR_CREATE);
-    subdiv->evaluator = openSubdiv_createEvaluatorFromTopologyRefiner(subdiv->topology_refiner,
-                                                                      evaluator_type);
+    subdiv->evaluator = openSubdiv_createEvaluatorFromTopologyRefiner(
+        subdiv->topology_refiner, evaluator_type, evaluator_cache);
     BKE_subdiv_stats_end(&subdiv->stats, SUBDIV_STATS_EVALUATOR_CREATE);
     if (subdiv->evaluator == NULL) {
       return false;
@@ -125,9 +127,10 @@ static void set_face_varying_data_from_uv(Subdiv *subdiv,
 bool BKE_subdiv_eval_begin_from_mesh(Subdiv *subdiv,
                                      const Mesh *mesh,
                                      const float (*coarse_vertex_cos)[3],
-                                     int evaluator_type)
+                                     int evaluator_type,
+                                     OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
-  if (!BKE_subdiv_eval_begin(subdiv, evaluator_type)) {
+  if (!BKE_subdiv_eval_begin(subdiv, evaluator_type, evaluator_cache)) {
     return false;
   }
   return BKE_subdiv_eval_refine_from_mesh(subdiv, mesh, coarse_vertex_cos);

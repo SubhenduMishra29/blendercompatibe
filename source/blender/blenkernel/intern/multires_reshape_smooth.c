@@ -1086,7 +1086,7 @@ static void reshape_subdiv_create(MultiresReshapeSmoothContext *reshape_smooth_c
   converter_init(reshape_smooth_context, &converter);
 
   Subdiv *reshape_subdiv = BKE_subdiv_new_from_converter(settings, &converter);
-  BKE_subdiv_eval_begin(reshape_subdiv, OPENSUBDIV_EVALUATOR_CPU);
+  BKE_subdiv_eval_begin(reshape_subdiv, OPENSUBDIV_EVALUATOR_CPU, NULL);
 
   reshape_smooth_context->reshape_subdiv = reshape_subdiv;
 

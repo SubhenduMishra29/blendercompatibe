@@ -1166,7 +1166,9 @@ OpenSubdiv_EvaluatorImpl::~OpenSubdiv_EvaluatorImpl()
 }
 
 OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
-    OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type)
+    OpenSubdiv_TopologyRefiner *topology_refiner,
+    int evaluator_type,
+    OpenSubdiv_EvaluatorCacheImpl *evaluator_cache_descr)
 {
   // Only CPU and GLCompute are implemented at the moment.
   if (evaluator_type != OPENSUBDIV_EVALUATOR_CPU &&
@@ -1281,8 +1283,20 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
 
   const bool use_gl_evaluator = evaluator_type == OPENSUBDIV_EVALUATOR_GLSL_COMPUTE;
   if (use_gl_evaluator) {
-    eval_output_gpu = new blender::opensubdiv::GpuEvalOutput(
-        vertex_stencils, varying_stencils, all_face_varying_stencils, 4, 4, 2, patch_table);
+    blender::opensubdiv::GpuEvalOutput::EvaluatorCache *evaluator_cache = nullptr;
+    if (evaluator_cache_descr) {
+      evaluator_cache = static_cast<blender::opensubdiv::GpuEvalOutput::EvaluatorCache *>(
+          evaluator_cache_descr->eval_cache);
+    }
+
+    eval_output_gpu = new blender::opensubdiv::GpuEvalOutput(vertex_stencils,
+                                                             varying_stencils,
+                                                             all_face_varying_stencils,
+                                                             4,
+                                                             4,
+                                                             2,
+                                                             patch_table,
+                                                             evaluator_cache);
   }
   else {
     eval_output_cpu = new blender::opensubdiv::CpuEvalOutput(
@@ -1318,4 +1332,31 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
 void openSubdiv_deleteEvaluatorInternal(OpenSubdiv_EvaluatorImpl *evaluator)
 {
   delete evaluator;
+}
+
+OpenSubdiv_EvaluatorCacheImpl::OpenSubdiv_EvaluatorCacheImpl()
+{
+}
+
+OpenSubdiv_EvaluatorCacheImpl::~OpenSubdiv_EvaluatorCacheImpl()
+{
+  delete static_cast<blender::opensubdiv::GpuEvalOutput::EvaluatorCache *>(eval_cache);
+}
+
+OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(int evaluator_type)
+{
+  if (evaluator_type != eOpenSubdivEvaluator::OPENSUBDIV_EVALUATOR_GLSL_COMPUTE) {
+    return nullptr;
+  }
+  OpenSubdiv_EvaluatorCacheImpl *evaluator_cache;
+  evaluator_cache = new OpenSubdiv_EvaluatorCacheImpl;
+  blender::opensubdiv::GpuEvalOutput::EvaluatorCache *eval_cache;
+  eval_cache = new blender::opensubdiv::GpuEvalOutput::EvaluatorCache();
+  evaluator_cache->eval_cache = eval_cache;
+  return evaluator_cache;
+}
+
+void openSubdiv_deleteEvaluatorCacheInternal(OpenSubdiv_EvaluatorCacheImpl *evaluator_cache)
+{
+  delete evaluator_cache;
 }

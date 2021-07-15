@@ -162,10 +162,21 @@ typedef struct OpenSubdiv_Evaluator {
   struct OpenSubdiv_EvaluatorImpl *impl;
 } OpenSubdiv_Evaluator;
 
+typedef struct OpenSubdiv_EvaluatorCache {
+  // Implementation of the evaluator cache.
+  struct OpenSubdiv_EvaluatorCacheImpl *impl;
+} OpenSubdiv_EvaluatorCache;
+
 OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
-    struct OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type);
+    struct OpenSubdiv_TopologyRefiner *topology_refiner,
+    int evaluator_type,
+    OpenSubdiv_EvaluatorCache *evaluator_cache);
 
 void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator);
+
+OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(int evaluator_type);
+
+void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache);
 
 #ifdef __cplusplus
 }

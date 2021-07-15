@@ -31,10 +31,13 @@ extern "C" {
 
 struct Mesh;
 struct Subdiv;
+struct OpenSubdiv_EvaluatorCache;
 
 /* Returns true if evaluator is ready for use.
  * NOTE: evaluator_type is a eOpenSubdivEvaluator. */
-bool BKE_subdiv_eval_begin(struct Subdiv *subdiv, int evaluator_type);
+bool BKE_subdiv_eval_begin(struct Subdiv *subdiv,
+                           int evaluator_type,
+                           struct OpenSubdiv_EvaluatorCache *evaluator_cache);
 
 /* coarse_vertex_cos is an optional argument which allows to override coordinates of the coarse
  * mesh.
@@ -42,7 +45,8 @@ bool BKE_subdiv_eval_begin(struct Subdiv *subdiv, int evaluator_type);
 bool BKE_subdiv_eval_begin_from_mesh(struct Subdiv *subdiv,
                                      const struct Mesh *mesh,
                                      const float (*coarse_vertex_cos)[3],
-                                     int evaluator_type);
+                                     int evaluator_type,
+                                     struct OpenSubdiv_EvaluatorCache *evaluator_cache);
 bool BKE_subdiv_eval_refine_from_mesh(struct Subdiv *subdiv,
                                       const struct Mesh *mesh,
                                       const float (*coarse_vertex_cos)[3]);

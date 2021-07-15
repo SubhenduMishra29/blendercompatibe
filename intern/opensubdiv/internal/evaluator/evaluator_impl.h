@@ -267,9 +267,27 @@ struct OpenSubdiv_EvaluatorImpl {
   MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorImpl");
 };
 
+struct OpenSubdiv_EvaluatorCacheImpl {
+ public:
+  OpenSubdiv_EvaluatorCacheImpl();
+  ~OpenSubdiv_EvaluatorCacheImpl();
+
+  // TODO(kevindietrich)
+  // typedef typename blender::opensubdiv::GpuEvalOutputAPI::EvaluatorCache EvaluatorCache;
+
+  void *eval_cache;
+  MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorCacheImpl");
+};
+
 OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
-    struct OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type);
+    struct OpenSubdiv_TopologyRefiner *topology_refiner,
+    int evaluator_type,
+    OpenSubdiv_EvaluatorCacheImpl *evaluator_cache_descr);
 
 void openSubdiv_deleteEvaluatorInternal(OpenSubdiv_EvaluatorImpl *evaluator);
+
+OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(int evaluator_type);
+
+void openSubdiv_deleteEvaluatorCacheInternal(OpenSubdiv_EvaluatorCacheImpl *evaluator_cache);
 
 #endif  // OPENSUBDIV_EVALUATOR_IMPL_H_

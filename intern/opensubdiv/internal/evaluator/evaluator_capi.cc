@@ -268,11 +268,14 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
 }  // namespace
 
 OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
-    OpenSubdiv_TopologyRefiner *topology_refiner, int evaluator_type)
+    OpenSubdiv_TopologyRefiner *topology_refiner,
+    int evaluator_type,
+    OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
   OpenSubdiv_Evaluator *evaluator = OBJECT_GUARDED_NEW(OpenSubdiv_Evaluator);
   assignFunctionPointers(evaluator);
-  evaluator->impl = openSubdiv_createEvaluatorInternal(topology_refiner, evaluator_type);
+  evaluator->impl = openSubdiv_createEvaluatorInternal(
+      topology_refiner, evaluator_type, evaluator_cache ? evaluator_cache->impl : nullptr);
   return evaluator;
 }
 
@@ -280,4 +283,21 @@ void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator)
 {
   openSubdiv_deleteEvaluatorInternal(evaluator->impl);
   OBJECT_GUARDED_DELETE(evaluator, OpenSubdiv_Evaluator);
+}
+
+OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(int evaluator_type)
+{
+  OpenSubdiv_EvaluatorCache *evaluator_cache = OBJECT_GUARDED_NEW(OpenSubdiv_EvaluatorCache);
+  evaluator_cache->impl = openSubdiv_createEvaluatorCacheInternal(evaluator_type);
+  return evaluator_cache;
+}
+
+void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache)
+{
+  if (!evaluator_cache) {
+    return;
+  }
+
+  openSubdiv_deleteEvaluatorCacheInternal(evaluator_cache->impl);
+  OBJECT_GUARDED_DELETE(evaluator_cache, OpenSubdiv_EvaluatorCache);
 }
