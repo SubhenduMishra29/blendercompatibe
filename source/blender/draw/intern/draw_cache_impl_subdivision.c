@@ -1161,13 +1161,18 @@ static void do_build_lines_buffer(DRWSubdivBuffers *buffers,
 
 static void do_build_edge_fac_buffer(DRWSubdivBuffers *buffers,
                                      GPUVertBuf *pos_nor,
+                                     GPUVertBuf *edge_idx,
+                                     bool optimal_display,
                                      GPUVertBuf *edge_fac)
 {
   GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_EDGE_FAC, NULL);
   GPU_shader_bind(shader);
 
+  GPU_shader_uniform_1b(shader, "optimal_display", optimal_display);
+
   GPU_vertbuf_bind_as_ssbo(pos_nor, 0);
-  GPU_vertbuf_bind_as_ssbo(edge_fac, 1);
+  GPU_vertbuf_bind_as_ssbo(edge_idx, 1);
+  GPU_vertbuf_bind_as_ssbo(edge_fac, 2);
 
   GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
 
@@ -1563,21 +1568,6 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     do_build_lines_buffer(&subdiv_buffers, mbc->ibo.lines, optimal_display);
   }
 
-  if (DRW_vbo_requested(mbc->vbo.edge_fac)) {
-    GPU_vertbuf_init_with_format(mbc->vbo.edge_fac, get_edge_fac_format());
-    GPU_vertbuf_data_alloc(mbc->vbo.edge_fac, subdiv_buffers.number_of_loops);
-
-    uchar *data = GPU_vertbuf_get_data(mbc->vbo.edge_fac);
-    for (int i = 0; i < subdiv_buffers.number_of_loops; i++) {
-      const int edge_origindex = draw_cache->subdiv_loop_edge_index[i];
-      if (edge_origindex == -1 && optimal_display) {
-        data[i] = 0;
-        continue;
-      }
-      data[i] = 255;
-    }
-  }
-
   if (DRW_vbo_requested(mbc->vbo.vert_idx)) {
     init_origindex_buffer(mbc->vbo.vert_idx,
                           draw_cache->subdiv_loop_subdiv_vert_index,
@@ -1592,6 +1582,27 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   if (DRW_vbo_requested(mbc->vbo.poly_idx)) {
     init_origindex_buffer(
         mbc->vbo.poly_idx, draw_cache->subdiv_loop_poly_index, draw_cache->num_patch_coords);
+  }
+
+  if (DRW_vbo_requested(mbc->vbo.edge_fac)) {
+    GPU_vertbuf_init_build_on_device(mbc->vbo.edge_fac, get_edge_fac_format(), subdiv_buffers.number_of_loops);
+
+    /* Create a temporary buffer for the edge original indices if it was not requested. */
+    const bool has_edge_idx = mbc->vbo.edge_idx != NULL;
+    GPUVertBuf *loop_edge_idx = NULL;
+    if (has_edge_idx) {
+      loop_edge_idx = mbc->vbo.edge_idx;
+    }
+    else {
+      loop_edge_idx = GPU_vertbuf_calloc();
+      init_origindex_buffer(loop_edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
+    }
+
+    do_build_edge_fac_buffer(&subdiv_buffers, mbc->vbo.pos_nor, loop_edge_idx, optimal_display, mbc->vbo.edge_fac);
+
+    if (!has_edge_idx) {
+      GPU_vertbuf_discard(loop_edge_idx);
+    }
   }
 
   if (DRW_ibo_requested(mbc->ibo.points)) {

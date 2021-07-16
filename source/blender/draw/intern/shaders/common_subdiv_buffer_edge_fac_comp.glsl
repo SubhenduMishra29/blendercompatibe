@@ -7,15 +7,23 @@ layout(std430, binding = 0) readonly buffer inputVertexData
   VertexBufferData pos_nor[];
 };
 
-layout(std430, binding = 1) writeonly buffer outputEdgeFactors
+layout(std430, binding = 1) readonly buffer inputEdgeIndex
+{
+  uint input_edge_index[];
+};
+
+layout(std430, binding = 2) writeonly buffer outputEdgeFactors
 {
   float output_edge_fac[];
 };
 
-float loop_edge_factor_get(vec3 f_no, vec3 co, vec3 no, vec3 next_co)
+uniform bool optimal_display;
+
+// From extract_mesh_vbo_edge_fac.cc, keep in sync!
+float loop_edge_factor_get(vec3 f_no, vec3 v_co, vec3 v_no, vec3 v_next_co)
 {
-  vec3 evec = next_co - co;
-  vec3 enor = normalize(cross(no, evec));
+  vec3 evec = v_next_co - v_co;
+  vec3 enor = normalize(cross(v_no, evec));
   float d = abs(dot(enor, f_no));
   /* Re-scale to the slider range. */
   d *= (1.0 / 0.065);
@@ -25,6 +33,13 @@ float loop_edge_factor_get(vec3 f_no, vec3 co, vec3 no, vec3 next_co)
 void emit_line(uint start_loop_index, uint corner_index, vec3 face_normal)
 {
   uint vertex_index = start_loop_index + corner_index;
+  uint edge_index = input_edge_index[vertex_index];
+
+  if (edge_index == -1 && optimal_display) {
+    output_edge_fac[vertex_index] = 0.0;
+    return;
+  }
+
   /* Mod 4 so we loop back at the first vertex on the last loop index (3). */
   uint next_vertex_index = start_loop_index + (corner_index + 1) % 4;
 
