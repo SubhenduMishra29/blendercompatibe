@@ -50,6 +50,7 @@
 
 #include "BLO_blend_validate.h"
 
+#include "ED_asset.h"
 #include "ED_gpencil.h"
 #include "ED_object.h"
 #include "ED_outliner.h"
@@ -267,6 +268,8 @@ static void ed_undo_step_post(bContext *C,
 
   WM_toolsystem_refresh_active(C);
   WM_toolsystem_refresh_screen_all(bmain);
+
+  ED_assetlist_storage_tag_main_data_dirty();
 
   if (CLOG_CHECK(&LOG, 1)) {
     BKE_undosys_print(wm->undo_stack);
@@ -692,7 +695,7 @@ int ED_undo_operator_repeat(bContext *C, wmOperator *op)
       CTX_wm_region_set(C, region_win);
     }
 
-    if ((WM_operator_repeat_check(C, op)) && (WM_operator_poll(C, op->type)) &&
+    if (WM_operator_repeat_check(C, op) && WM_operator_poll(C, op->type) &&
         /* NOTE: undo/redo can't run if there are jobs active,
          * check for screen jobs only so jobs like material/texture/world preview
          * (which copy their data), won't stop redo, see T29579],
