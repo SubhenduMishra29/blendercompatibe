@@ -28,6 +28,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_math_vector.h"
+#include "BLI_task.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
@@ -102,7 +103,40 @@ static void set_coarse_positions(Subdiv *subdiv,
   MEM_freeN(vertex_used_map);
 }
 
+/* Context which is used to fill face varying data in parallel. */
+typedef struct FaceVaryingDataFromUVContext {
+    OpenSubdiv_TopologyRefiner *topology_refiner;
+    const Mesh *mesh;
+    const MLoopUV *mloopuv;
+    float (*buffer)[2];
+    int layer_index;
+} FaceVaryingDataFromUVContext;
+
+static void set_face_varying_data_from_uv_task(void *__restrict userdata,
+                                               const int face_index,
+                                               const TaskParallelTLS *__restrict tls)
+{
+  FaceVaryingDataFromUVContext *ctx = userdata;
+  OpenSubdiv_TopologyRefiner *topology_refiner = ctx->topology_refiner;
+  const int layer_index = ctx->layer_index;
+  const Mesh *mesh = ctx->mesh;
+  const MPoly *mpoly = &mesh->mpoly[face_index];
+  const MLoopUV *mluv = &ctx->mloopuv[mpoly->loopstart];
+
+  /* TODO(sergey): OpenSubdiv's C-API converter can change winding of
+   * loops of a face, need to watch for that, to prevent wrong UVs assigned.
+   */
+  const int num_face_vertices = topology_refiner->getNumFaceVertices(topology_refiner,
+                                                                     face_index);
+  const int *uv_indices = topology_refiner->getFaceFVarValueIndices(
+        topology_refiner, face_index, layer_index);
+  for (int vertex_index = 0; vertex_index < num_face_vertices; vertex_index++, mluv++) {
+    copy_v2_v2(ctx->buffer[uv_indices[vertex_index]], mluv->uv);
+  }
+}
+
 static void set_face_varying_data_from_uv(Subdiv *subdiv,
+                                          const Mesh *mesh,
                                           const MLoopUV *mloopuv,
                                           const int layer_index)
 {
@@ -110,18 +144,27 @@ static void set_face_varying_data_from_uv(Subdiv *subdiv,
   OpenSubdiv_Evaluator *evaluator = subdiv->evaluator;
   const int num_faces = topology_refiner->getNumFaces(topology_refiner);
   const MLoopUV *mluv = mloopuv;
-  /* TODO(sergey): OpenSubdiv's C-API converter can change winding of
-   * loops of a face, need to watch for that, to prevent wrong UVs assigned.
-   */
-  for (int face_index = 0; face_index < num_faces; face_index++) {
-    const int num_face_vertices = topology_refiner->getNumFaceVertices(topology_refiner,
-                                                                       face_index);
-    const int *uv_indices = topology_refiner->getFaceFVarValueIndices(
-        topology_refiner, face_index, layer_index);
-    for (int vertex_index = 0; vertex_index < num_face_vertices; vertex_index++, mluv++) {
-      evaluator->setFaceVaryingData(evaluator, layer_index, mluv->uv, uv_indices[vertex_index], 1);
-    }
-  }
+
+  FaceVaryingDataFromUVContext ctx;
+  ctx.topology_refiner = topology_refiner;
+  ctx.layer_index = layer_index;
+  ctx.mloopuv = mluv;
+  ctx.mesh = mesh;
+
+  const int num_fvar_values = topology_refiner->getNumFVarValues(topology_refiner, layer_index);
+  float (*buffer)[2] = MEM_mallocN(sizeof(float[2]) * num_fvar_values, "temp UV storage");
+
+  ctx.buffer = buffer;
+
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  parallel_range_settings.min_iter_per_thread = 1;
+
+  BLI_task_parallel_range(0, num_faces, &ctx, set_face_varying_data_from_uv_task, &parallel_range_settings);
+
+  evaluator->setFaceVaryingData(evaluator, layer_index, buffer, 0, num_fvar_values);
+
+  MEM_freeN(buffer);
 }
 
 bool BKE_subdiv_eval_begin_from_mesh(Subdiv *subdiv,
@@ -151,7 +194,7 @@ bool BKE_subdiv_eval_refine_from_mesh(Subdiv *subdiv,
   const int num_uv_layers = CustomData_number_of_layers(&mesh->ldata, CD_MLOOPUV);
   for (int layer_index = 0; layer_index < num_uv_layers; layer_index++) {
     const MLoopUV *mloopuv = CustomData_get_layer_n(&mesh->ldata, CD_MLOOPUV, layer_index);
-    set_face_varying_data_from_uv(subdiv, mloopuv, layer_index);
+    set_face_varying_data_from_uv(subdiv, mesh, mloopuv, layer_index);
   }
   /* Update evaluator to the new coarse geometry. */
   BKE_subdiv_stats_begin(&subdiv->stats, SUBDIV_STATS_EVALUATOR_REFINE);
