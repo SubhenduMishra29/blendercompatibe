@@ -490,48 +490,24 @@ typedef struct DRWSubdivCache {
 
 static void draw_subdiv_cache_free_material_data(DRWSubdivCache *cache)
 {
-  if (cache->polygon_mat_offset) {
-    GPU_vertbuf_discard(cache->polygon_mat_offset);
-    cache->polygon_mat_offset = NULL;
-  }
+  GPU_VERTBUF_DISCARD_SAFE(cache->polygon_mat_offset);
   MEM_SAFE_FREE(cache->mat_start);
   MEM_SAFE_FREE(cache->mat_end);
 }
 
 static void draw_free_edit_mode_cache(DRWSubdivCache *cache)
 {
-  if (cache->verts_orig_index) {
-    GPU_vertbuf_discard(cache->verts_orig_index);
-    cache->verts_orig_index = NULL;
-  }
-  if (cache->edges_orig_index) {
-    GPU_vertbuf_discard(cache->edges_orig_index);
-    cache->edges_orig_index = NULL;
-  }
-  if (cache->faces_orig_index) {
-    GPU_vertbuf_discard(cache->faces_orig_index);
-    cache->faces_orig_index = NULL;
-  }
-  if (cache->fdots_patch_coords) {
-    GPU_vertbuf_discard(cache->fdots_patch_coords);
-    cache->fdots_patch_coords = NULL;
-  }
+  GPU_VERTBUF_DISCARD_SAFE(cache->verts_orig_index);
+  GPU_VERTBUF_DISCARD_SAFE(cache->edges_orig_index);
+  GPU_VERTBUF_DISCARD_SAFE(cache->faces_orig_index);
+  GPU_VERTBUF_DISCARD_SAFE(cache->fdots_patch_coords);
 }
 
 static void draw_subdiv_cache_free(DRWSubdivCache *cache)
 {
-  if (cache->patch_coords) {
-    GPU_vertbuf_discard(cache->patch_coords);
-    cache->patch_coords = NULL;
-  }
-  if (cache->subdiv_polygon_offset_buffer) {
-    GPU_vertbuf_discard(cache->subdiv_polygon_offset_buffer);
-    cache->subdiv_polygon_offset_buffer = NULL;
-  }
-  if (cache->face_flags) {
-    GPU_vertbuf_discard(cache->face_flags);
-    cache->face_flags = NULL;
-  }
+  GPU_VERTBUF_DISCARD_SAFE(cache->patch_coords);
+  GPU_VERTBUF_DISCARD_SAFE(cache->subdiv_polygon_offset_buffer);
+  GPU_VERTBUF_DISCARD_SAFE(cache->face_flags);
   MEM_SAFE_FREE(cache->subdiv_loop_edge_index);
   MEM_SAFE_FREE(cache->subdiv_loop_subdiv_vert_index);
   MEM_SAFE_FREE(cache->subdiv_loop_poly_index);
