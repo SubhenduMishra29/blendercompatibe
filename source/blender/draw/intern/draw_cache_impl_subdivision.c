@@ -85,6 +85,8 @@ extern char datatoc_common_subdiv_buffer_points_comp_glsl[];
 extern char datatoc_common_subdiv_patch_handles_comp_glsl[];
 extern char datatoc_common_subdiv_face_dots_comp_glsl[];
 extern char datatoc_common_subdiv_tris_comp_glsl[];
+extern char datatoc_common_subdiv_normals_accumulate_comp_glsl[];
+extern char datatoc_common_subdiv_normals_finalize_comp_glsl[];
 
 enum {
   SHADER_BUFFER_BUILD,
@@ -96,6 +98,8 @@ enum {
   SHADER_BUFFER_FACE_DOTS,
   SHADER_BUFFER_TRIS,
   SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS,
+  SHADER_BUFFER_NORMALS_ACCUMULATE,
+  SHADER_BUFFER_NORMALS_FINALIZE,
 
   NUM_SHADERS,
 };
@@ -128,6 +132,12 @@ static const char *get_shader_code(int shader_type)
     case SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS: {
       return datatoc_common_subdiv_tris_comp_glsl;
     }
+    case SHADER_BUFFER_NORMALS_ACCUMULATE: {
+      return datatoc_common_subdiv_normals_accumulate_comp_glsl;
+    }
+    case SHADER_BUFFER_NORMALS_FINALIZE: {
+      return datatoc_common_subdiv_normals_finalize_comp_glsl;
+    }
   }
   return NULL;
 }
@@ -157,6 +167,12 @@ static const char *get_shader_name(int shader_type)
     case SHADER_BUFFER_TRIS:
     case SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS: {
       return "subdiv tris";
+    }
+    case SHADER_BUFFER_NORMALS_ACCUMULATE: {
+      return "subdiv normals accumulate";
+    }
+    case SHADER_BUFFER_NORMALS_FINALIZE: {
+      return "subdiv normals finalize";
     }
   }
   return NULL;
@@ -448,6 +464,11 @@ typedef struct DRWSubdivCache {
   /* Maps subdivision loop to original coarse poly index. */
   int *subdiv_loop_poly_index;
 
+  /* Indices of faces adjacent to the vertices, ordered by vertex index, with no particular winding. */
+  int *subdiv_vertex_face_adjacency;
+  /* The difference between value (i + 1) and (i) gives the number of faces adjecent to vertex (i). */
+  int *subdiv_vertex_face_adjacency_offsets;
+
   /* Maps to original element in the coarse mesh, only for edit mode. */
   GPUVertBuf *verts_orig_index;
   GPUVertBuf *faces_orig_index;
@@ -518,6 +539,8 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   MEM_SAFE_FREE(cache->point_indices);
   MEM_SAFE_FREE(cache->face_ptex_offset);
   MEM_SAFE_FREE(cache->subdiv_polygon_offset);
+  MEM_SAFE_FREE(cache->subdiv_vertex_face_adjacency_offsets);
+  MEM_SAFE_FREE(cache->subdiv_vertex_face_adjacency);
   cache->resolution = 0;
   cache->num_patch_coords = 0;
   cache->coarse_poly_count = 0;
@@ -525,7 +548,7 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   draw_subdiv_cache_free_material_data(cache);
 }
 
-static uint8_t draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *mesh)
+static void draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *mesh)
 {
   if (cache->face_flags == NULL) {
     cache->face_flags = GPU_vertbuf_calloc();
@@ -537,7 +560,6 @@ static uint8_t draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *
     GPU_vertbuf_data_alloc(cache->face_flags, mesh->totpoly);
   }
 
-  uint8_t merged_flags = 0;
   uint32_t *flags_data = (uint32_t *)(GPU_vertbuf_get_data(cache->face_flags));
 
   for (int i = 0; i < mesh->totpoly; i++) {
@@ -545,14 +567,11 @@ static uint8_t draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *
     if ((mesh->mpoly[i].flag & ME_SMOOTH) != 0) {
       flag = 1;
     }
-    merged_flags |= flag;
     flags_data[i] = flag;
   }
 
   /* Make sure updated data is reuploaded. */
   GPU_vertbuf_tag_dirty(cache->face_flags);
-
-  return merged_flags;
 }
 
 static void free_draw_cache_from_subdiv_cb(void *ptr)
@@ -853,6 +872,40 @@ static GPUVertBuf *gpu_vertbuf_from_blender_patch_coords(CompressedPatchCoord *p
   return blender_patch_coords;
 }
 
+static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
+{
+  int *vertex_offsets = MEM_callocN(sizeof(int) * cache->num_vertices + 1, "subdiv vertex offsets");
+
+  for (int i = 0; i < cache->num_patch_coords; i++) {
+    vertex_offsets[cache->subdiv_loop_subdiv_vert_index[i]]++;
+  }
+
+  int ofs = vertex_offsets[0];
+  vertex_offsets[0] = 0;
+  for (uint i = 1; i < cache->num_vertices + 1; i++) {
+    int tmp = vertex_offsets[i];
+    vertex_offsets[i] = ofs;
+    ofs += tmp;
+  }
+
+  int *adjacent_faces = MEM_mallocN(sizeof(int) * cache->num_patch_coords, "subdiv adjacent faces");
+
+  int *tmp_set_faces = MEM_callocN(sizeof(int) * cache->num_vertices, "tmp subdiv vertex offset");
+
+  for (int i = 0; i < cache->num_patch_coords / 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      const int subdiv_vertex = cache->subdiv_loop_subdiv_vert_index[i * 4 + j];
+      int first_face_offset = vertex_offsets[subdiv_vertex] + tmp_set_faces[subdiv_vertex];
+      adjacent_faces[first_face_offset] = i;
+      tmp_set_faces[subdiv_vertex] += 1;
+    }
+  }
+
+  cache->subdiv_vertex_face_adjacency = adjacent_faces;
+  cache->subdiv_vertex_face_adjacency_offsets = vertex_offsets;
+  MEM_freeN(tmp_set_faces);
+}
+
 static bool generate_required_cached_data(DRWSubdivCache *cache,
                                           Subdiv *subdiv,
                                           Mesh *mesh_eval,
@@ -947,6 +1000,8 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
   cache->subdiv_loop_edge_index = cache_building_context.subdiv_loop_edge_index;
   cache->subdiv_loop_poly_index = cache_building_context.subdiv_loop_poly_index;
 
+  build_vertex_face_adjacency_maps(cache);
+
   /* Cleanup. */
   MEM_freeN(cache_building_context.patch_coords);
   MEM_freeN(cache_building_context.vert_origindex_map);
@@ -963,6 +1018,7 @@ typedef struct DRWSubdivBuffers {
   uint number_of_loops;
   uint number_of_quads;
   uint number_of_triangles;
+  uint number_of_subdiv_verts;
   int coarse_poly_count;
 
   GPUVertBuf *fdots_patch_coords;
@@ -993,18 +1049,19 @@ static void ensure_work_dPdu_dPdv(DRWSubdivBuffers *buffers, uint len)
 
 static void initialize_buffers(DRWSubdivBuffers *buffers,
                                const DRWSubdivCache *draw_cache,
-                               const bool do_smooth_normals)
+                               const bool do_limit_normals)
 {
   const uint number_of_loops = draw_cache->num_patch_coords;
   buffers->number_of_loops = number_of_loops;
   buffers->number_of_quads = number_of_loops / 4;
   buffers->number_of_triangles = tris_count_from_number_of_loops(number_of_loops);
+  buffers->number_of_subdiv_verts = draw_cache->num_vertices;
 
   buffers->work_vertices = GPU_vertbuf_calloc();
   GPU_vertbuf_init_build_on_device(
       buffers->work_vertices, get_work_vertex_format(), number_of_loops);
 
-  if (do_smooth_normals) {
+  if (do_limit_normals) {
     ensure_work_dPdu_dPdv(buffers, number_of_loops);
   }
   else {
@@ -1038,36 +1095,76 @@ static void free_buffers(DRWSubdivBuffers *buffers)
 
 // --------------------------------------------------------
 
-static void do_build_draw_buffer(DRWSubdivBuffers *buffers, GPUVertBuf *subdiv_pos_nor)
+static void do_build_pos_nor_buffer(DRWSubdivBuffers *buffers, GPUVertBuf *subdiv_pos_nor)
 {
-  const bool do_smooth_normals = buffers->work_dPdu != NULL && buffers->work_dPdv != NULL;
+  const bool do_limit_normals = buffers->work_dPdu != NULL && buffers->work_dPdv != NULL;
 
   const char *defines = NULL;
-  if (do_smooth_normals) {
-    defines = "#define SMOOTH_NORMALS\n";
+  if (do_limit_normals) {
+    defines = "#define LIMIT_NORMALS\n";
   }
 
   GPUShader *shader = get_subdiv_shader(
-      do_smooth_normals ? SHADER_BUFFER_BUILD_SMOOTH : SHADER_BUFFER_BUILD, defines);
+      do_limit_normals ? SHADER_BUFFER_BUILD_SMOOTH : SHADER_BUFFER_BUILD, defines);
   GPU_shader_bind(shader);
-
-  GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->coarse_poly_count);
 
   int binding_point = 0;
 
   /* Inputs */
   GPU_vertbuf_bind_as_ssbo(buffers->work_vertices, binding_point++);
   GPU_vertbuf_bind_as_ssbo(buffers->vert_origindex, binding_point++);
-  GPU_vertbuf_bind_as_ssbo(buffers->face_flags, binding_point++);
-  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, binding_point++);
 
-  if (do_smooth_normals) {
+  if (do_limit_normals) {
     GPU_vertbuf_bind_as_ssbo(buffers->work_dPdu, binding_point++);
     GPU_vertbuf_bind_as_ssbo(buffers->work_dPdv, binding_point++);
   }
 
   /* Outputs */
   GPU_vertbuf_bind_as_ssbo(subdiv_pos_nor, binding_point++);
+
+  GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
+
+  GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+
+  /* Cleanup. */
+  GPU_shader_unbind();
+}
+
+static void do_accumulate_normals(DRWSubdivBuffers *buffers,
+                                  GPUVertBuf *pos_nor,
+                                  GPUVertBuf *face_adjacency_offsets,
+                                  GPUVertBuf *face_adjacency_lists,
+                                  GPUVertBuf *vertex_normals)
+{
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_NORMALS_ACCUMULATE, NULL);
+  GPU_shader_bind(shader);
+
+  int binding_point = 0;
+
+  GPU_vertbuf_bind_as_ssbo(pos_nor, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(face_adjacency_offsets, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(face_adjacency_lists, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(vertex_normals, binding_point++);
+
+  GPU_compute_dispatch(shader, buffers->number_of_subdiv_verts, 1, 1);
+  GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+
+  /* Cleanup. */
+  GPU_shader_unbind();
+}
+
+static void do_finalize_normals(DRWSubdivBuffers *buffers,
+                                GPUVertBuf *vertex_normals,
+                                GPUVertBuf *subdiv_loop_subdiv_vert_index,
+                                GPUVertBuf *pos_nor)
+{
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE, NULL);
+  GPU_shader_bind(shader);
+
+  int binding_point = 0;
+  GPU_vertbuf_bind_as_ssbo(vertex_normals, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(subdiv_loop_subdiv_vert_index, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(pos_nor, binding_point++);
 
   GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
 
@@ -1190,8 +1287,16 @@ static void do_build_lnor_buffer(DRWSubdivBuffers *buffers, GPUVertBuf *pos_nor,
   GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LNOR, NULL);
   GPU_shader_bind(shader);
 
-  GPU_vertbuf_bind_as_ssbo(pos_nor, 0);
-  GPU_vertbuf_bind_as_ssbo(lnor, 1);
+  GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->coarse_poly_count);
+
+  int binding_point = 0;
+  /* Inputs */
+  GPU_vertbuf_bind_as_ssbo(pos_nor, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(buffers->face_flags, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, binding_point++);
+
+  /* Outputs */
+  GPU_vertbuf_bind_as_ssbo(lnor, binding_point++);
 
   GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
 
@@ -1510,10 +1615,11 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     draw_subdiv_cache_ensure_mat_offsets(draw_cache, mesh_eval, batch_cache->mat_len);
   }
 
-  const bool face_flags = draw_subdiv_cache_update_face_flags(draw_cache, mesh_eval);
-  const bool do_smooth = (face_flags & 0x1) != 0;
+  draw_subdiv_cache_update_face_flags(draw_cache, mesh_eval);
   DRWSubdivBuffers subdiv_buffers = {0};
-  initialize_buffers(&subdiv_buffers, draw_cache, do_smooth);
+  /* We can only evaluate limit normals if the patches are adaptive. */
+  const bool do_limit_normals = settings.is_adaptive;
+  initialize_buffers(&subdiv_buffers, draw_cache, do_limit_normals);
 
   // print_requests(mbc);
 
@@ -1544,7 +1650,29 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     GPU_vertbuf_init_build_on_device(
         mbc->vbo.pos_nor, get_render_format(), subdiv_buffers.number_of_loops);
 
-    do_build_draw_buffer(&subdiv_buffers, mbc->vbo.pos_nor);
+    do_build_pos_nor_buffer(&subdiv_buffers, mbc->vbo.pos_nor);
+
+    if (!do_limit_normals) {
+      /* We cannot evaluate vertex normals using the limit surface, so compute them manually. */
+      GPUVertBuf *subdiv_loop_subdiv_vert_index = build_origindex_buffer(draw_cache->subdiv_loop_subdiv_vert_index, subdiv_buffers.number_of_loops);
+
+      GPUVertBuf *vertex_normals = GPU_vertbuf_calloc();
+      GPU_vertbuf_init_build_on_device(vertex_normals, get_lnor_format(), subdiv_buffers.number_of_subdiv_verts);
+
+      GPUVertBuf *face_adjacency_offsets = build_origindex_buffer(draw_cache->subdiv_vertex_face_adjacency_offsets, subdiv_buffers.number_of_subdiv_verts + 1);
+      GPUVertBuf *face_adjacency_lists = build_origindex_buffer(draw_cache->subdiv_vertex_face_adjacency, subdiv_buffers.number_of_loops);
+
+      /* accumulate normals */
+      do_accumulate_normals(&subdiv_buffers, mbc->vbo.pos_nor, face_adjacency_offsets, face_adjacency_lists, vertex_normals);
+
+      /* normalize and assign */
+      do_finalize_normals(&subdiv_buffers, vertex_normals, subdiv_loop_subdiv_vert_index, mbc->vbo.pos_nor);
+
+      GPU_vertbuf_discard(vertex_normals);
+      GPU_vertbuf_discard(subdiv_loop_subdiv_vert_index);
+      GPU_vertbuf_discard(face_adjacency_offsets);
+      GPU_vertbuf_discard(face_adjacency_lists);
+    }
   }
 
   if (DRW_vbo_requested(mbc->vbo.lnor)) {
