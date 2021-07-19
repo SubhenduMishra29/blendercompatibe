@@ -575,10 +575,6 @@ static DRWSubdivCache *ensure_draw_cache(Subdiv *subdiv)
 /** \name DRWCacheBuildingContext
  * \{ */
 
-enum {
-  SMOOTH_SHADING = (1 << 0),
-};
-
 typedef struct DRWCacheBuildingContext {
   const Mesh *coarse_mesh;
   const SubdivToMeshSettings *settings;
