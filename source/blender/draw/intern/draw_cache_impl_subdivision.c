@@ -465,9 +465,9 @@ typedef struct DRWSubdivCache {
   int *subdiv_loop_poly_index;
 
   /* Indices of faces adjacent to the vertices, ordered by vertex index, with no particular winding. */
-  int *subdiv_vertex_face_adjacency;
-  /* The difference between value (i + 1) and (i) gives the number of faces adjecent to vertex (i). */
-  int *subdiv_vertex_face_adjacency_offsets;
+  GPUVertBuf *subdiv_vertex_face_adjacency;
+  /* The difference between value (i + 1) and (i) gives the number of faces adjacent to vertex (i). */
+  GPUVertBuf *subdiv_vertex_face_adjacency_offsets;
 
   /* Maps to original element in the coarse mesh, only for edit mode. */
   GPUVertBuf *verts_orig_index;
@@ -515,8 +515,8 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   MEM_SAFE_FREE(cache->point_indices);
   MEM_SAFE_FREE(cache->face_ptex_offset);
   MEM_SAFE_FREE(cache->subdiv_polygon_offset);
-  MEM_SAFE_FREE(cache->subdiv_vertex_face_adjacency_offsets);
-  MEM_SAFE_FREE(cache->subdiv_vertex_face_adjacency);
+  GPU_VERTBUF_DISCARD_SAFE(cache->subdiv_vertex_face_adjacency_offsets);
+  GPU_VERTBUF_DISCARD_SAFE(cache->subdiv_vertex_face_adjacency);
   cache->resolution = 0;
   cache->num_patch_coords = 0;
   cache->coarse_poly_count = 0;
@@ -846,7 +846,12 @@ static GPUVertBuf *gpu_vertbuf_from_blender_patch_coords(CompressedPatchCoord *p
 
 static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
 {
-  int *vertex_offsets = MEM_callocN(sizeof(int) * cache->num_vertices + 1, "subdiv vertex offsets");
+  /* +1 so that we do not require a special for the last vertex, this extra offset will contain the
+   * total number of adjacent faces. */
+  cache->subdiv_vertex_face_adjacency_offsets = gpu_vertbuf_create_from_format(get_origindex_format(), cache->num_vertices + 1);
+
+  int *vertex_offsets = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency_offsets);
+  memset(vertex_offsets, 0, sizeof(int) * cache->num_vertices + 1);
 
   for (int i = 0; i < cache->num_patch_coords; i++) {
     vertex_offsets[cache->subdiv_loop_subdiv_vert_index[i]]++;
@@ -860,8 +865,8 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
     ofs += tmp;
   }
 
-  int *adjacent_faces = MEM_mallocN(sizeof(int) * cache->num_patch_coords, "subdiv adjacent faces");
-
+  cache->subdiv_vertex_face_adjacency = gpu_vertbuf_create_from_format(get_origindex_format(), cache->num_patch_coords);
+  int *adjacent_faces = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency);
   int *tmp_set_faces = MEM_callocN(sizeof(int) * cache->num_vertices, "tmp subdiv vertex offset");
 
   for (int i = 0; i < cache->num_patch_coords / 4; i++) {
@@ -873,8 +878,6 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
     }
   }
 
-  cache->subdiv_vertex_face_adjacency = adjacent_faces;
-  cache->subdiv_vertex_face_adjacency_offsets = vertex_offsets;
   MEM_freeN(tmp_set_faces);
 }
 
@@ -1631,19 +1634,14 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
       GPUVertBuf *vertex_normals = GPU_vertbuf_calloc();
       GPU_vertbuf_init_build_on_device(vertex_normals, get_lnor_format(), subdiv_buffers.number_of_subdiv_verts);
 
-      GPUVertBuf *face_adjacency_offsets = build_origindex_buffer(draw_cache->subdiv_vertex_face_adjacency_offsets, subdiv_buffers.number_of_subdiv_verts + 1);
-      GPUVertBuf *face_adjacency_lists = build_origindex_buffer(draw_cache->subdiv_vertex_face_adjacency, subdiv_buffers.number_of_loops);
-
       /* accumulate normals */
-      do_accumulate_normals(&subdiv_buffers, mbc->vbo.pos_nor, face_adjacency_offsets, face_adjacency_lists, vertex_normals);
+      do_accumulate_normals(&subdiv_buffers, mbc->vbo.pos_nor, draw_cache->subdiv_vertex_face_adjacency_offsets, draw_cache->subdiv_vertex_face_adjacency, vertex_normals);
 
       /* normalize and assign */
       do_finalize_normals(&subdiv_buffers, vertex_normals, subdiv_loop_subdiv_vert_index, mbc->vbo.pos_nor);
 
       GPU_vertbuf_discard(vertex_normals);
       GPU_vertbuf_discard(subdiv_loop_subdiv_vert_index);
-      GPU_vertbuf_discard(face_adjacency_offsets);
-      GPU_vertbuf_discard(face_adjacency_lists);
     }
   }
 
