@@ -311,6 +311,15 @@ static GPUVertFormat *get_edit_data_format(void)
   return &format;
 }
 
+static GPUVertFormat *get_origindex_format(void)
+{
+  static GPUVertFormat format;
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "color", GPU_COMP_U32, 1, GPU_FETCH_INT);
+  }
+  return &format;
+}
+
 // --------------------------------------------------------
 
 static uint tris_count_from_number_of_loops(const uint number_of_loops)
@@ -375,13 +384,7 @@ static void initialize_uv_buffer(GPUVertBuf *uvs,
 
 static void init_origindex_buffer(GPUVertBuf *buffer, int *vert_origindex, uint num_loops)
 {
-
-  static GPUVertFormat format;
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "color", GPU_COMP_U32, 1, GPU_FETCH_INT);
-  }
-
-  GPU_vertbuf_init_with_format_ex(buffer, &format, GPU_USAGE_STATIC);
+  GPU_vertbuf_init_with_format_ex(buffer, get_origindex_format(), GPU_USAGE_STATIC);
   GPU_vertbuf_data_alloc(buffer, num_loops);
 
   int *vbo_data = (int *)GPU_vertbuf_get_data(buffer);
