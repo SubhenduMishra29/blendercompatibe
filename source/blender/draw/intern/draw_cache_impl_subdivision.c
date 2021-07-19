@@ -633,7 +633,7 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
   }
 
   ctx->edge_origindex_map = MEM_mallocN(num_edges * sizeof(int), "subdiv_edge_origindex_map");
-  for (int i = 0; i < num_vertices; i++) {
+  for (int i = 0; i < num_edges; i++) {
     ctx->edge_origindex_map[i] = -1;
   }
 
