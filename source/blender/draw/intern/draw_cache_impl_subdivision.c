@@ -1544,6 +1544,71 @@ static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache,
   MEM_freeN(per_polygon_mat_offset);
 }
 
+// TODO(kevindietrich) : copied from extract_mesh_ibo_lines_adjacency
+// \{
+#define NO_EDGE INT_MAX
+
+#include "BLI_edgehash.h"
+
+struct MeshExtract_LineAdjacency_Data {
+  GPUIndexBufBuilder elb;
+  EdgeHash *eh;
+  bool is_manifold;
+  /* Array to convert vert index to any loop index of this vert. */
+  uint *vert_to_loop;
+};
+
+static void init_lines_adj(uint tess_edge_len, uint vert_len, uint loop_len, struct MeshExtract_LineAdjacency_Data *data)
+{
+  data->vert_to_loop = (uint *)(MEM_callocN(sizeof(uint) * vert_len, __func__));
+
+  GPU_indexbuf_init(&data->elb, GPU_PRIM_LINES_ADJ, tess_edge_len, loop_len);
+  data->eh = BLI_edgehash_new_ex(__func__, tess_edge_len);
+  data->is_manifold = true;
+}
+
+BLI_INLINE void lines_adjacency_triangle(
+    uint v1, uint v2, uint v3, uint l1, uint l2, uint l3, struct MeshExtract_LineAdjacency_Data *data)
+{
+  GPUIndexBufBuilder *elb = &data->elb;
+  /* Iterate around the triangle's edges. */
+  for (int e = 0; e < 3; e++) {
+    SHIFT3(uint, v3, v2, v1);
+    SHIFT3(uint, l3, l2, l1);
+
+    bool inv_indices = (v2 > v3);
+    void **pval;
+    bool value_is_init = BLI_edgehash_ensure_p(data->eh, v2, v3, &pval);
+    int v_data = POINTER_AS_INT(*pval);
+    if (!value_is_init || v_data == NO_EDGE) {
+      /* Save the winding order inside the sign bit. Because the
+       * Edge-hash sort the keys and we need to compare winding later. */
+      int value = (int)l1 + 1; /* 0 cannot be signed so add one. */
+      *pval = POINTER_FROM_INT((inv_indices) ? -value : value);
+      /* Store loop indices for remaining non-manifold edges. */
+      data->vert_to_loop[v2] = l2;
+      data->vert_to_loop[v3] = l3;
+    }
+    else {
+      /* HACK Tag as not used. Prevent overhead of BLI_edgehash_remove. */
+      *pval = POINTER_FROM_INT(NO_EDGE);
+      bool inv_opposite = (v_data < 0);
+      uint l_opposite = (uint)abs(v_data) - 1;
+      /* TODO: Make this part thread-safe. */
+      if (inv_opposite == inv_indices) {
+        /* Don't share edge if triangles have non matching winding. */
+        GPU_indexbuf_add_line_adj_verts(elb, l1, l2, l3, l1);
+        GPU_indexbuf_add_line_adj_verts(elb, l_opposite, l2, l3, l_opposite);
+        data->is_manifold = false;
+      }
+      else {
+        GPU_indexbuf_add_line_adj_verts(elb, l1, l2, l3, l_opposite);
+      }
+    }
+  }
+}
+// \}
+
 static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  Object *ob,
                                                  Mesh *mesh,
@@ -1737,15 +1802,13 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   if (DRW_ibo_requested(mbc->ibo.lines_adjacency)) {
-    GPUIndexBufBuilder builder;
+    struct MeshExtract_LineAdjacency_Data data;
 
     /* For each polygon there is (loop + triangle - 1) edges. Since we only have quads, and a quad
      * is split into 2 triangles, we have (loop + 2 - 1) = (loop + 1) edges for each quad, or in
      * total: (number_of_loops + number_of_quads). */
-    GPU_indexbuf_init(&builder,
-                      GPU_PRIM_LINES_ADJ,
-                      subdiv_buffers.number_of_loops + subdiv_buffers.number_of_quads,
-                      subdiv_buffers.number_of_loops);
+    uint tess_less = subdiv_buffers.number_of_loops + subdiv_buffers.number_of_quads;
+    init_lines_adj(tess_less, draw_cache->num_vertices, draw_cache->num_patch_coords, &data);
 
     for (uint i = 0; i < subdiv_buffers.number_of_quads; i++) {
       const uint loop_index = i * 4;
@@ -1754,16 +1817,18 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
       const uint l2 = loop_index + 2;
       const uint l3 = loop_index + 3;
 
-      /* Outer edges of the quad. */
-      GPU_indexbuf_add_line_adj_verts(&builder, l0, l1, l2, l3);
-      GPU_indexbuf_add_line_adj_verts(&builder, l1, l2, l3, l0);
-      GPU_indexbuf_add_line_adj_verts(&builder, l2, l3, l0, l1);
-      GPU_indexbuf_add_line_adj_verts(&builder, l3, l0, l1, l2);
-      /* Diagonal. */
-      GPU_indexbuf_add_line_adj_verts(&builder, l3, l0, l2, l1);
+      const uint v0 = draw_cache->subdiv_loop_subdiv_vert_index[l0];
+      const uint v1 = draw_cache->subdiv_loop_subdiv_vert_index[l1];
+      const uint v2 = draw_cache->subdiv_loop_subdiv_vert_index[l2];
+      const uint v3 = draw_cache->subdiv_loop_subdiv_vert_index[l3];
+
+      lines_adjacency_triangle(v0, v1, v2, l0, l1, l2, &data);
+      lines_adjacency_triangle(v0, v2, v3, l0, l2, l3, &data);
     }
 
-    GPU_indexbuf_build_in_place(&builder, mbc->ibo.lines_adjacency);
+    GPU_indexbuf_build_in_place(&data.elb, mbc->ibo.lines_adjacency);
+    BLI_edgehash_free(data.eh, NULL);
+    MEM_freeN(data.vert_to_loop);
   }
 
   free_buffers(&subdiv_buffers);
