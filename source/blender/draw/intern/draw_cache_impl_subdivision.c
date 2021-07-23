@@ -34,6 +34,8 @@
 
 #include "BLI_string.h"
 
+#include "PIL_time.h"
+
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
@@ -1941,11 +1943,24 @@ void DRW_create_subdivision(const Scene *scene,
     g_evaluator_cache = openSubdiv_createEvaluatorCache(OPENSUBDIV_EVALUATOR_GLSL_COMPUTE);
   }
 
+#undef TIME_SUBDIV
+
+#ifdef TIME_SUBDIV
+  const double begin_time = PIL_check_seconds_timer();
+#endif
+
   if (!draw_subdiv_create_requested_buffers(
           scene, ob, mesh, batch_cache, mbc, toolsettings, g_evaluator_cache)) {
     fprintf(stderr,
             "Cannot evaluate subdivision on the GPU, falling back to the regular draw code.\n");
+    return;
   }
+
+#ifdef TIME_SUBDIV
+  const double end_time = PIL_check_seconds_timer();
+  fprintf(stderr, "Time to update subdivision: %f\n", end_time - begin_time);
+  fprintf(stderr, "Maximum FPS: %f\n", 1.0 / (end_time - begin_time));
+#endif
 }
 
 void DRW_subdiv_free(void)
