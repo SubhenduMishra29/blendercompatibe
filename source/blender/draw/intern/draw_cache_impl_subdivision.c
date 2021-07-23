@@ -464,9 +464,11 @@ typedef struct DRWSubdivCache {
   /* Maps subdivision loop to original coarse poly index. */
   int *subdiv_loop_poly_index;
 
-  /* Indices of faces adjacent to the vertices, ordered by vertex index, with no particular winding. */
+  /* Indices of faces adjacent to the vertices, ordered by vertex index, with no particular
+   * winding. */
   GPUVertBuf *subdiv_vertex_face_adjacency;
-  /* The difference between value (i + 1) and (i) gives the number of faces adjacent to vertex (i). */
+  /* The difference between value (i + 1) and (i) gives the number of faces adjacent to vertex (i).
+   */
   GPUVertBuf *subdiv_vertex_face_adjacency_offsets;
 
   /* Maps to original element in the coarse mesh, only for edit mode. */
@@ -561,7 +563,7 @@ static DRWSubdivCache *ensure_draw_cache(Subdiv *subdiv)
 {
   DRWSubdivCache *draw_cache = subdiv->draw_cache;
   if (draw_cache == NULL) {
-    //fprintf(stderr, "Creating a new cache !\n");
+    // fprintf(stderr, "Creating a new cache !\n");
     draw_cache = MEM_callocN(sizeof(DRWSubdivCache), "DRWSubdivCache");
   }
   subdiv->draw_cache = draw_cache;
@@ -848,7 +850,8 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
 {
   /* +1 so that we do not require a special for the last vertex, this extra offset will contain the
    * total number of adjacent faces. */
-  cache->subdiv_vertex_face_adjacency_offsets = gpu_vertbuf_create_from_format(get_origindex_format(), cache->num_vertices + 1);
+  cache->subdiv_vertex_face_adjacency_offsets = gpu_vertbuf_create_from_format(
+      get_origindex_format(), cache->num_vertices + 1);
 
   int *vertex_offsets = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency_offsets);
   memset(vertex_offsets, 0, sizeof(int) * cache->num_vertices + 1);
@@ -865,7 +868,8 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
     ofs += tmp;
   }
 
-  cache->subdiv_vertex_face_adjacency = gpu_vertbuf_create_from_format(get_origindex_format(), cache->num_patch_coords);
+  cache->subdiv_vertex_face_adjacency = gpu_vertbuf_create_from_format(get_origindex_format(),
+                                                                       cache->num_patch_coords);
   int *adjacent_faces = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency);
   int *tmp_set_faces = MEM_callocN(sizeof(int) * cache->num_vertices, "tmp subdiv vertex offset");
 
@@ -900,7 +904,7 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
   }
 
   if (cache->patch_coords != NULL) {
-    //fprintf(stderr, "Cache does not need to be rebuilt !\n");
+    // fprintf(stderr, "Cache does not need to be rebuilt !\n");
     /* No need to rebuild anything. */
     return true;
   }
@@ -1357,8 +1361,12 @@ static void print_requests(MeshBufferCache *mbc)
 {
   fprintf(stderr, "============== REQUESTS ==============\n");
 
-#define PRINT_VBO_REQUEST(request) if (DRW_vbo_requested(mbc->request)) fprintf(stderr, #request" requested\n")
-#define PRINT_IBO_REQUEST(request) if (DRW_ibo_requested(mbc->request)) fprintf(stderr, #request" requested\n")
+#define PRINT_VBO_REQUEST(request) \
+  if (DRW_vbo_requested(mbc->request)) \
+  fprintf(stderr, #request " requested\n")
+#define PRINT_IBO_REQUEST(request) \
+  if (DRW_ibo_requested(mbc->request)) \
+  fprintf(stderr, #request " requested\n")
 
   PRINT_VBO_REQUEST(vbo.lnor);
   PRINT_VBO_REQUEST(vbo.pos_nor);
@@ -1558,7 +1566,10 @@ struct MeshExtract_LineAdjacency_Data {
   uint *vert_to_loop;
 };
 
-static void init_lines_adj(uint tess_edge_len, uint vert_len, uint loop_len, struct MeshExtract_LineAdjacency_Data *data)
+static void init_lines_adj(uint tess_edge_len,
+                           uint vert_len,
+                           uint loop_len,
+                           struct MeshExtract_LineAdjacency_Data *data)
 {
   data->vert_to_loop = (uint *)(MEM_callocN(sizeof(uint) * vert_len, __func__));
 
@@ -1567,8 +1578,13 @@ static void init_lines_adj(uint tess_edge_len, uint vert_len, uint loop_len, str
   data->is_manifold = true;
 }
 
-BLI_INLINE void lines_adjacency_triangle(
-    uint v1, uint v2, uint v3, uint l1, uint l2, uint l3, struct MeshExtract_LineAdjacency_Data *data)
+BLI_INLINE void lines_adjacency_triangle(uint v1,
+                                         uint v2,
+                                         uint v3,
+                                         uint l1,
+                                         uint l2,
+                                         uint l3,
+                                         struct MeshExtract_LineAdjacency_Data *data)
 {
   GPUIndexBufBuilder *elb = &data->elb;
   /* Iterate around the triangle's edges. */
@@ -1694,16 +1710,23 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
     if (!do_limit_normals) {
       /* We cannot evaluate vertex normals using the limit surface, so compute them manually. */
-      GPUVertBuf *subdiv_loop_subdiv_vert_index = build_origindex_buffer(draw_cache->subdiv_loop_subdiv_vert_index, subdiv_buffers.number_of_loops);
+      GPUVertBuf *subdiv_loop_subdiv_vert_index = build_origindex_buffer(
+          draw_cache->subdiv_loop_subdiv_vert_index, subdiv_buffers.number_of_loops);
 
       GPUVertBuf *vertex_normals = GPU_vertbuf_calloc();
-      GPU_vertbuf_init_build_on_device(vertex_normals, get_lnor_format(), subdiv_buffers.number_of_subdiv_verts);
+      GPU_vertbuf_init_build_on_device(
+          vertex_normals, get_lnor_format(), subdiv_buffers.number_of_subdiv_verts);
 
       /* accumulate normals */
-      do_accumulate_normals(&subdiv_buffers, mbc->vbo.pos_nor, draw_cache->subdiv_vertex_face_adjacency_offsets, draw_cache->subdiv_vertex_face_adjacency, vertex_normals);
+      do_accumulate_normals(&subdiv_buffers,
+                            mbc->vbo.pos_nor,
+                            draw_cache->subdiv_vertex_face_adjacency_offsets,
+                            draw_cache->subdiv_vertex_face_adjacency,
+                            vertex_normals);
 
       /* normalize and assign */
-      do_finalize_normals(&subdiv_buffers, vertex_normals, subdiv_loop_subdiv_vert_index, mbc->vbo.pos_nor);
+      do_finalize_normals(
+          &subdiv_buffers, vertex_normals, subdiv_loop_subdiv_vert_index, mbc->vbo.pos_nor);
 
       GPU_vertbuf_discard(vertex_normals);
       GPU_vertbuf_discard(subdiv_loop_subdiv_vert_index);
@@ -1751,7 +1774,8 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   if (DRW_vbo_requested(mbc->vbo.edge_fac)) {
-    GPU_vertbuf_init_build_on_device(mbc->vbo.edge_fac, get_edge_fac_format(), subdiv_buffers.number_of_loops);
+    GPU_vertbuf_init_build_on_device(
+        mbc->vbo.edge_fac, get_edge_fac_format(), subdiv_buffers.number_of_loops);
 
     /* Create a temporary buffer for the edge original indices if it was not requested. */
     const bool has_edge_idx = mbc->vbo.edge_idx != NULL;
@@ -1761,10 +1785,12 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     }
     else {
       loop_edge_idx = GPU_vertbuf_calloc();
-      init_origindex_buffer(loop_edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
+      init_origindex_buffer(
+          loop_edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
     }
 
-    do_build_edge_fac_buffer(&subdiv_buffers, mbc->vbo.pos_nor, loop_edge_idx, optimal_display, mbc->vbo.edge_fac);
+    do_build_edge_fac_buffer(
+        &subdiv_buffers, mbc->vbo.pos_nor, loop_edge_idx, optimal_display, mbc->vbo.edge_fac);
 
     if (!has_edge_idx) {
       GPU_vertbuf_discard(loop_edge_idx);
