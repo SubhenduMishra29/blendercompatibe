@@ -97,6 +97,8 @@ class IndexBuf {
   virtual const uint32_t *read() const = 0;
   uint32_t *unmap(const uint32_t *mapped_memory) const;
 
+  virtual void update_sub(uint start, uint len, void *data) = 0;
+
  private:
   inline void squeeze_indices_short(uint min_idx, uint max_idx);
   inline uint index_range(uint *r_min, uint *r_max);

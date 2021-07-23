@@ -420,4 +420,9 @@ void GPU_indexbuf_bind_as_ssbo(GPUIndexBuf *elem, int binding)
   unwrap(elem)->bind_as_ssbo(binding);
 }
 
+void GPU_indexbuf_update_sub(GPUIndexBuf *elem, uint start, uint len, void *data)
+{
+  unwrap(elem)->update_sub(start, len, data);
+}
+
 /** \} */

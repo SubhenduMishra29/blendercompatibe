@@ -84,6 +84,12 @@ void GPU_indexbuf_build_in_place(GPUIndexBufBuilder *, GPUIndexBuf *);
 
 void GPU_indexbuf_bind_as_ssbo(GPUIndexBuf *elem, int binding);
 
+/* Partially update the GPUIndexBuf which was already sent to the device, or built directly on the
+ * device. The data needs to be compatible with potential compression applied to the original
+ * indices when the index buffer was built, i.e., if the data was compressed to use shorts instead
+ * of ints, shorts should passed here. */
+void GPU_indexbuf_update_sub(GPUIndexBuf *elem, uint start, uint len, void *data);
+
 /* Create a sub-range of an existing index-buffer. */
 GPUIndexBuf *GPU_indexbuf_create_subrange(GPUIndexBuf *elem_src, uint start, uint length);
 void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,
