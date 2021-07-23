@@ -552,6 +552,71 @@ static void draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *mes
   GPU_vertbuf_tag_dirty(cache->face_flags);
 }
 
+static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
+{
+  size_t memory_used = 0;
+
+  if (cache->patch_coords) {
+    memory_used += cache->num_patch_coords * 20;
+  }
+
+  if (cache->subdiv_polygon_offset_buffer) {
+    memory_used += cache->coarse_poly_count * sizeof(int);
+  }
+
+  if (cache->face_flags) {
+    memory_used += cache->coarse_poly_count * sizeof(int);
+  }
+
+  if (cache->subdiv_loop_edge_index) {
+    memory_used += cache->num_patch_coords * sizeof(int);
+  }
+
+  if (cache->subdiv_loop_subdiv_vert_index) {
+    memory_used += cache->num_patch_coords * sizeof(int);
+  }
+
+  if (cache->subdiv_loop_poly_index) {
+    memory_used += cache->num_patch_coords * sizeof(int);
+  }
+
+  if (cache->subdiv_loop_vert_index) {
+    memory_used += cache->num_patch_coords * sizeof(int);
+  }
+
+  if (cache->point_indices) {
+    memory_used += cache->num_vertices * sizeof(int);
+  }
+
+  if (cache->face_ptex_offset) {
+    memory_used += cache->coarse_poly_count * sizeof(int);
+  }
+
+  if (cache->subdiv_vertex_face_adjacency_offsets) {
+    memory_used += cache->num_vertices * sizeof(int);
+  }
+
+  if (cache->subdiv_vertex_face_adjacency) {
+    memory_used += cache->num_patch_coords * sizeof(int);
+  }
+
+#if 0
+  GPU_VERTBUF_DISCARD_SAFE(cache->polygon_mat_offset);
+  MEM_SAFE_FREE(cache->mat_start);
+  MEM_SAFE_FREE(cache->mat_end);
+  GPU_VERTBUF_DISCARD_SAFE(cache->verts_orig_index);
+  GPU_VERTBUF_DISCARD_SAFE(cache->edges_orig_index);
+  GPU_VERTBUF_DISCARD_SAFE(cache->faces_orig_index);
+  GPU_VERTBUF_DISCARD_SAFE(cache->fdots_patch_coords);
+#endif
+
+  fprintf(stderr, "Memory used by the GPU subdivision cache: %lu bytes\n", memory_used);
+
+  if (cache->patch_coords) {
+    fprintf(stderr, "Memory used for the patch coords: %d bytes\n", cache->num_patch_coords * 20);
+  }
+}
+
 static void free_draw_cache_from_subdiv_cb(void *ptr)
 {
   DRWSubdivCache *cache = (DRWSubdivCache *)(ptr);
@@ -1856,6 +1921,8 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     BLI_edgehash_free(data.eh, NULL);
     MEM_freeN(data.vert_to_loop);
   }
+
+  draw_subdiv_cache_print_memory_used(draw_cache);
 
   free_buffers(&subdiv_buffers);
   return true;
