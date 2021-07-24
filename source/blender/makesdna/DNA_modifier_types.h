@@ -2030,6 +2030,7 @@ typedef struct WeldModifierData {
 /* WeldModifierData->flag */
 enum {
   MOD_WELD_INVERT_VGROUP = (1 << 0),
+  MOD_WELD_LOOSE_EDGES = (1 << 1),
 };
 
 /* #WeldModifierData.mode */
