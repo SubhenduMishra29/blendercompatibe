@@ -70,10 +70,7 @@ static void print_index_buffer(const char *message, int *index, int len)
  * - improve OpenSubdiv_BufferInterface
  * - comments
  * - better structure for this file
- *
- * - fix edit mode rendering (face dot, snap to cage, etc.)
- * - (long term) add support for vertex colors
- *
+ * - add support for vertex colors
  * - holes: deduplicate operator code in edit_mesh_tools.
  */
 
@@ -97,7 +94,7 @@ enum {
   SHADER_BUFFER_NORMALS_FINALIZE,
   SHADER_PATCH_EVALUATION,
   SHADER_PATCH_EVALUATION_LIMIT_NORMALS,
-  SHADER_PATCH_FVAR_EVALUATION,
+  SHADER_PATCH_EVALUATION_FVAR,
   SHADER_PATCH_EVALUATION_FACE_DOTS,
 
   NUM_SHADERS,
@@ -129,7 +126,7 @@ static const char *get_shader_code(int shader_type)
     }
     case SHADER_PATCH_EVALUATION:
     case SHADER_PATCH_EVALUATION_LIMIT_NORMALS:
-    case SHADER_PATCH_FVAR_EVALUATION:
+    case SHADER_PATCH_EVALUATION_FVAR:
     case SHADER_PATCH_EVALUATION_FACE_DOTS: {
       return datatoc_common_subdiv_patch_evaluation_comp_glsl;
     }
@@ -159,11 +156,17 @@ static const char *get_shader_name(int shader_type)
     case SHADER_BUFFER_NORMALS_FINALIZE: {
       return "subdiv normals finalize";
     }
-    case SHADER_PATCH_EVALUATION:
-    case SHADER_PATCH_EVALUATION_LIMIT_NORMALS:
-    case SHADER_PATCH_FVAR_EVALUATION:
-    case SHADER_PATCH_EVALUATION_FACE_DOTS: {
+    case SHADER_PATCH_EVALUATION: {
       return "subdiv patch evaluation";
+    }
+    case SHADER_PATCH_EVALUATION_LIMIT_NORMALS: {
+      return "subdiv patch evaluation limit normals";
+    }
+    case SHADER_PATCH_EVALUATION_FVAR: {
+      return "subdiv patch evaluation face-varying";
+    }
+    case SHADER_PATCH_EVALUATION_FACE_DOTS: {
+      return "subdiv patch evaluation face dots";
     }
   }
   return NULL;
@@ -175,18 +178,13 @@ static GPUShader *get_patch_evaluation_shader(int shader_type)
     const char *compute_code = get_shader_code(shader_type);
 
     const char *defines = NULL;
-    if (shader_type == SHADER_PATCH_EVALUATION) {
-      defines =
-          "#define OSD_PATCH_BASIS_GLSL\n"
-          "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n";
-    }
-    else if (shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS) {
+    if (shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS) {
       defines =
           "#define OSD_PATCH_BASIS_GLSL\n"
           "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
           "#define LIMIT_NORMALS\n";
     }
-    else if (shader_type == SHADER_PATCH_FVAR_EVALUATION) {
+    else if (shader_type == SHADER_PATCH_EVALUATION_FVAR) {
       defines =
           "#define OSD_PATCH_BASIS_GLSL\n"
           "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
@@ -197,6 +195,11 @@ static GPUShader *get_patch_evaluation_shader(int shader_type)
           "#define OSD_PATCH_BASIS_GLSL\n"
           "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
           "#define FDOTS_EVALUATION\n";
+    }
+    else {
+      defines =
+          "#define OSD_PATCH_BASIS_GLSL\n"
+          "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n";
     }
 
     /* Merge OpenSubdiv library code with our own library code. */
@@ -220,7 +223,9 @@ static GPUShader *get_patch_evaluation_shader(int shader_type)
 static GPUShader *get_subdiv_shader(int shader_type, const char *defines)
 {
   if (shader_type == SHADER_PATCH_EVALUATION ||
-      shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS) {
+      shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS ||
+      shader_type == SHADER_PATCH_EVALUATION_FVAR ||
+      shader_type == SHADER_PATCH_EVALUATION_FACE_DOTS) {
     return get_patch_evaluation_shader(shader_type);
   }
   if (g_subdiv_shaders[shader_type] == NULL) {
@@ -1299,7 +1304,7 @@ static void draw_subdiv_extract_uvs_ex(DRWSubdivBuffers *buffers,
   subdiv->evaluator->buildFVarPatchParamBuffer(
       subdiv->evaluator, face_varying_channel, &patch_param_buffer_interface);
 
-  GPUShader *shader = get_patch_evaluation_shader(SHADER_PATCH_FVAR_EVALUATION);
+  GPUShader *shader = get_patch_evaluation_shader(SHADER_PATCH_EVALUATION_FVAR);
   GPU_shader_bind(shader);
 
   /* The buffer offset has the stride baked in (which is 2 as we have UVs) so remove the stride by
