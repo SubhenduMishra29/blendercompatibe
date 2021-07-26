@@ -52,30 +52,65 @@ uint get_index(uint i)
   return (i >> 2) & 0x3FFFFFFF;
 }
 
-/* This reprensents the layout for the pos_nor VBO that will be later used for drawing. */
-struct VertexBufferData {
-  vec4 pos;
-  vec4 nor;
+/* Duplicate of #PosNorLoop from the mesh extract CPU code.
+ * We do not use a vec3 for the position as it will be padded to a vec4 which is incompatible with
+ * the format.  */
+struct PosNorLoop {
+  float x, y, z;
+  uint nor;
 };
 
-vec3 get_vertex_pos(VertexBufferData vertex_data)
+vec3 get_vertex_pos(PosNorLoop vertex_data)
 {
-  return vertex_data.pos.xyz;
+  return vec3(vertex_data.x, vertex_data.y, vertex_data.z);
 }
 
-vec3 get_vertex_nor(VertexBufferData vertex_data)
+float gpu_unpack_float_from_uint(uint x)
 {
-  return vertex_data.nor.xyz;
+  return (float(x) - 512.0) / 511.0;
 }
 
-void set_vertex_pos(inout VertexBufferData vertex_data, vec3 pos)
+uint gpu_pack_float_from_uint(float x)
 {
-  vertex_data.pos.xyz = pos;
+  return uint(clamp(x * 511.0 + 512.0, 0.0, 1023.0));
 }
 
-void set_vertex_nor(inout VertexBufferData vertex_data, vec3 nor)
+vec3 get_vertex_nor(PosNorLoop vertex_data)
 {
-  vertex_data.nor.xyz = nor;
+  uint inor = vertex_data.nor;
+  float x = gpu_unpack_float_from_uint(inor & 0x3ff);
+  float y = gpu_unpack_float_from_uint((inor >> 10) & 0x3ff);
+  float z = gpu_unpack_float_from_uint((inor >> 20) & 0x3ff);
+  return vec3(x, y, z);
+}
+
+void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
+{
+  vertex_data.x = pos.x;
+  vertex_data.y = pos.y;
+  vertex_data.z = pos.z;
+}
+
+/* Set the vertex normal but preserve the existing flag. This is for when we compute manually the
+ * vertex normals when we cannot use the limit surface, in which case the flag and the normal are
+ * set by two separate compute pass. */
+void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor)
+{
+  uint x = gpu_pack_float_from_uint(nor.x);
+  uint y = gpu_pack_float_from_uint(nor.y);
+  uint z = gpu_pack_float_from_uint(nor.z);
+  uint flag = (vertex_data.nor >> 30) & 0x3;
+  uint inor = x | y << 10 | z << 20 | flag << 30;
+  vertex_data.nor = inor;
+}
+
+void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor, uint flag)
+{
+  uint x = gpu_pack_float_from_uint(nor.x);
+  uint y = gpu_pack_float_from_uint(nor.y);
+  uint z = gpu_pack_float_from_uint(nor.z);
+  uint inor = x | y << 10 | z << 20 | flag << 30;
+  vertex_data.nor = inor;
 }
 
 #define ORIGINDEX_NONE -1

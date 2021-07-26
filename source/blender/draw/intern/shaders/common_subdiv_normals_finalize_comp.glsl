@@ -14,7 +14,7 @@ layout(std430, binding = 1) readonly buffer inputSubdivVertLoopMap
 
 layout(std430, binding = 2) buffer outputPosNor
 {
-  VertexBufferData pos_nor[];
+  PosNorLoop pos_nor[];
 };
 
 void main()

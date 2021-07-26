@@ -77,7 +77,7 @@ layout(std430, binding = 10) writeonly buffer outputFdotsIndices
 #else
 layout(binding = 8) writeonly buffer outputVertexData
 {
-  VertexBufferData output_verts[];
+  PosNorLoop output_verts[];
 };
 #endif
 
@@ -331,18 +331,15 @@ void main()
     vec3 nor = vec3(0.0);
 #  endif
 
-    VertexBufferData vertex_data;
-    set_vertex_pos(vertex_data, pos);
-    set_vertex_nor(vertex_data, nor);
-
     int origindex = input_vert_origindex[loop_index];
+    uint flag = 0;
     if (origindex == -1) {
-      vertex_data.nor.w = -1.0;
-    }
-    else {
-      vertex_data.nor.w = 0.0;
+      flag = -1;
     }
 
+    PosNorLoop vertex_data;
+    set_vertex_pos(vertex_data, pos);
+    set_vertex_nor(vertex_data, nor, flag);
     output_verts[loop_index] = vertex_data;
   }
 }

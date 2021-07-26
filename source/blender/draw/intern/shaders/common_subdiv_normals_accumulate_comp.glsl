@@ -4,7 +4,7 @@ layout(local_size_x = 1) in;
 
 layout(std430, binding = 0) readonly buffer inputVertexData
 {
-  VertexBufferData pos_nor[];
+  PosNorLoop pos_nor[];
 };
 
 layout(std430, binding = 1) readonly buffer faceAdjacencyOffsets

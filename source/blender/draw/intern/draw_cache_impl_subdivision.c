@@ -231,22 +231,22 @@ static GPUShader *get_subdiv_shader(int shader_type, const char *defines)
   return g_subdiv_shaders[shader_type];
 }
 
-typedef struct VertexBufferData {
-  float co[4];
-  float no[4];
-} VertexBufferData;
+typedef struct PosNorLoop {
+  float co[3];
+  GPUPackedNormal no;
+} PosNorLoop;
 
-/* Vertex format used for rendering the result; corresponds to the VertexBufferData struct above.
+/* Vertex format used for rendering the result; corresponds to the PosNorLoop struct above.
  */
-static GPUVertFormat *get_render_format(void)
+static GPUVertFormat *get_pos_nor_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    /* WARNING Adjust #VertexBufferData struct in common_subdiv_lib accordingly.
+    /* WARNING Adjust #PosNorLoop struct in common_subdiv_lib accordingly.
      * We use 4 components for the vectors to account for padding in the compute shaders, where
      * vec3 is promoted to vec4. */
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
     GPU_vertformat_alias_add(&format, "vnor");
   }
   return &format;
@@ -2050,7 +2050,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   if (DRW_vbo_requested(mbc->vbo.pos_nor)) {
     /* Initialise the vertex buffer, it was already allocated. */
     GPU_vertbuf_init_build_on_device(mbc->vbo.pos_nor,
-                                     get_render_format(),
+                                     get_pos_nor_format(),
                                      subdiv_buffers.number_of_loops + draw_cache->loop_loose_len);
 
     draw_subdiv_extract_pos_nor(&subdiv_buffers, mbc->vbo.pos_nor, subdiv, do_limit_normals);
@@ -2085,21 +2085,17 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     {
       uint offset = draw_cache->num_patch_coords;
 
-      VertexBufferData vbuf_data[2];
+      PosNorLoop vbuf_data[2];
       LooseEdge *loose_edge = draw_cache->loose_edges;
       while (loose_edge) {
         copy_v3_v3(vbuf_data[0].co, mesh_eval->mvert[loose_edge->v1].co);
-        zero_v4(vbuf_data[0].no);
-        normal_short_to_float_v3(vbuf_data[0].no, mesh_eval->mvert[loose_edge->v1].no);
+        vbuf_data[0].no = GPU_normal_convert_i10_s3(mesh_eval->mvert[loose_edge->v1].no);
 
         copy_v3_v3(vbuf_data[1].co, mesh_eval->mvert[loose_edge->v2].co);
-        zero_v4(vbuf_data[1].no);
-        normal_short_to_float_v3(vbuf_data[1].no, mesh_eval->mvert[loose_edge->v2].no);
+        vbuf_data[1].no = GPU_normal_convert_i10_s3(mesh_eval->mvert[loose_edge->v2].no);
 
-        GPU_vertbuf_update_sub(mbc->vbo.pos_nor,
-                               offset * sizeof(VertexBufferData),
-                               sizeof(VertexBufferData) * 2,
-                               &vbuf_data);
+        GPU_vertbuf_update_sub(
+            mbc->vbo.pos_nor, offset * sizeof(PosNorLoop), sizeof(PosNorLoop) * 2, &vbuf_data);
         loose_edge = loose_edge->next;
         offset += 2;
       }
@@ -2108,20 +2104,19 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     /* Then loose vertices */
     {
       uint offset = draw_cache->num_patch_coords + draw_cache->edge_loose_len * 2;
-      VertexBufferData vbuf_data;
+      PosNorLoop vbuf_data;
 
       uint subdiv_vertex_index = subdiv_buffers.number_of_subdiv_verts;
       LooseVertex *loose_vertex = draw_cache->loose_verts;
       while (loose_vertex) {
         copy_v3_v3(vbuf_data.co, loose_vertex->co);
-        zero_v4(vbuf_data.no);
+        vbuf_data.no = GPU_normal_convert_i10_s3(
+            mesh_eval->mvert[loose_vertex->coarse_vertex_index].no);
 
         loose_vertex->subdiv_vertex_index = subdiv_vertex_index++;
 
-        GPU_vertbuf_update_sub(mbc->vbo.pos_nor,
-                               offset * sizeof(VertexBufferData),
-                               sizeof(VertexBufferData),
-                               &vbuf_data);
+        GPU_vertbuf_update_sub(
+            mbc->vbo.pos_nor, offset * sizeof(PosNorLoop), sizeof(PosNorLoop), &vbuf_data);
         loose_vertex = loose_vertex->next;
         offset += 1;
       }
