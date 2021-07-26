@@ -36,6 +36,8 @@ typedef struct OpenSubdiv_BufferInterface {
 
   int buffer_offset;
 
+  void (*wrap)(struct OpenSubdiv_BufferInterface *buffer, unsigned int device_ptr);
+
   void *data;
 } OpenSubdiv_BufferInterface;
 
@@ -158,6 +160,34 @@ typedef struct OpenSubdiv_Evaluator {
                       int *max_depth,
                       int *patches_are_triangular);
 
+  void (*buildPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                 struct OpenSubdiv_BufferInterface *patch_array_buffer);
+
+  void (*buildPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                struct OpenSubdiv_BufferInterface *patch_index_buffer);
+
+  void (*buildPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                struct OpenSubdiv_BufferInterface *patch_param_buffer);
+
+  void (*buildSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                         struct OpenSubdiv_BufferInterface *src_buffer);
+
+  void (*buildFVarPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                     const int face_varying_channel,
+                                     struct OpenSubdiv_BufferInterface *patch_array_buffer);
+
+  void (*buildFVarPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                    const int face_varying_channel,
+                                    struct OpenSubdiv_BufferInterface *patch_index_buffer);
+
+  void (*buildFVarPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                                    const int face_varying_channel,
+                                    struct OpenSubdiv_BufferInterface *patch_param_buffer);
+
+  void (*buildFVarSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+                             const int face_varying_channel,
+                             struct OpenSubdiv_BufferInterface *src_buffer);
+
   // Implementation of the evaluator.
   struct OpenSubdiv_EvaluatorImpl *impl;
 } OpenSubdiv_Evaluator;
@@ -177,6 +207,8 @@ void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator);
 OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(int evaluator_type);
 
 void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache);
+
+const char *openSubdiv_getGLSLPatchBasisSource(void);
 
 #ifdef __cplusplus
 }

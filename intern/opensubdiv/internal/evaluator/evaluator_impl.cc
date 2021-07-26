@@ -61,6 +61,7 @@ using OpenSubdiv::Osd::GLPatchTable;
 using OpenSubdiv::Osd::GLStencilTableSSBO;
 using OpenSubdiv::Osd::GLVertexBuffer;
 using OpenSubdiv::Osd::PatchArray;
+using OpenSubdiv::Osd::PatchArrayVector;
 using OpenSubdiv::Osd::PatchCoord;
 
 namespace blender {
@@ -341,6 +342,22 @@ class FaceVaryingVolatileEval {
                                       face_varying_channel_,
                                       eval_instance,
                                       device_context_);
+  }
+
+  EVAL_VERTEX_BUFFER *getSrcBuffer() const
+  {
+    return src_face_varying_data_;
+  }
+
+  int getFVarSrcBufferOffset() const
+  {
+    BufferDescriptor src_desc = get_src_varying_desc();
+    return src_desc.offset;
+  }
+
+  PATCH_TABLE *getPatchTable() const
+  {
+    return patch_table_;
   }
 
  private:
@@ -667,6 +684,31 @@ class VolatileEvalOutput {
     assert(face_varying_channel >= 0);
     assert(face_varying_channel < face_varying_evaluators.size());
     face_varying_evaluators[face_varying_channel]->evalPatches(patch_coords, face_varying);
+  }
+
+  SRC_VERTEX_BUFFER *getSrcBuffer() const
+  {
+    return src_data_;
+  }
+
+  PATCH_TABLE *getPatchTable() const
+  {
+    return patch_table_;
+  }
+
+  SRC_VERTEX_BUFFER *getFVarSrcBuffer(const int face_varying_channel) const
+  {
+    return face_varying_evaluators[face_varying_channel]->getSrcBuffer();
+  }
+
+  int getFVarSrcBufferOffset(const int face_varying_channel) const
+  {
+    return face_varying_evaluators[face_varying_channel]->getFVarSrcBufferOffset();
+  }
+
+  PATCH_TABLE *getFVarPatchTable(const int face_varying_channel) const
+  {
+    return face_varying_evaluators[face_varying_channel]->getPatchTable();
   }
 
  private:
@@ -1147,6 +1189,74 @@ void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles
   PatchMap::QuadNode *buffer_nodes = static_cast<PatchMap::QuadNode *>(
       patch_map_quadtree->alloc(patch_map_quadtree, quadtree.size()));
   memcpy(buffer_nodes, &quadtree[0], sizeof(PatchMap::QuadNode) * quadtree.size());
+}
+
+static void build_patch_arrays_buffer(const PatchArrayVector &patch_arrays,
+                                      OpenSubdiv_BufferInterface *patch_arrays_buffer)
+{
+  size_t patch_array_size = sizeof(PatchArray);
+  uchar *ptr = static_cast<uchar *>(
+      patch_arrays_buffer->alloc(patch_arrays_buffer, patch_arrays.size()));
+
+  for (size_t i = 0; i < patch_arrays.size(); ++i) {
+    memcpy(ptr + patch_array_size * i, &patch_arrays[i], patch_array_size);
+  }
+}
+
+void GpuEvalOutputAPI::buildPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer)
+{
+  GLPatchTable *patch_table = implementation_->getPatchTable();
+  build_patch_arrays_buffer(patch_table->GetPatchArrays(), patch_arrays_buffer);
+}
+
+void GpuEvalOutputAPI::buildPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer)
+{
+  GLPatchTable *patch_table = implementation_->getPatchTable();
+  patch_index_buffer->wrap(patch_index_buffer, patch_table->GetPatchIndexBuffer());
+}
+
+void GpuEvalOutputAPI::buildPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer)
+{
+  GLPatchTable *patch_table = implementation_->getPatchTable();
+  patch_param_buffer->wrap(patch_param_buffer, patch_table->GetPatchParamBuffer());
+}
+
+void GpuEvalOutputAPI::buildSrcBuffer(OpenSubdiv_BufferInterface *src_buffer)
+{
+  GLVertexBuffer *vertex_buffer = implementation_->getSrcBuffer();
+  src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+}
+
+void GpuEvalOutputAPI::buildFVarPatchArraysBuffer(const int face_varying_channel,
+                                                  OpenSubdiv_BufferInterface *patch_arrays_buffer)
+{
+  GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
+  build_patch_arrays_buffer(patch_table->GetFVarPatchArrays(face_varying_channel),
+                            patch_arrays_buffer);
+}
+
+void GpuEvalOutputAPI::buildFVarPatchIndexBuffer(const int face_varying_channel,
+                                                 OpenSubdiv_BufferInterface *patch_index_buffer)
+{
+  GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
+  patch_index_buffer->wrap(patch_index_buffer,
+                           patch_table->GetFVarPatchIndexBuffer(face_varying_channel));
+}
+
+void GpuEvalOutputAPI::buildFVarPatchParamBuffer(const int face_varying_channel,
+                                                 OpenSubdiv_BufferInterface *patch_param_buffer)
+{
+  GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
+  patch_param_buffer->wrap(patch_param_buffer,
+                           patch_table->GetFVarPatchParamBuffer(face_varying_channel));
+}
+
+void GpuEvalOutputAPI::buildFVarSrcBuffer(const int face_varying_channel,
+                                          OpenSubdiv_BufferInterface *src_buffer)
+{
+  GLVertexBuffer *vertex_buffer = implementation_->getFVarSrcBuffer(face_varying_channel);
+  src_buffer->buffer_offset = implementation_->getFVarSrcBufferOffset(face_varying_channel);
+  src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
 }
 
 }  // namespace opensubdiv

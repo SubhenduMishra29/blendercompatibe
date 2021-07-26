@@ -350,6 +350,11 @@ uint GPU_vertbuf_get_device_ptr(GPUVertBuf *verts)
   return unwrap(verts)->get_device_ptr();
 }
 
+void GPU_vertbuf_wrap_device_ptr(GPUVertBuf *verts, uint device_ptr)
+{
+  unwrap(verts)->wrap_device_ptr(device_ptr);
+}
+
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)
 {
   unwrap(verts)->bind_as_ssbo(binding);

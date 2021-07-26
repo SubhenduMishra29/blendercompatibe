@@ -18,6 +18,8 @@
 
 #include "opensubdiv_evaluator_capi.h"
 
+#include <opensubdiv/osd/glslPatchShaderSource.h>
+
 #include "MEM_guardedalloc.h"
 #include <new>
 
@@ -240,6 +242,85 @@ void getPatchMap(struct OpenSubdiv_Evaluator *evaluator,
   }
 }
 
+void buildPatchArraysBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                            struct OpenSubdiv_BufferInterface *patch_array_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildPatchArraysBuffer(patch_array_buffer);
+    return;
+  }
+}
+
+void buildPatchIndexBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                           struct OpenSubdiv_BufferInterface *patch_index_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildPatchIndexBuffer(patch_index_buffer);
+    return;
+  }
+}
+
+void buildPatchParamBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                           struct OpenSubdiv_BufferInterface *patch_param_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildPatchParamBuffer(patch_param_buffer);
+    return;
+  }
+}
+
+void buildSrcBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                    struct OpenSubdiv_BufferInterface *src_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildSrcBuffer(src_buffer);
+    return;
+  }
+}
+
+void buildFVarPatchArraysBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                                const int face_varying_channel,
+                                struct OpenSubdiv_BufferInterface *patch_array_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildFVarPatchArraysBuffer(face_varying_channel,
+                                                                 patch_array_buffer);
+    return;
+  }
+}
+
+void buildFVarPatchIndexBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                               const int face_varying_channel,
+                               struct OpenSubdiv_BufferInterface *patch_index_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildFVarPatchIndexBuffer(face_varying_channel,
+                                                                patch_index_buffer);
+    return;
+  }
+}
+
+void buildFVarPatchParamBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                               const int face_varying_channel,
+                               struct OpenSubdiv_BufferInterface *patch_param_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildFVarPatchParamBuffer(face_varying_channel,
+                                                                patch_param_buffer);
+    return;
+  }
+}
+
+void buildFVarSrcBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                        const int face_varying_channel,
+                        struct OpenSubdiv_BufferInterface *src_buffer)
+{
+  if (evaluator->impl->eval_output_gpu) {
+    evaluator->impl->eval_output_gpu->buildFVarSrcBuffer(face_varying_channel, src_buffer);
+    return;
+  }
+}
+
 void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
 {
   evaluator->setCoarsePositions = setCoarsePositions;
@@ -263,6 +344,16 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
   evaluator->evaluateFaceVaryingFromBuffer = evaluateFaceVaryingFromBuffer;
 
   evaluator->getPatchMap = getPatchMap;
+
+  evaluator->buildPatchArraysBuffer = buildPatchArraysBuffer;
+  evaluator->buildPatchIndexBuffer = buildPatchIndexBuffer;
+  evaluator->buildPatchParamBuffer = buildPatchParamBuffer;
+  evaluator->buildSrcBuffer = buildSrcBuffer;
+
+  evaluator->buildFVarPatchArraysBuffer = buildFVarPatchArraysBuffer;
+  evaluator->buildFVarPatchIndexBuffer = buildFVarPatchIndexBuffer;
+  evaluator->buildFVarPatchParamBuffer = buildFVarPatchParamBuffer;
+  evaluator->buildFVarSrcBuffer = buildFVarSrcBuffer;
 }
 
 }  // namespace
@@ -300,4 +391,14 @@ void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache)
 
   openSubdiv_deleteEvaluatorCacheInternal(evaluator_cache->impl);
   OBJECT_GUARDED_DELETE(evaluator_cache, OpenSubdiv_EvaluatorCache);
+}
+
+const char *openSubdiv_getGLSLPatchBasisSource(void)
+{
+  /* Using a global string to avoid dealing with memory allocation/ownership. */
+  static std::string patch_basis_source;
+  if (patch_basis_source.empty()) {
+    patch_basis_source = OpenSubdiv::Osd::GLSLPatchShaderSource::GetPatchBasisShaderSource();
+  }
+  return patch_basis_source.c_str();
 }

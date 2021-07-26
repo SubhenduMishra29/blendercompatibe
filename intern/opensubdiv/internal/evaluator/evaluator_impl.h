@@ -246,6 +246,25 @@ class GpuEvalOutputAPI {
                    int *max_depth,
                    int *patches_are_triangular);
 
+  void buildPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer);
+
+  void buildPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer);
+
+  void buildPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer);
+
+  void buildSrcBuffer(OpenSubdiv_BufferInterface *src_buffer);
+
+  void buildFVarPatchArraysBuffer(const int face_varying_channel,
+                                  OpenSubdiv_BufferInterface *patch_arrays_buffer);
+
+  void buildFVarPatchIndexBuffer(const int face_varying_channel,
+                                 OpenSubdiv_BufferInterface *patch_index_buffer);
+
+  void buildFVarPatchParamBuffer(const int face_varying_channel,
+                                 OpenSubdiv_BufferInterface *patch_param_buffer);
+
+  void buildFVarSrcBuffer(const int face_varying_channel, OpenSubdiv_BufferInterface *src_buffer);
+
  protected:
   GpuEvalOutput *implementation_;
   PatchMap *patch_map_;

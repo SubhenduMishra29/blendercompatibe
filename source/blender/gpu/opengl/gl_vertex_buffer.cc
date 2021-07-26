@@ -137,6 +137,14 @@ void *GLVertBuf::unmap(const void *mapped_data) const
   return result;
 }
 
+void GLVertBuf::wrap_device_ptr(uint device_ptr)
+{
+  BLI_assert(vbo_id_ == 0);
+  vbo_id_ = device_ptr;
+  /* We assume the data is already on the device, so no need to allocate or send it. */
+  flag = GPU_VERTBUF_DATA_UPLOADED;
+}
+
 bool GLVertBuf::is_active() const
 {
   if (!vbo_id_) {

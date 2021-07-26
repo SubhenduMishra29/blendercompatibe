@@ -55,6 +55,8 @@ class GLVertBuf : public VertBuf {
     return vbo_id_;
   }
 
+  void wrap_device_ptr(uint device_ptr) override;
+
  protected:
   void acquire_data(void) override;
   void resize_data(void) override;
