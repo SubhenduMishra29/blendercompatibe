@@ -1206,6 +1206,12 @@ static void initialize_buffers(DRWSubdivBuffers *buffers, const DRWSubdivCache *
 
 // --------------------------------------------------------
 
+#define PATCH_EVALUATION_WORK_GROUP_SIZE 64
+static uint get_patch_evaluation_work_group_size(uint elements)
+{
+  return divide_ceil_u(elements, PATCH_EVALUATION_WORK_GROUP_SIZE);
+}
+
 static void draw_subdiv_extract_pos_nor(DRWSubdivBuffers *buffers,
                                         GPUVertBuf *pos_nor,
                                         Subdiv *subdiv,
@@ -1258,7 +1264,8 @@ static void draw_subdiv_extract_pos_nor(DRWSubdivBuffers *buffers,
   GPU_vertbuf_bind_as_ssbo(patch_param_buffer, 7);
   GPU_vertbuf_bind_as_ssbo(pos_nor, 8);
 
-  GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
+  GPU_compute_dispatch(
+      shader, get_patch_evaluation_work_group_size(buffers->number_of_quads), 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
@@ -1336,7 +1343,8 @@ static void draw_subdiv_extract_uvs_ex(DRWSubdivBuffers *buffers,
   GPU_vertbuf_bind_as_ssbo(patch_param_buffer, 7);
   GPU_vertbuf_bind_as_ssbo(uvs, 8);
 
-  GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
+  GPU_compute_dispatch(
+      shader, get_patch_evaluation_work_group_size(buffers->number_of_quads), 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
@@ -1503,7 +1511,8 @@ static void do_build_fdots_buffer(DRWSubdivBuffers *buffers,
   GPU_vertbuf_bind_as_ssbo(fdots_nor, 9);
   GPU_indexbuf_bind_as_ssbo(fdots_indices, 10);
 
-  GPU_compute_dispatch(shader, buffers->coarse_poly_count, 1, 1);
+  GPU_compute_dispatch(
+      shader, get_patch_evaluation_work_group_size(buffers->coarse_poly_count), 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
