@@ -433,6 +433,14 @@ static void *vertbuf_alloc(OpenSubdiv_BufferInterface *interface, const uint len
   return GPU_vertbuf_get_data(verts);
 }
 
+static void vertbuf_device_alloc(OpenSubdiv_BufferInterface *interface, const uint len)
+{
+  GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
+  /* This assumes that GPU_USAGE_DEVICE_ONLY was used, which won't allocate host memory. */
+  BLI_assert(GPU_vertbuf_get_memory_usage() == GPU_USAGE_DEVICE_ONLY);
+  GPU_vertbuf_data_alloc(verts, len);
+}
+
 static int vertbuf_num_vertices(OpenSubdiv_BufferInterface *interface)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
@@ -445,6 +453,15 @@ static void vertbuf_wrap(OpenSubdiv_BufferInterface *interface, uint device_ptr)
   GPU_vertbuf_wrap_device_ptr(verts, device_ptr);
 }
 
+static void vertbuf_update_data(OpenSubdiv_BufferInterface *interface,
+                                uint start,
+                                uint len,
+                                const void *data)
+{
+  GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
+  GPU_vertbuf_update_sub(verts, start, len, data);
+}
+
 static void opensubdiv_gpu_buffer_init(OpenSubdiv_BufferInterface *buffer_interface,
                                        GPUVertBuf *vertbuf)
 {
@@ -454,6 +471,8 @@ static void opensubdiv_gpu_buffer_init(OpenSubdiv_BufferInterface *buffer_interf
   buffer_interface->num_vertices = vertbuf_num_vertices;
   buffer_interface->buffer_offset = 0;
   buffer_interface->wrap = vertbuf_wrap;
+  buffer_interface->device_alloc = vertbuf_device_alloc;
+  buffer_interface->update_data = vertbuf_update_data;
 }
 
 // --------------------------------------------------------
@@ -1200,7 +1219,7 @@ static void draw_subdiv_extract_pos_nor(DRWSubdivBuffers *buffers,
 
   GPUVertBuf *patch_arrays_buffer = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(
-      patch_arrays_buffer, get_patch_array_format(), GPU_USAGE_DYNAMIC);
+      patch_arrays_buffer, get_patch_array_format(), GPU_USAGE_DEVICE_ONLY);
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   opensubdiv_gpu_buffer_init(&patch_arrays_buffer_interface, patch_arrays_buffer);
   subdiv->evaluator->buildPatchArraysBuffer(subdiv->evaluator, &patch_arrays_buffer_interface);
@@ -1272,7 +1291,7 @@ static void draw_subdiv_extract_uvs_ex(DRWSubdivBuffers *buffers,
 
   GPUVertBuf *patch_arrays_buffer = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(
-      patch_arrays_buffer, get_patch_array_format(), GPU_USAGE_DYNAMIC);
+      patch_arrays_buffer, get_patch_array_format(), GPU_USAGE_DEVICE_ONLY);
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   opensubdiv_gpu_buffer_init(&patch_arrays_buffer_interface, patch_arrays_buffer);
   subdiv->evaluator->buildFVarPatchArraysBuffer(
@@ -1444,7 +1463,7 @@ static void do_build_fdots_buffer(DRWSubdivBuffers *buffers,
 
   GPUVertBuf *patch_arrays_buffer = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(
-      patch_arrays_buffer, get_patch_array_format(), GPU_USAGE_DYNAMIC);
+      patch_arrays_buffer, get_patch_array_format(), GPU_USAGE_DEVICE_ONLY);
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   opensubdiv_gpu_buffer_init(&patch_arrays_buffer_interface, patch_arrays_buffer);
   subdiv->evaluator->buildPatchArraysBuffer(subdiv->evaluator, &patch_arrays_buffer_interface);

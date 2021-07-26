@@ -1195,11 +1195,13 @@ static void build_patch_arrays_buffer(const PatchArrayVector &patch_arrays,
                                       OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
   size_t patch_array_size = sizeof(PatchArray);
-  uchar *ptr = static_cast<uchar *>(
-      patch_arrays_buffer->alloc(patch_arrays_buffer, patch_arrays.size()));
+
+  patch_arrays_buffer->device_alloc(patch_arrays_buffer, patch_arrays.size());
+  patch_arrays_buffer->bind(patch_arrays_buffer);
 
   for (size_t i = 0; i < patch_arrays.size(); ++i) {
-    memcpy(ptr + patch_array_size * i, &patch_arrays[i], patch_array_size);
+    patch_arrays_buffer->update_data(
+        patch_arrays_buffer, patch_array_size * i, patch_array_size, &patch_arrays[i]);
   }
 }
 

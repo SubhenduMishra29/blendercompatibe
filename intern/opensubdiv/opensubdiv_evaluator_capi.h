@@ -32,11 +32,18 @@ typedef struct OpenSubdiv_BufferInterface {
 
   void *(*alloc)(struct OpenSubdiv_BufferInterface *buffer, const unsigned int size);
 
+  void (*device_alloc)(struct OpenSubdiv_BufferInterface *buffer, const unsigned int size);
+
   int (*num_vertices)(struct OpenSubdiv_BufferInterface *buffer);
 
   int buffer_offset;
 
   void (*wrap)(struct OpenSubdiv_BufferInterface *buffer, unsigned int device_ptr);
+
+  void (*update_data)(struct OpenSubdiv_BufferInterface *buffer,
+                      unsigned int start,
+                      unsigned int len,
+                      const void *data);
 
   void *data;
 } OpenSubdiv_BufferInterface;
