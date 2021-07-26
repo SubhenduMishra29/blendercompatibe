@@ -516,27 +516,6 @@ static struct GPUVertBuf *build_origindex_buffer(int *vert_origindex, uint num_l
   return buffer;
 }
 
-static struct GPUVertBuf *build_flags_buffer(int *vert_origindex, uint num_loops)
-{
-  GPUVertBuf *buffer = GPU_vertbuf_calloc();
-
-  static GPUVertFormat format;
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "flags", GPU_COMP_I32, 1, GPU_FETCH_INT);
-  }
-
-  GPU_vertbuf_init_with_format_ex(buffer, &format, GPU_USAGE_STATIC);
-  GPU_vertbuf_data_alloc(buffer, num_loops);
-
-  int *vbo_data = (int *)GPU_vertbuf_get_data(buffer);
-
-  for (int i = 0; i < num_loops; ++i) {
-    vbo_data[i] = vert_origindex[i];
-  }
-
-  return buffer;
-}
-
 /** \} */
 
 typedef struct GPUPatchMap {
