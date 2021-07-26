@@ -27,7 +27,8 @@ void main()
   uint vertex_index = gl_GlobalInvocationID.x;
 
   uint first_adjacent_face_offset = face_adjacency_offsets[vertex_index];
-  uint number_of_adjacent_faces = face_adjacency_offsets[vertex_index + 1] - first_adjacent_face_offset;
+  uint number_of_adjacent_faces = face_adjacency_offsets[vertex_index + 1] -
+                                  first_adjacent_face_offset;
 
   vec3 accumulated_normal = vec3(0.0);
 
@@ -42,7 +43,8 @@ void main()
       adjacent_verts[j] = get_vertex_pos(pos_nor[start_loop_index + j]);
     }
 
-    vec3 face_normal = normalize(cross(adjacent_verts[1] - adjacent_verts[0], adjacent_verts[2] - adjacent_verts[0]));
+    vec3 face_normal = normalize(
+        cross(adjacent_verts[1] - adjacent_verts[0], adjacent_verts[2] - adjacent_verts[0]));
     accumulated_normal += face_normal;
   }
 

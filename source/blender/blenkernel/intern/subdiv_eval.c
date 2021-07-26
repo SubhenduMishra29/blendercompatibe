@@ -105,11 +105,11 @@ static void set_coarse_positions(Subdiv *subdiv,
 
 /* Context which is used to fill face varying data in parallel. */
 typedef struct FaceVaryingDataFromUVContext {
-    OpenSubdiv_TopologyRefiner *topology_refiner;
-    const Mesh *mesh;
-    const MLoopUV *mloopuv;
-    float (*buffer)[2];
-    int layer_index;
+  OpenSubdiv_TopologyRefiner *topology_refiner;
+  const Mesh *mesh;
+  const MLoopUV *mloopuv;
+  float (*buffer)[2];
+  int layer_index;
 } FaceVaryingDataFromUVContext;
 
 static void set_face_varying_data_from_uv_task(void *__restrict userdata,
@@ -126,10 +126,9 @@ static void set_face_varying_data_from_uv_task(void *__restrict userdata,
   /* TODO(sergey): OpenSubdiv's C-API converter can change winding of
    * loops of a face, need to watch for that, to prevent wrong UVs assigned.
    */
-  const int num_face_vertices = topology_refiner->getNumFaceVertices(topology_refiner,
-                                                                     face_index);
+  const int num_face_vertices = topology_refiner->getNumFaceVertices(topology_refiner, face_index);
   const int *uv_indices = topology_refiner->getFaceFVarValueIndices(
-        topology_refiner, face_index, layer_index);
+      topology_refiner, face_index, layer_index);
   for (int vertex_index = 0; vertex_index < num_face_vertices; vertex_index++, mluv++) {
     copy_v2_v2(ctx->buffer[uv_indices[vertex_index]], mluv->uv);
   }
@@ -152,7 +151,7 @@ static void set_face_varying_data_from_uv(Subdiv *subdiv,
   ctx.mesh = mesh;
 
   const int num_fvar_values = topology_refiner->getNumFVarValues(topology_refiner, layer_index);
-  float (*buffer)[2] = MEM_mallocN(sizeof(float[2]) * num_fvar_values, "temp UV storage");
+  float(*buffer)[2] = MEM_mallocN(sizeof(float[2]) * num_fvar_values, "temp UV storage");
 
   ctx.buffer = buffer;
 
@@ -160,7 +159,8 @@ static void set_face_varying_data_from_uv(Subdiv *subdiv,
   BLI_parallel_range_settings_defaults(&parallel_range_settings);
   parallel_range_settings.min_iter_per_thread = 1;
 
-  BLI_task_parallel_range(0, num_faces, &ctx, set_face_varying_data_from_uv_task, &parallel_range_settings);
+  BLI_task_parallel_range(
+      0, num_faces, &ctx, set_face_varying_data_from_uv_task, &parallel_range_settings);
 
   evaluator->setFaceVaryingData(evaluator, layer_index, buffer, 0, num_fvar_values);
 

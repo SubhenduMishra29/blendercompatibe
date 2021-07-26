@@ -1,14 +1,20 @@
 
-layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout(std430) buffer;
 
 // source and destination buffers
 
 #if defined(FVAR_EVALUATION)
-layout(binding=0) buffer src_buffer  { vec2    srcFVarBuffer[]; };
+layout(binding = 0) buffer src_buffer
+{
+  vec2 srcFVarBuffer[];
+};
 #else
 /* Face dots and positions use the same input data. */
-layout(binding=0) buffer src_buffer  { vec3    srcVertexBuffer[]; };
+layout(binding = 0) buffer src_buffer
+{
+  vec3 srcVertexBuffer[];
+};
 #endif
 
 // GPUPatchMap
@@ -34,11 +40,20 @@ layout(binding = 4) readonly buffer inputVertOrigIndices
 
 // patch buffers
 
-layout(binding=5) buffer patchArray_buffer { OsdPatchArray patchArrayBuffer[]; };
-layout(binding=6) buffer patchIndex_buffer { int patchIndexBuffer[]; };
-layout(binding=7) buffer patchParam_buffer { OsdPatchParam patchParamBuffer[]; };
+layout(binding = 5) buffer patchArray_buffer
+{
+  OsdPatchArray patchArrayBuffer[];
+};
+layout(binding = 6) buffer patchIndex_buffer
+{
+  int patchIndexBuffer[];
+};
+layout(binding = 7) buffer patchParam_buffer
+{
+  OsdPatchParam patchParamBuffer[];
+};
 
-// Outputs
+  // Outputs
 
 #if defined(FVAR_EVALUATION)
 layout(binding = 8) writeonly buffer outputFVarData
@@ -161,8 +176,8 @@ PatchHandle find_patch(int face_index, float u, float v)
 
   for (int depth = 0; depth <= max_depth; ++depth, median *= 0.5) {
     int quadrant = (patches_are_triangular != 0) ?
-          transformUVToTriQuadrant(median, u, v, tri_rotated) :
-          transformUVToQuadQuadrant(median, u, v);
+                       transformUVToTriQuadrant(median, u, v, tri_rotated) :
+                       transformUVToQuadQuadrant(median, u, v);
 
     if (is_leaf(node.child[quadrant])) {
       return input_patch_handles[get_index(node.child[quadrant])];
@@ -216,11 +231,10 @@ void evaluate_patches_limits(int patch_index, float u, float v, inout vec2 dst)
   int patchType = OsdPatchParamIsRegular(param) ? array.regDesc : array.desc;
 
   float wP[20], wDu[20], wDv[20], wDuu[20], wDuv[20], wDvv[20];
-  int nPoints = OsdEvaluatePatchBasis(patchType, param,
-                                      coord.s, coord.t, wP, wDu, wDv, wDuu, wDuv, wDvv);
+  int nPoints = OsdEvaluatePatchBasis(
+      patchType, param, coord.s, coord.t, wP, wDu, wDv, wDuu, wDuv, wDvv);
 
-  int indexBase = array.indexBase + array.stride *
-      (coord.patchIndex - array.primitiveIdBase);
+  int indexBase = array.indexBase + array.stride * (coord.patchIndex - array.primitiveIdBase);
 
   for (int cv = 0; cv < nPoints; ++cv) {
     int index = patchIndexBuffer[indexBase + cv];
@@ -229,7 +243,8 @@ void evaluate_patches_limits(int patch_index, float u, float v, inout vec2 dst)
   }
 }
 #else
-void evaluate_patches_limits(int patch_index, float u, float v, inout vec3 dst, inout vec3 du, inout vec3 dv)
+void evaluate_patches_limits(
+    int patch_index, float u, float v, inout vec3 dst, inout vec3 du, inout vec3 dv)
 {
   OsdPatchCoord coord = GetPatchCoord(patch_index, u, v);
   OsdPatchArray array = GetPatchArray(coord.arrayIndex);
@@ -238,11 +253,10 @@ void evaluate_patches_limits(int patch_index, float u, float v, inout vec3 dst, 
   int patchType = OsdPatchParamIsRegular(param) ? array.regDesc : array.desc;
 
   float wP[20], wDu[20], wDv[20], wDuu[20], wDuv[20], wDvv[20];
-  int nPoints = OsdEvaluatePatchBasis(patchType, param,
-                                      coord.s, coord.t, wP, wDu, wDv, wDuu, wDuv, wDvv);
+  int nPoints = OsdEvaluatePatchBasis(
+      patchType, param, coord.s, coord.t, wP, wDu, wDv, wDuu, wDuv, wDvv);
 
-  int indexBase = array.indexBase + array.stride *
-      (coord.patchIndex - array.primitiveIdBase);
+  int indexBase = array.indexBase + array.stride * (coord.patchIndex - array.primitiveIdBase);
 
   for (int cv = 0; cv < nPoints; ++cv) {
     int index = patchIndexBuffer[indexBase + cv];
@@ -310,12 +324,12 @@ void main()
 
     evaluate_patches_limits(patch_co.patch_index, uv.x, uv.y, pos, du, dv);
 
-#if defined(LIMIT_NORMALS)
+#  if defined(LIMIT_NORMALS)
     vec3 nor = normalize(cross(du, dv));
-#else
+#  else
     // This will be computed later.
     vec3 nor = vec3(0.0);
-#endif
+#  endif
 
     VertexBufferData vertex_data;
     set_vertex_pos(vertex_data, pos);
