@@ -231,6 +231,11 @@ static GPUShader *get_subdiv_shader(int shader_type, const char *defines)
   return g_subdiv_shaders[shader_type];
 }
 
+typedef struct VertexBufferData {
+  float co[4];
+  float no[4];
+} VertexBufferData;
+
 /* Vertex format used for rendering the result; corresponds to the VertexBufferData struct above.
  */
 static GPUVertFormat *get_render_format(void)
@@ -473,10 +478,13 @@ static void initialize_uv_buffer(GPUVertBuf *uvs,
 /** \name DRWSubdivCache
  * \{ */
 
-static void init_origindex_buffer(GPUVertBuf *buffer, int *vert_origindex, uint num_loops)
+static void init_origindex_buffer(GPUVertBuf *buffer,
+                                  int *vert_origindex,
+                                  uint num_loops,
+                                  uint loose_len)
 {
   GPU_vertbuf_init_with_format_ex(buffer, get_origindex_format(), GPU_USAGE_STATIC);
-  GPU_vertbuf_data_alloc(buffer, num_loops);
+  GPU_vertbuf_data_alloc(buffer, num_loops + loose_len);
 
   int *vbo_data = (int *)GPU_vertbuf_get_data(buffer);
   memcpy(vbo_data, vert_origindex, num_loops * sizeof(int));
@@ -485,7 +493,7 @@ static void init_origindex_buffer(GPUVertBuf *buffer, int *vert_origindex, uint 
 static struct GPUVertBuf *build_origindex_buffer(int *vert_origindex, uint num_loops)
 {
   GPUVertBuf *buffer = GPU_vertbuf_calloc();
-  init_origindex_buffer(buffer, vert_origindex, num_loops);
+  init_origindex_buffer(buffer, vert_origindex, num_loops, 0);
   return buffer;
 }
 
@@ -567,6 +575,23 @@ static void gpu_patch_map_free(GPUPatchMap *gpu_patch_map)
   gpu_patch_map->patches_are_triangular = 0;
 }
 
+#include "BLI_bitmap.h"
+#include "BLI_memarena.h"
+
+typedef struct LooseVertex {
+  struct LooseVertex *next;
+  int coarse_vertex_index;
+  int subdiv_vertex_index;
+  float co[3];
+} LooseVertex;
+
+typedef struct LooseEdge {
+  struct LooseEdge *next;
+  uint v1;
+  uint v2;
+  int coarse_edge_index;
+} LooseEdge;
+
 /* -------------------------------------------------------------------- */
 /** \name DRWSubdivCache
  * \{ */
@@ -584,6 +609,8 @@ typedef struct DRWSubdivCache {
 
   int coarse_poly_count;
   int num_vertices;  // subdiv_vertex_count;
+
+  uint num_edges;
 
   /* Maps subdivision loop to original coarse vertex index. */
   int *subdiv_loop_vert_index;
@@ -620,6 +647,15 @@ typedef struct DRWSubdivCache {
   GPUVertBuf *polygon_mat_offset;
 
   GPUPatchMap gpu_patch_map;
+
+  /* Loose Vertices and Edges */
+  MemArena *loose_memarena;
+  LooseVertex *loose_verts;
+  LooseEdge *loose_edges;
+
+  int vert_loose_len;
+  int edge_loose_len;
+  int loop_loose_len;
 } DRWSubdivCache;
 
 static void draw_subdiv_cache_free_material_data(DRWSubdivCache *cache)
@@ -657,6 +693,16 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   draw_free_edit_mode_cache(cache);
   draw_subdiv_cache_free_material_data(cache);
   gpu_patch_map_free(&cache->gpu_patch_map);
+
+  cache->edge_loose_len = 0;
+  cache->vert_loose_len = 0;
+  cache->loop_loose_len = 0;
+  cache->loose_verts = NULL;
+  cache->loose_edges = NULL;
+  if (cache->loose_memarena) {
+    BLI_memarena_free(cache->loose_memarena);
+    cache->loose_memarena = NULL;
+  }
 }
 
 static void draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *mesh)
@@ -1065,6 +1111,7 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
 
   cache->resolution = to_mesh_settings.resolution;
   cache->num_patch_coords = cache_building_context.num_patch_coords;
+  cache->num_edges = cache_building_context.num_edges;
 
   cache->verts_orig_index = build_origindex_buffer(cache_building_context.subdiv_loop_vert_index,
                                                    cache_building_context.num_patch_coords);
@@ -1639,6 +1686,21 @@ static void update_edit_data(DRWSubdivCache *cache,
     /* The -1 parameter is for edit_uvs, which we don't do here. */
     mesh_render_data_face_flag(&mr, efa, -1, edit_loop_data);
   }
+
+  LooseEdge *loose_edge = cache->loose_edges;
+  int ledge_index = 0;
+  while (loose_edge) {
+    const int offset = cache->num_patch_coords + ledge_index * 2;
+    EditLoopData *data = &edit_data[offset];
+    memset(data, 0, sizeof(EditLoopData));
+    BMEdge *eed = BM_edge_at_index(bm, loose_edge->coarse_edge_index);
+    mesh_render_data_edge_flag(&mr, eed, &data[0]);
+    data[1] = data[0];
+    mesh_render_data_vert_flag(&mr, eed->v1, &data[0]);
+    mesh_render_data_vert_flag(&mr, eed->v2, &data[1]);
+    ledge_index += 1;
+    loose_edge = loose_edge->next;
+  }
 }
 
 /* For material assignements we want indices for triangles that share a common material to be laid
@@ -1808,6 +1870,128 @@ BLI_INLINE void lines_adjacency_triangle(uint v1,
 }
 // \}
 
+// Similar to mesh_render_data_loose_geom_mesh but we use a linked list instead of an array.
+static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
+{
+  const MEdge *medge = mesh->medge;
+  const MVert *mvert = mesh->mvert;
+
+  if (cache->loose_memarena) {
+    /* Topology did not change (otherwise cache would have been freed), so simply update
+     * coordinates. */
+    LooseVertex *loose_vertex = cache->loose_verts;
+    while (loose_vertex) {
+      copy_v3_v3(loose_vertex->co, mvert[loose_vertex->coarse_vertex_index].co);
+      loose_vertex = loose_vertex->next;
+    }
+    return;
+  }
+
+  BLI_bitmap *vertex_used_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
+  BLI_bitmap *edge_used_map = BLI_BITMAP_NEW(mesh->totvert, "edge used map");
+
+  MemArena *memarena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+  LooseVertex *loose_verts = NULL;
+  LooseEdge *loose_edges = NULL;
+
+#if 1
+  int num_loose_edges = 0;
+  const MEdge *med = medge;
+  for (int med_index = 0; med_index < mesh->totedge; med_index++, med++) {
+    if (med->flag & ME_LOOSEEDGE) {
+      LooseEdge *loose_edge = BLI_memarena_alloc(memarena, sizeof(LooseEdge));
+      loose_edge->v1 = med->v1;
+      loose_edge->v2 = med->v2;
+      loose_edge->coarse_edge_index = med_index;
+      loose_edge->next = loose_edges;
+      loose_edges = loose_edge;
+      num_loose_edges += 1;
+    }
+    /* Tag verts as not loose. */
+    BLI_BITMAP_ENABLE(vertex_used_map, med->v1);
+    BLI_BITMAP_ENABLE(vertex_used_map, med->v2);
+  }
+
+  int num_loose_verts = 0;
+  for (int vertex_index = 0; vertex_index < mesh->totvert; vertex_index++) {
+    if (BLI_BITMAP_TEST_BOOL(vertex_used_map, vertex_index)) {
+      continue;
+    }
+
+    const MVert *vert = &mvert[vertex_index];
+
+    LooseVertex *loose_vert = BLI_memarena_alloc(memarena, sizeof(LooseVertex));
+    loose_vert->coarse_vertex_index = vertex_index;
+    copy_v3_v3(loose_vert->co, vert->co);
+    loose_vert->next = loose_verts;
+    loose_verts = loose_vert;
+    num_loose_verts += 1;
+  }
+#else
+  const MLoop *mloop = mesh->mloop;
+  const MPoly *mpoly = mesh->mpoly;
+
+  for (int poly_index = 0; poly_index < mesh->totpoly; poly_index++) {
+    const MPoly *poly = &mpoly[poly_index];
+    for (int corner = 0; corner < poly->totloop; corner++) {
+      const MLoop *loop = &mloop[poly->loopstart + corner];
+      BLI_BITMAP_ENABLE(vertex_used_map, loop->v);
+      BLI_BITMAP_ENABLE(edge_used_map, loop->e);
+    }
+  }
+
+  int num_loose_verts = 0;
+  for (int vertex_index = 0; vertex_index < mesh->totvert; vertex_index++) {
+    if (BLI_BITMAP_TEST_BOOL(vertex_used_map, vertex_index)) {
+      continue;
+    }
+
+    const MVert *vert = &mvert[vertex_index];
+
+    LooseVertex *loose_vert = BLI_memarena_alloc(memarena, sizeof(LooseVertex));
+    loose_vert->coarse_vertex_index = vertex_index;
+    copy_v3_v3(loose_vert->co, vert->co);
+    loose_vert->next = loose_verts;
+    loose_verts = loose_vert;
+    num_loose_verts += 1;
+  }
+
+  int num_loose_edges = 0;
+  if (num_loose_verts != 0) {
+    for (int edge_index = 0; edge_index < mesh->totedge; edge_index++) {
+      if (BLI_BITMAP_TEST_BOOL(edge_used_map, edge_index)) {
+        continue;
+      }
+
+      const MEdge *edge = &medge[edge_index];
+
+      LooseEdge *loose_edge = BLI_memarena_alloc(memarena, sizeof(LooseEdge));
+      loose_edge->v1 = edge->v1;
+      loose_edge->v2 = edge->v2;
+      loose_edge->coarse_edge_index = edge_index;
+      loose_edge->next = loose_edges;
+      loose_edges = loose_edge;
+      num_loose_edges += 1;
+    }
+  }
+#endif
+
+  if (loose_verts != 0 || loose_edges != 0) {
+    cache->vert_loose_len = num_loose_verts;
+    cache->edge_loose_len = num_loose_edges;
+    cache->loop_loose_len = num_loose_verts + num_loose_edges * 2;
+    cache->loose_edges = loose_edges;
+    cache->loose_verts = loose_verts;
+    cache->loose_memarena = memarena;
+  }
+  else {
+    BLI_memarena_free(memarena);
+  }
+
+  MEM_freeN(edge_used_map);
+  MEM_freeN(vertex_used_map);
+}
+
 static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  Object *ob,
                                                  Mesh *mesh,
@@ -1850,6 +2034,8 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     return false;
   }
 
+  update_loose_elements(draw_cache, mesh_eval);
+
   if (DRW_ibo_requested(mbc->ibo.tris)) {
     draw_subdiv_cache_ensure_mat_offsets(draw_cache, mesh_eval, batch_cache->mat_len);
   }
@@ -1884,8 +2070,9 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   if (DRW_vbo_requested(mbc->vbo.pos_nor)) {
     /* Initialise the vertex buffer, it was already allocated. */
-    GPU_vertbuf_init_build_on_device(
-        mbc->vbo.pos_nor, get_render_format(), subdiv_buffers.number_of_loops);
+    GPU_vertbuf_init_build_on_device(mbc->vbo.pos_nor,
+                                     get_render_format(),
+                                     subdiv_buffers.number_of_loops + draw_cache->loop_loose_len);
 
     draw_subdiv_extract_pos_nor(&subdiv_buffers, mbc->vbo.pos_nor, subdiv, do_limit_normals);
 
@@ -1912,6 +2099,54 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
       GPU_vertbuf_discard(vertex_normals);
       GPU_vertbuf_discard(subdiv_loop_subdiv_vert_index);
     }
+
+    /* Manually copy loose vertices at the end of the buffer. */
+
+    /* First loose edges */
+    {
+      uint offset = draw_cache->num_patch_coords;
+
+      VertexBufferData vbuf_data[2];
+      LooseEdge *loose_edge = draw_cache->loose_edges;
+      while (loose_edge) {
+        copy_v3_v3(vbuf_data[0].co, mesh_eval->mvert[loose_edge->v1].co);
+        zero_v4(vbuf_data[0].no);
+        copy_v3_v3(vbuf_data[0].no, mesh_eval->mvert[loose_edge->v1].no);
+
+        copy_v3_v3(vbuf_data[1].co, mesh_eval->mvert[loose_edge->v2].co);
+        zero_v4(vbuf_data[1].no);
+        copy_v3_v3(vbuf_data[1].no, mesh_eval->mvert[loose_edge->v2].no);
+
+        GPU_vertbuf_update_sub(mbc->vbo.pos_nor,
+                               offset * sizeof(VertexBufferData),
+                               sizeof(VertexBufferData) * 2,
+                               &vbuf_data);
+        loose_edge = loose_edge->next;
+        offset += 2;
+      }
+    }
+
+    /* Then loose vertices */
+    {
+      uint offset = draw_cache->num_patch_coords + draw_cache->edge_loose_len * 2;
+      VertexBufferData vbuf_data;
+
+      uint subdiv_vertex_index = subdiv_buffers.number_of_subdiv_verts;
+      LooseVertex *loose_vertex = draw_cache->loose_verts;
+      while (loose_vertex) {
+        copy_v3_v3(vbuf_data.co, loose_vertex->co);
+        zero_v4(vbuf_data.no);
+
+        loose_vertex->subdiv_vertex_index = subdiv_vertex_index++;
+
+        GPU_vertbuf_update_sub(mbc->vbo.pos_nor,
+                               offset * sizeof(VertexBufferData),
+                               sizeof(VertexBufferData),
+                               &vbuf_data);
+        loose_vertex = loose_vertex->next;
+        offset += 1;
+      }
+    }
   }
 
   if (DRW_vbo_requested(mbc->vbo.lnor)) {
@@ -1933,29 +2168,81 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   const bool optimal_display = (smd->flags & eSubsurfModifierFlag_ControlEdges);
 
   if (DRW_ibo_requested(mbc->ibo.lines)) {
-    GPU_indexbuf_init_build_on_device(mbc->ibo.lines, subdiv_buffers.number_of_loops * 2);
+    GPU_indexbuf_init_build_on_device(
+        mbc->ibo.lines, subdiv_buffers.number_of_loops * 2 + draw_cache->edge_loose_len * 2);
     do_build_lines_buffer(&subdiv_buffers, mbc->ibo.lines, optimal_display);
+
+    /* Make sure buffer is active for sending loose data. */
+    GPU_indexbuf_use(mbc->ibo.lines);
+
+    LooseEdge *loose_edge = draw_cache->loose_edges;
+    uint offset = subdiv_buffers.number_of_loops * 2;
+    uint loop_index = subdiv_buffers.number_of_loops;
+    while (loose_edge) {
+      GPU_indexbuf_update_sub(mbc->ibo.lines, (offset) * sizeof(uint), sizeof(uint), &loop_index);
+      loop_index += 1;
+      GPU_indexbuf_update_sub(
+          mbc->ibo.lines, (offset + 1) * sizeof(uint), sizeof(uint), &loop_index);
+      loose_edge = loose_edge->next;
+      loop_index += 1;
+      offset += 2;
+    }
   }
 
   if (DRW_vbo_requested(mbc->vbo.vert_idx)) {
+    /* Each element points to an element in the ibo.points. */
     init_origindex_buffer(mbc->vbo.vert_idx,
                           draw_cache->subdiv_loop_subdiv_vert_index,
-                          draw_cache->num_patch_coords);
+                          draw_cache->num_patch_coords,
+                          draw_cache->loop_loose_len);
+
+    uint *vert_idx_data = (uint *)GPU_vertbuf_get_data(mbc->vbo.vert_idx);
+
+    uint offset = subdiv_buffers.number_of_loops;
+    LooseEdge *loose_edge = draw_cache->loose_edges;
+    while (loose_edge) {
+      vert_idx_data[offset] = loose_edge->v1;
+      vert_idx_data[offset + 1] = loose_edge->v2;
+      loose_edge = loose_edge->next;
+      offset += 2;
+    }
+
+    offset = subdiv_buffers.number_of_loops + draw_cache->edge_loose_len * 2;
+    LooseVertex *loose_vertex = draw_cache->loose_verts;
+    while (loose_vertex) {
+      vert_idx_data[offset] = loose_vertex->coarse_vertex_index;
+      offset += 1;
+      loose_vertex = loose_vertex->next;
+    }
   }
 
   if (DRW_vbo_requested(mbc->vbo.edge_idx)) {
-    init_origindex_buffer(
-        mbc->vbo.edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
+    init_origindex_buffer(mbc->vbo.edge_idx,
+                          draw_cache->subdiv_loop_edge_index,
+                          draw_cache->num_patch_coords,
+                          draw_cache->edge_loose_len * 2);
+
+    uint *edge_idx_data = (uint *)GPU_vertbuf_get_data(mbc->vbo.edge_idx);
+
+    uint offset = subdiv_buffers.number_of_loops;
+    LooseEdge *loose_edge = draw_cache->loose_edges;
+    while (loose_edge) {
+      edge_idx_data[offset] = loose_edge->coarse_edge_index;
+      edge_idx_data[offset + 1] = loose_edge->coarse_edge_index;
+      loose_edge = loose_edge->next;
+      offset += 2;
+    }
   }
 
   if (DRW_vbo_requested(mbc->vbo.poly_idx)) {
     init_origindex_buffer(
-        mbc->vbo.poly_idx, draw_cache->subdiv_loop_poly_index, draw_cache->num_patch_coords);
+        mbc->vbo.poly_idx, draw_cache->subdiv_loop_poly_index, draw_cache->num_patch_coords, 0);
   }
 
   if (DRW_vbo_requested(mbc->vbo.edge_fac)) {
-    GPU_vertbuf_init_build_on_device(
-        mbc->vbo.edge_fac, get_edge_fac_format(), subdiv_buffers.number_of_loops);
+    GPU_vertbuf_init_build_on_device(mbc->vbo.edge_fac,
+                                     get_edge_fac_format(),
+                                     subdiv_buffers.number_of_loops + draw_cache->loop_loose_len);
 
     /* Create a temporary buffer for the edge original indices if it was not requested. */
     const bool has_edge_idx = mbc->vbo.edge_idx != NULL;
@@ -1966,11 +2253,24 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     else {
       loop_edge_idx = GPU_vertbuf_calloc();
       init_origindex_buffer(
-          loop_edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords);
+          loop_edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords, 0);
     }
 
     do_build_edge_fac_buffer(
         &subdiv_buffers, mbc->vbo.pos_nor, loop_edge_idx, optimal_display, mbc->vbo.edge_fac);
+
+    /* Make sure buffer is active for sending loose data. */
+    GPU_vertbuf_use(mbc->vbo.edge_fac);
+
+    LooseEdge *loose_edge = draw_cache->loose_edges;
+    uint offset = draw_cache->num_patch_coords;
+    float loose_edge_fac[2] = {1.0f, 1.0f};
+    while (loose_edge) {
+      GPU_vertbuf_update_sub(
+          mbc->vbo.edge_fac, offset * sizeof(float), sizeof(loose_edge_fac), loose_edge_fac);
+      loose_edge = loose_edge->next;
+      offset += 2;
+    }
 
     if (!has_edge_idx) {
       GPU_vertbuf_discard(loop_edge_idx);
@@ -1986,12 +2286,45 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     builder.index_max = draw_cache->num_patch_coords - 1;
     builder.prim_type = GPU_PRIM_POINTS;
 
+    if (draw_cache->loop_loose_len) {
+      builder.data = MEM_reallocN(builder.data,
+                                  sizeof(uint) *
+                                      (draw_cache->num_patch_coords + draw_cache->loop_loose_len));
+
+      uint offset = draw_cache->num_patch_coords;
+      LooseEdge *loose_edge = draw_cache->loose_edges;
+      while (loose_edge) {
+        if (builder.data[loose_edge->v1] == -1u) {
+          builder.data[loose_edge->v1] = offset;
+        }
+        if (builder.data[loose_edge->v2] == -1u) {
+          builder.data[loose_edge->v2] = offset + 1;
+        }
+        builder.index_max += 2;
+        builder.index_len += 2;
+        offset += 2;
+        loose_edge = loose_edge->next;
+      }
+
+      LooseVertex *loose_vert = draw_cache->loose_verts;
+      while (loose_vert) {
+        if (builder.data[loose_vert->coarse_vertex_index] == -1u) {
+          builder.data[loose_vert->coarse_vertex_index] = offset;
+        }
+        builder.index_max += 1;
+        builder.index_len += 1;
+        offset += 1;
+        loose_vert = loose_vert->next;
+      }
+    }
+
     GPU_indexbuf_build_in_place(&builder, mbc->ibo.points);
   }
 
   if (DRW_vbo_requested(mbc->vbo.edit_data)) {
     GPU_vertbuf_init_with_format(mbc->vbo.edit_data, get_edit_data_format());
-    GPU_vertbuf_data_alloc(mbc->vbo.edit_data, subdiv_buffers.number_of_loops);
+    GPU_vertbuf_data_alloc(mbc->vbo.edit_data,
+                           subdiv_buffers.number_of_loops + draw_cache->loop_loose_len);
 
     EditLoopData *edit_data = (EditLoopData *)GPU_vertbuf_get_data(mbc->vbo.edit_data);
     update_edit_data(draw_cache, mesh_eval, edit_data, toolsettings);

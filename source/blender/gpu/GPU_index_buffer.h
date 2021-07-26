@@ -84,6 +84,10 @@ void GPU_indexbuf_build_in_place(GPUIndexBufBuilder *, GPUIndexBuf *);
 
 void GPU_indexbuf_bind_as_ssbo(GPUIndexBuf *elem, int binding);
 
+/* Upload data to the GPU (if not built on the device) and bind the buffer to its default target.
+ */
+void GPU_indexbuf_use(GPUIndexBuf *elem);
+
 /* Partially update the GPUIndexBuf which was already sent to the device, or built directly on the
  * device. The data needs to be compatible with potential compression applied to the original
  * indices when the index buffer was built, i.e., if the data was compressed to use shorts instead

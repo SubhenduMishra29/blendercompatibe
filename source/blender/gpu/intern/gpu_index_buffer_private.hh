@@ -92,6 +92,8 @@ class IndexBuf {
     return is_init_;
   };
 
+  virtual void upload_data(void) = 0;
+
   virtual void bind_as_ssbo(uint binding) = 0;
 
   virtual const uint32_t *read() const = 0;

@@ -81,9 +81,14 @@ bool GLIndexBuf::is_active() const
   return ibo_id_ == active_ibo_id;
 }
 
+void GLIndexBuf::upload_data()
+{
+  bind();
+}
+
 void GLIndexBuf::update_sub(uint start, uint len, void *data)
 {
-  glBufferSubData(GL_ARRAY_BUFFER, start, len, data);
+  glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, start, len, data);
 }
 
 }  // namespace blender::gpu

@@ -61,6 +61,8 @@ class GLIndexBuf : public IndexBuf {
     return (index_type_ == GPU_INDEX_U16) ? 0xFFFFu : 0xFFFFFFFFu;
   }
 
+  void upload_data(void) override;
+
   void update_sub(uint start, uint len, void *data) override;
 
  private:
