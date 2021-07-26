@@ -1922,7 +1922,6 @@ static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
   LooseVertex *loose_verts = NULL;
   LooseEdge *loose_edges = NULL;
 
-#if 1
   int num_loose_edges = 0;
   const MEdge *med = medge;
   for (int med_index = 0; med_index < mesh->totedge; med_index++, med++) {
@@ -1955,54 +1954,6 @@ static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
     loose_verts = loose_vert;
     num_loose_verts += 1;
   }
-#else
-  const MLoop *mloop = mesh->mloop;
-  const MPoly *mpoly = mesh->mpoly;
-
-  for (int poly_index = 0; poly_index < mesh->totpoly; poly_index++) {
-    const MPoly *poly = &mpoly[poly_index];
-    for (int corner = 0; corner < poly->totloop; corner++) {
-      const MLoop *loop = &mloop[poly->loopstart + corner];
-      BLI_BITMAP_ENABLE(vertex_used_map, loop->v);
-      BLI_BITMAP_ENABLE(edge_used_map, loop->e);
-    }
-  }
-
-  int num_loose_verts = 0;
-  for (int vertex_index = 0; vertex_index < mesh->totvert; vertex_index++) {
-    if (BLI_BITMAP_TEST_BOOL(vertex_used_map, vertex_index)) {
-      continue;
-    }
-
-    const MVert *vert = &mvert[vertex_index];
-
-    LooseVertex *loose_vert = BLI_memarena_alloc(memarena, sizeof(LooseVertex));
-    loose_vert->coarse_vertex_index = vertex_index;
-    copy_v3_v3(loose_vert->co, vert->co);
-    loose_vert->next = loose_verts;
-    loose_verts = loose_vert;
-    num_loose_verts += 1;
-  }
-
-  int num_loose_edges = 0;
-  if (num_loose_verts != 0) {
-    for (int edge_index = 0; edge_index < mesh->totedge; edge_index++) {
-      if (BLI_BITMAP_TEST_BOOL(edge_used_map, edge_index)) {
-        continue;
-      }
-
-      const MEdge *edge = &medge[edge_index];
-
-      LooseEdge *loose_edge = BLI_memarena_alloc(memarena, sizeof(LooseEdge));
-      loose_edge->v1 = edge->v1;
-      loose_edge->v2 = edge->v2;
-      loose_edge->coarse_edge_index = edge_index;
-      loose_edge->next = loose_edges;
-      loose_edges = loose_edge;
-      num_loose_edges += 1;
-    }
-  }
-#endif
 
   if (loose_verts != 0 || loose_edges != 0) {
     cache->vert_loose_len = num_loose_verts;
