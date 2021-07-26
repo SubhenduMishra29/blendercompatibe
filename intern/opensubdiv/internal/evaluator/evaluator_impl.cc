@@ -1142,20 +1142,6 @@ void GpuEvalOutputAPI::evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_co
   }
 }
 
-void GpuEvalOutputAPI::buildPatchCoordsBuffer(const OpenSubdiv_PatchCoord *patch_coords,
-                                              int num_patch_coords,
-                                              OpenSubdiv_BufferInterface *buffer)
-{
-  PatchCoord *output = static_cast<PatchCoord *>(buffer->alloc(buffer, num_patch_coords));
-
-  for (int i = 0; i < num_patch_coords; ++i) {
-    const OpenSubdiv_PatchCoord patch_coord = patch_coords[i];
-    const PatchTable::PatchHandle *handle = patch_map_->FindPatch(
-        patch_coord.ptex_face, patch_coord.u, patch_coord.v);
-    output[i] = PatchCoord(*handle, patch_coord.u, patch_coord.v);
-  }
-}
-
 void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
                                    OpenSubdiv_BufferInterface *patch_map_quadtree,
                                    int *min_patch_face,

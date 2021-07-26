@@ -230,10 +230,6 @@ class GpuEvalOutputAPI {
                             float *dPdu,
                             float *dPdv);
 
-  void buildPatchCoordsBuffer(const OpenSubdiv_PatchCoord *patch_coords,
-                              int num_patch_coords,
-                              OpenSubdiv_BufferInterface *buffer);
-
   void evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
                             OpenSubdiv_BufferInterface *P,
                             OpenSubdiv_BufferInterface *dPdu,

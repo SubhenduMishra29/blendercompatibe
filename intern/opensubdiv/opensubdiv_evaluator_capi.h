@@ -154,11 +154,6 @@ typedef struct OpenSubdiv_Evaluator {
                                          struct OpenSubdiv_BufferInterface *dPdu,
                                          struct OpenSubdiv_BufferInterface *dPdv);
 
-  void (*buildPatchCoordsBuffer)(struct OpenSubdiv_Evaluator *evaluator,
-                                 const struct OpenSubdiv_PatchCoord *patch_coords,
-                                 int num_patch_coords,
-                                 struct OpenSubdiv_BufferInterface *buffer);
-
   void (*getPatchMap)(struct OpenSubdiv_Evaluator *evaluator,
                       struct OpenSubdiv_BufferInterface *patch_map_handles,
                       struct OpenSubdiv_BufferInterface *patch_map_quadtree,

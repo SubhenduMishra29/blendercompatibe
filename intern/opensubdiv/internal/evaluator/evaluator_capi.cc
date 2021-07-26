@@ -211,18 +211,6 @@ void evaluateFaceVaryingFromBuffer(OpenSubdiv_Evaluator *evaluator,
   }
 }
 
-void buildPatchCoordsBuffer(OpenSubdiv_Evaluator *evaluator,
-                            const OpenSubdiv_PatchCoord *patch_coords,
-                            int num_patch_coords,
-                            OpenSubdiv_BufferInterface *buffer)
-{
-  if (evaluator->impl->eval_output_gpu) {
-    evaluator->impl->eval_output_gpu->buildPatchCoordsBuffer(
-        patch_coords, num_patch_coords, buffer);
-    return;
-  }
-}
-
 void getPatchMap(struct OpenSubdiv_Evaluator *evaluator,
                  struct OpenSubdiv_BufferInterface *patch_map_handles,
                  struct OpenSubdiv_BufferInterface *patch_map_quadtree,
@@ -340,7 +328,6 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
   evaluator->evaluatePatchesLimit = evaluatePatchesLimit;
   evaluator->evaluatePatchesLimitFromBuffer = evaluatePatchesLimitFromBuffer;
 
-  evaluator->buildPatchCoordsBuffer = buildPatchCoordsBuffer;
   evaluator->evaluateFaceVaryingFromBuffer = evaluateFaceVaryingFromBuffer;
 
   evaluator->getPatchMap = getPatchMap;
