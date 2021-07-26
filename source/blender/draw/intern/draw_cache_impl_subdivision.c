@@ -2090,11 +2090,11 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
       while (loose_edge) {
         copy_v3_v3(vbuf_data[0].co, mesh_eval->mvert[loose_edge->v1].co);
         zero_v4(vbuf_data[0].no);
-        copy_v3_v3(vbuf_data[0].no, mesh_eval->mvert[loose_edge->v1].no);
+        normal_short_to_float_v3(vbuf_data[0].no, mesh_eval->mvert[loose_edge->v1].no);
 
         copy_v3_v3(vbuf_data[1].co, mesh_eval->mvert[loose_edge->v2].co);
         zero_v4(vbuf_data[1].no);
-        copy_v3_v3(vbuf_data[1].no, mesh_eval->mvert[loose_edge->v2].no);
+        normal_short_to_float_v3(vbuf_data[1].no, mesh_eval->mvert[loose_edge->v2].no);
 
         GPU_vertbuf_update_sub(mbc->vbo.pos_nor,
                                offset * sizeof(VertexBufferData),
