@@ -739,6 +739,20 @@ void convertPatchCoordsToArray(const OpenSubdiv_PatchCoord *patch_coords,
   }
 }
 
+static void buildPatchArraysBufferFromVector(const PatchArrayVector &patch_arrays,
+                                             OpenSubdiv_BufferInterface *patch_arrays_buffer)
+{
+  size_t patch_array_size = sizeof(PatchArray);
+
+  patch_arrays_buffer->device_alloc(patch_arrays_buffer, patch_arrays.size());
+  patch_arrays_buffer->bind(patch_arrays_buffer);
+
+  for (size_t i = 0; i < patch_arrays.size(); ++i) {
+    patch_arrays_buffer->update_data(
+        patch_arrays_buffer, patch_array_size * i, patch_array_size, &patch_arrays[i]);
+  }
+}
+
 }  // namespace
 
 // Note: Define as a class instead of typedcef to make it possible
@@ -1165,24 +1179,10 @@ void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles
   memcpy(buffer_nodes, &quadtree[0], sizeof(PatchMap::QuadNode) * quadtree.size());
 }
 
-static void build_patch_arrays_buffer(const PatchArrayVector &patch_arrays,
-                                      OpenSubdiv_BufferInterface *patch_arrays_buffer)
-{
-  size_t patch_array_size = sizeof(PatchArray);
-
-  patch_arrays_buffer->device_alloc(patch_arrays_buffer, patch_arrays.size());
-  patch_arrays_buffer->bind(patch_arrays_buffer);
-
-  for (size_t i = 0; i < patch_arrays.size(); ++i) {
-    patch_arrays_buffer->update_data(
-        patch_arrays_buffer, patch_array_size * i, patch_array_size, &patch_arrays[i]);
-  }
-}
-
 void GpuEvalOutputAPI::buildPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
   GLPatchTable *patch_table = implementation_->getPatchTable();
-  build_patch_arrays_buffer(patch_table->GetPatchArrays(), patch_arrays_buffer);
+  buildPatchArraysBufferFromVector(patch_table->GetPatchArrays(), patch_arrays_buffer);
 }
 
 void GpuEvalOutputAPI::buildPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer)
@@ -1207,8 +1207,8 @@ void GpuEvalOutputAPI::buildFVarPatchArraysBuffer(const int face_varying_channel
                                                   OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
   GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
-  build_patch_arrays_buffer(patch_table->GetFVarPatchArrays(face_varying_channel),
-                            patch_arrays_buffer);
+  buildPatchArraysBufferFromVector(patch_table->GetFVarPatchArrays(face_varying_channel),
+                                   patch_arrays_buffer);
 }
 
 void GpuEvalOutputAPI::buildFVarPatchIndexBuffer(const int face_varying_channel,
