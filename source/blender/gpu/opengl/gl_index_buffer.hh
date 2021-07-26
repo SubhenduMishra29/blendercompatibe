@@ -63,7 +63,7 @@ class GLIndexBuf : public IndexBuf {
 
   void upload_data(void) override;
 
-  void update_sub(uint start, uint len, void *data) override;
+  void update_sub(uint start, uint len, const void *data) override;
 
  private:
   bool is_active() const;

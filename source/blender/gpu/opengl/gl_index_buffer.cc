@@ -86,7 +86,7 @@ void GLIndexBuf::upload_data()
   bind();
 }
 
-void GLIndexBuf::update_sub(uint start, uint len, void *data)
+void GLIndexBuf::update_sub(uint start, uint len, const void *data)
 {
   glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, start, len, data);
 }

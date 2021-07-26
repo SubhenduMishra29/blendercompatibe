@@ -45,7 +45,7 @@ class GLVertBuf : public VertBuf {
  public:
   void bind(void);
 
-  void update_sub(uint start, uint len, void *data) override;
+  void update_sub(uint start, uint len, const void *data) override;
 
   const void *read() const override;
   void *unmap(const void *mapped_data) const override;

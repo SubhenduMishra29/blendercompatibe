@@ -362,7 +362,7 @@ void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)
 
 /* XXX this is just a wrapper for the use of the Hair refine workaround.
  * To be used with GPU_vertbuf_use(). */
-void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, void *data)
+void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, const void *data)
 {
   unwrap(verts)->update_sub(start, len, data);
 }

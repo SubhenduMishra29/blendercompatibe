@@ -155,7 +155,7 @@ bool GLVertBuf::is_active() const
   return vbo_id_ == active_vbo_id;
 }
 
-void GLVertBuf::update_sub(uint start, uint len, void *data)
+void GLVertBuf::update_sub(uint start, uint len, const void *data)
 {
   glBufferSubData(GL_ARRAY_BUFFER, start, len, data);
 }

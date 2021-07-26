@@ -156,7 +156,7 @@ uint GPU_vertbuf_get_device_ptr(GPUVertBuf *verts);
 void GPU_vertbuf_wrap_device_ptr(GPUVertBuf *verts, uint device_ptr);
 
 /* XXX do not use. */
-void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, void *data);
+void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, const void *data);
 
 /* Metrics */
 uint GPU_vertbuf_get_memory_usage(void);
