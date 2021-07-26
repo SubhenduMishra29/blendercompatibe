@@ -26,7 +26,9 @@ uniform int coarse_poly_count;
 
 /* Given the index of the subdivision quad, return the index of the corresponding coarse polygon.
  * This uses subdiv_polygon_offset and since it is a growing list of offsets, we can use binary
- * search to locate the right index. */
+ * search to locate the right index.
+ * TODO(kevindietrich): try to deduplicate this with the version in common_subdiv_tris_comp.glsl
+ * but we cannot pass an array to a function. */
 uint coarse_polygon_index_from_subdiv_loop_index(uint subdiv_quad_index)
 {
   uint first = 0;
