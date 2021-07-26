@@ -1245,7 +1245,7 @@ static void draw_subdiv_extract_pos_nor(DRWSubdivBuffers *buffers,
   subdiv->evaluator->buildPatchParamBuffer(subdiv->evaluator, &patch_param_buffer_interface);
 
   GPUShader *shader = get_patch_evaluation_shader(
-      do_limit_normals ? SHADER_PATCH_EVALUATION : SHADER_PATCH_EVALUATION_LIMIT_NORMALS);
+      do_limit_normals ? SHADER_PATCH_EVALUATION_LIMIT_NORMALS : SHADER_PATCH_EVALUATION);
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1i(shader, "min_patch_face", buffers->gpu_patch_map->min_patch_face);
