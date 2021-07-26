@@ -4,18 +4,10 @@ layout(std430) buffer;
 
 // source and destination buffers
 
-#if defined(FVAR_EVALUATION)
 layout(binding = 0) buffer src_buffer
 {
-  vec2 srcFVarBuffer[];
+  float srcVertexBuffer[];
 };
-#else
-/* Face dots and positions use the same input data. */
-layout(binding = 0) buffer src_buffer
-{
-  vec3 srcVertexBuffer[];
-};
-#endif
 
 // GPUPatchMap
 layout(binding = 1) readonly buffer inputPatchHandles
@@ -80,6 +72,23 @@ layout(binding = 8) writeonly buffer outputVertexData
   PosNorLoop output_verts[];
 };
 #endif
+
+vec2 read_vec2(int index)
+{
+  vec2 result;
+  result.x = srcVertexBuffer[index * 2];
+  result.y = srcVertexBuffer[index * 2 + 1];
+  return result;
+}
+
+vec3 read_vec3(int index)
+{
+  vec3 result;
+  result.x = srcVertexBuffer[index * 3];
+  result.y = srcVertexBuffer[index * 3 + 1];
+  result.z = srcVertexBuffer[index * 3 + 2];
+  return result;
+}
 
 OsdPatchArray GetPatchArray(int arrayIndex)
 {
@@ -238,7 +247,7 @@ void evaluate_patches_limits(int patch_index, float u, float v, inout vec2 dst)
 
   for (int cv = 0; cv < nPoints; ++cv) {
     int index = patchIndexBuffer[indexBase + cv];
-    vec2 src_fvar = srcFVarBuffer[src_offset + index];
+    vec2 src_fvar = read_vec2(src_offset + index);
     dst += src_fvar * wP[cv];
   }
 }
@@ -260,7 +269,7 @@ void evaluate_patches_limits(
 
   for (int cv = 0; cv < nPoints; ++cv) {
     int index = patchIndexBuffer[indexBase + cv];
-    vec3 src_vertex = srcVertexBuffer[index];
+    vec3 src_vertex = read_vec3(index);
 
     dst += src_vertex * wP[cv];
     du += src_vertex * wDu[cv];

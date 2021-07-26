@@ -418,14 +418,12 @@ class VolatileEvalOutput {
   VolatileEvalOutput(const StencilTable *vertex_stencils,
                      const StencilTable *varying_stencils,
                      const vector<const StencilTable *> &all_face_varying_stencils,
-                     const int num_vertex_elements,
-                     const int num_varying_elements,
                      const int face_varying_width,
                      const PatchTable *patch_table,
                      EvaluatorCache *evaluator_cache = NULL,
                      DEVICE_CONTEXT *device_context = NULL)
-      : src_desc_(0, num_vertex_elements, num_vertex_elements),
-        src_varying_desc_(0, num_varying_elements, num_varying_elements),
+      : src_desc_(0, 3, 3),
+        src_varying_desc_(0, 3, 3),
         face_varying_width_(face_varying_width),
         evaluator_cache_(evaluator_cache),
         device_context_(device_context)
@@ -435,10 +433,8 @@ class VolatileEvalOutput {
                              vertex_stencils->GetNumStencils();
     num_coarse_vertices_ = vertex_stencils->GetNumControlVertices();
     using OpenSubdiv::Osd::convertToCompatibleStencilTable;
-    src_data_ = SRC_VERTEX_BUFFER::Create(
-        num_vertex_elements, num_total_vertices, device_context_);
-    src_varying_data_ = SRC_VERTEX_BUFFER::Create(
-        num_varying_elements, num_total_vertices, device_context_);
+    src_data_ = SRC_VERTEX_BUFFER::Create(3, num_total_vertices, device_context_);
+    src_varying_data_ = SRC_VERTEX_BUFFER::Create(3, num_total_vertices, device_context_);
     patch_table_ = PATCH_TABLE::Create(patch_table, device_context_);
     vertex_stencils_ = convertToCompatibleStencilTable<STENCIL_TABLE>(vertex_stencils,
                                                                       device_context_);
@@ -563,7 +559,7 @@ class VolatileEvalOutput {
   void evalPatches(OpenSubdiv_BufferInterface *patch_coord, OpenSubdiv_BufferInterface *P)
   {
     BufferInterfaceWrapper P_data(P);
-    BufferDescriptor P_desc(0, 4, 4);
+    BufferDescriptor P_desc(0, 3, 3);
 
     BufferInterfaceWrapper patch_coord_buffer(patch_coord);
     const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
@@ -624,8 +620,8 @@ class VolatileEvalOutput {
     BufferInterfaceWrapper dPdv_data(dPdv);
 
     // TODO(sergey): Support interleaved vertex-varying data.
-    BufferDescriptor P_desc(0, 4, 4);
-    BufferDescriptor dpDu_desc(0, 4, 4), pPdv_desc(0, 4, 4);
+    BufferDescriptor P_desc(0, 3, 3);
+    BufferDescriptor dpDu_desc(0, 3, 3), pPdv_desc(0, 3, 3);
 
     BufferInterfaceWrapper patch_coord_buffer(patch_coord);
     const EVALUATOR *eval_instance = OpenSubdiv::Osd::GetEvaluator<EVALUATOR>(
@@ -756,8 +752,6 @@ class CpuEvalOutput : public VolatileEvalOutput<CpuVertexBuffer,
   CpuEvalOutput(const StencilTable *vertex_stencils,
                 const StencilTable *varying_stencils,
                 const vector<const StencilTable *> &all_face_varying_stencils,
-                const int num_vertex_elements,
-                const int num_varying_elements,
                 const int face_varying_width,
                 const PatchTable *patch_table,
                 EvaluatorCache *evaluator_cache = NULL)
@@ -768,8 +762,6 @@ class CpuEvalOutput : public VolatileEvalOutput<CpuVertexBuffer,
                            CpuEvaluator>(vertex_stencils,
                                          varying_stencils,
                                          all_face_varying_stencils,
-                                         num_vertex_elements,
-                                         num_varying_elements,
                                          face_varying_width,
                                          patch_table,
                                          evaluator_cache)
@@ -786,8 +778,6 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
   GpuEvalOutput(const StencilTable *vertex_stencils,
                 const StencilTable *varying_stencils,
                 const vector<const StencilTable *> &all_face_varying_stencils,
-                const int num_vertex_elements,
-                const int num_varying_elements,
                 const int face_varying_width,
                 const PatchTable *patch_table,
                 EvaluatorCache *evaluator_cache = NULL)
@@ -798,8 +788,6 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
                            GLComputeEvaluator>(vertex_stencils,
                                                varying_stencils,
                                                all_face_varying_stencils,
-                                               num_vertex_elements,
-                                               num_varying_elements,
                                                face_varying_width,
                                                patch_table,
                                                evaluator_cache)
@@ -1404,15 +1392,13 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
     eval_output_gpu = new blender::opensubdiv::GpuEvalOutput(vertex_stencils,
                                                              varying_stencils,
                                                              all_face_varying_stencils,
-                                                             4,
-                                                             4,
                                                              2,
                                                              patch_table,
                                                              evaluator_cache);
   }
   else {
     eval_output_cpu = new blender::opensubdiv::CpuEvalOutput(
-        vertex_stencils, varying_stencils, all_face_varying_stencils, 3, 3, 2, patch_table);
+        vertex_stencils, varying_stencils, all_face_varying_stencils, 2, patch_table);
   }
 
   PatchMap *patch_map = new PatchMap(*patch_table);
