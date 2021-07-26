@@ -84,6 +84,9 @@ static void set_coarse_positions(Subdiv *subdiv,
       BLI_BITMAP_ENABLE(vertex_used_map, loop->v);
     }
   }
+  /* Use a temporary buffer so we do not upload vertices one at a time to the GPU. */
+  float(*buffer)[3] = MEM_mallocN(sizeof(float[3]) * mesh->totvert, "subdiv tmp coarse positions");
+  int manifold_vertex_count = 0;
   for (int vertex_index = 0, manifold_vertex_index = 0; vertex_index < mesh->totvert;
        vertex_index++) {
     if (!BLI_BITMAP_TEST_BOOL(vertex_used_map, vertex_index)) {
@@ -97,10 +100,13 @@ static void set_coarse_positions(Subdiv *subdiv,
       const MVert *vertex = &mvert[vertex_index];
       vertex_co = vertex->co;
     }
-    subdiv->evaluator->setCoarsePositions(subdiv->evaluator, vertex_co, manifold_vertex_index, 1);
+    copy_v3_v3(&buffer[manifold_vertex_index], vertex_co);
     manifold_vertex_index++;
+    manifold_vertex_count++;
   }
+  subdiv->evaluator->setCoarsePositions(subdiv->evaluator, buffer, 0, manifold_vertex_count);
   MEM_freeN(vertex_used_map);
+  MEM_freeN(buffer);
 }
 
 /* Context which is used to fill face varying data in parallel. */
@@ -144,15 +150,15 @@ static void set_face_varying_data_from_uv(Subdiv *subdiv,
   const int num_faces = topology_refiner->getNumFaces(topology_refiner);
   const MLoopUV *mluv = mloopuv;
 
+  const int num_fvar_values = topology_refiner->getNumFVarValues(topology_refiner, layer_index);
+  /* Use a temporary buffer so we do not upload UVs one at a time to the GPU. */
+  float(*buffer)[2] = MEM_mallocN(sizeof(float[2]) * num_fvar_values, "temp UV storage");
+
   FaceVaryingDataFromUVContext ctx;
   ctx.topology_refiner = topology_refiner;
   ctx.layer_index = layer_index;
   ctx.mloopuv = mluv;
   ctx.mesh = mesh;
-
-  const int num_fvar_values = topology_refiner->getNumFVarValues(topology_refiner, layer_index);
-  float(*buffer)[2] = MEM_mallocN(sizeof(float[2]) * num_fvar_values, "temp UV storage");
-
   ctx.buffer = buffer;
 
   TaskParallelSettings parallel_range_settings;
