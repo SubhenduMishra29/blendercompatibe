@@ -52,9 +52,9 @@
 #include "opensubdiv_topology_refiner_capi.h"
 
 #include "draw_cache_extract.h"
-#include "draw_cache_extract_mesh_private.h"
 #include "draw_cache_impl.h"
 #include "draw_cache_inline.h"
+#include "mesh_extractors/extract_mesh.h"
 
 #if 0
 static void print_index_buffer(const char *message, int *index, int len)
