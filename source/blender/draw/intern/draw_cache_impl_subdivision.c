@@ -2349,7 +2349,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     MEM_freeN(data.vert_to_loop);
   }
 
-  draw_subdiv_cache_print_memory_used(draw_cache);
+  // draw_subdiv_cache_print_memory_used(draw_cache);
   return true;
 }
 
