@@ -67,11 +67,12 @@
 #include "ED_uvedit.h"
 
 #include "draw_cache_extract.h"
-#include "draw_cache_extract_mesh_private.h"
 #include "draw_cache_inline.h"
 #include "draw_subdivision.h"
 
 #include "draw_cache_impl.h" /* own include */
+
+#include "mesh_extractors/extract_mesh.h"
 
 /* ---------------------------------------------------------------------- */
 /** \name Dependencies between buffer and batch

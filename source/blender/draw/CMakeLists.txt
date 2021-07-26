@@ -55,8 +55,8 @@ set(INC
 set(SRC
   intern/draw_cache.c
   intern/draw_cache_extract_mesh.cc
-  intern/draw_cache_extract_mesh_extractors.c
   intern/draw_cache_extract_mesh_render_data.c
+  intern/mesh_extractors/extract_mesh.c
   intern/mesh_extractors/extract_mesh_ibo_edituv.cc
   intern/mesh_extractors/extract_mesh_ibo_fdots.cc
   intern/mesh_extractors/extract_mesh_ibo_lines.cc
@@ -197,7 +197,6 @@ set(SRC
   intern/DRW_render.h
   intern/draw_cache.h
   intern/draw_cache_extract.h
-  intern/draw_cache_extract_mesh_private.h
   intern/draw_cache_impl.h
   intern/draw_cache_inline.h
   intern/draw_color_management.h
@@ -212,6 +211,7 @@ set(SRC
   intern/draw_shader.h
   intern/draw_subdivision.h
   intern/draw_view.h
+  intern/mesh_extractors/extract_mesh.h
   intern/smaa_textures.h
   engines/basic/basic_engine.h
   engines/eevee/eevee_engine.h
