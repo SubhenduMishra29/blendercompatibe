@@ -139,7 +139,8 @@ void *GLVertBuf::unmap(const void *mapped_data) const
 
 void GLVertBuf::wrap_device_ptr(uint device_ptr)
 {
-  BLI_assert(vbo_id_ == 0);
+  /* Setting a device_ptr to 0 means to not free the buffer, as we do might not own it. */
+  BLI_assert(vbo_id_ == 0 || device_ptr == 0);
   vbo_id_ = device_ptr;
   /* We assume the data is already on the device, so no need to allocate or send it. */
   flag = GPU_VERTBUF_DATA_UPLOADED;
