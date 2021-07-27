@@ -447,7 +447,7 @@ static void vertbuf_device_alloc(OpenSubdiv_BufferInterface *interface, const ui
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
   /* This assumes that GPU_USAGE_DEVICE_ONLY was used, which won't allocate host memory. */
-  BLI_assert(GPU_vertbuf_get_memory_usage() == GPU_USAGE_DEVICE_ONLY);
+  BLI_assert(GPU_vertbuf_get_usage(verts) == GPU_USAGE_DEVICE_ONLY);
   GPU_vertbuf_data_alloc(verts, len);
 }
 
