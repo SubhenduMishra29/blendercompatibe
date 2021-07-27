@@ -83,6 +83,7 @@ extern char datatoc_common_subdiv_tris_comp_glsl[];
 extern char datatoc_common_subdiv_normals_accumulate_comp_glsl[];
 extern char datatoc_common_subdiv_normals_finalize_comp_glsl[];
 extern char datatoc_common_subdiv_patch_evaluation_comp_glsl[];
+extern char datatoc_common_subdiv_custom_data_interp_comp_glsl[];
 
 enum {
   SHADER_BUFFER_LINES,
@@ -96,6 +97,7 @@ enum {
   SHADER_PATCH_EVALUATION_LIMIT_NORMALS,
   SHADER_PATCH_EVALUATION_FVAR,
   SHADER_PATCH_EVALUATION_FACE_DOTS,
+  SHADER_COMP_CUSTOM_DATA_INTERP,
 
   NUM_SHADERS,
 };
@@ -129,6 +131,9 @@ static const char *get_shader_code(int shader_type)
     case SHADER_PATCH_EVALUATION_FVAR:
     case SHADER_PATCH_EVALUATION_FACE_DOTS: {
       return datatoc_common_subdiv_patch_evaluation_comp_glsl;
+    }
+    case SHADER_COMP_CUSTOM_DATA_INTERP: {
+      return datatoc_common_subdiv_custom_data_interp_comp_glsl;
     }
   }
   return NULL;
@@ -167,6 +172,9 @@ static const char *get_shader_name(int shader_type)
     }
     case SHADER_PATCH_EVALUATION_FACE_DOTS: {
       return "subdiv patch evaluation face dots";
+    }
+    case SHADER_COMP_CUSTOM_DATA_INTERP: {
+      return "subdiv custom data interp";
     }
   }
   return NULL;
@@ -419,6 +427,18 @@ static GPUVertFormat *get_origindex_format(void)
   return &format;
 }
 
+// Vertex format for vertex colors, only used during the coarse data upload.
+static GPUVertFormat *get_vcol_format(void)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "cCol", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_alias_add(&format, "c");
+    GPU_vertformat_alias_add(&format, "ac");
+  }
+  return &format;
+}
+
 // --------------------------------------------------------
 
 static uint tris_count_from_number_of_loops(const uint number_of_loops)
@@ -501,6 +521,40 @@ static void initialize_uv_buffer(GPUVertBuf *uvs,
   }
 
   GPU_vertbuf_init_build_on_device(uvs, &format, v_len);
+}
+
+static void initialize_vcol_format(GPUVertFormat *format,
+                                   CustomData *cd_ldata,
+                                   CustomData *cd_vdata,
+                                   uint32_t vcol_layers)
+{
+  GPU_vertformat_deinterleave(format);
+
+  for (int i = 0; i < MAX_MCOL; i++) {
+    if (vcol_layers & (1 << i)) {
+      char attr_name[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
+      const char *layer_name = CustomData_get_layer_name(cd_ldata, CD_MLOOPCOL, i);
+      GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
+
+      BLI_snprintf(attr_name, sizeof(attr_name), "c%s", attr_safe_name);
+      GPU_vertformat_attr_add(format, attr_name, GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+
+      if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPCOL)) {
+        GPU_vertformat_alias_add(format, "c");
+      }
+      if (i == CustomData_get_active_layer(cd_ldata, CD_MLOOPCOL)) {
+        GPU_vertformat_alias_add(format, "ac");
+      }
+
+      /* Gather number of auto layers. */
+      /* We only do `vcols` that are not overridden by `uvs` and sculpt vertex colors. */
+      if (CustomData_get_named_layer_index(cd_ldata, CD_MLOOPUV, layer_name) == -1 &&
+          CustomData_get_named_layer_index(cd_vdata, CD_PROP_COLOR, layer_name) == -1) {
+        BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
+        GPU_vertformat_alias_add(format, attr_name);
+      }
+    }
+  }
 }
 
 /* -------------------------------------------------------------------- */
@@ -638,11 +692,13 @@ typedef struct DRWSubdivCache {
   /* Maps subdivision loop to original coarse edge index. */
   GPUVertBuf *edges_orig_index;
 
+  GPUVertBuf *face_ptex_offset_buffer;
   int *face_ptex_offset;
   GPUVertBuf *subdiv_polygon_offset_buffer;
   int *subdiv_polygon_offset;
 
-  GPUVertBuf *face_flags;
+  /* Contains the start loop index and the smooth flag for each coarse polygon. */
+  GPUVertBuf *extra_coarse_face_data;
 
   /* ibo.points, one value per subdivided vertex, mapping coarse vertices -> subdivided loop */
   int *point_indices;
@@ -681,8 +737,9 @@ static void draw_free_edit_mode_cache(DRWSubdivCache *cache)
 static void draw_subdiv_cache_free(DRWSubdivCache *cache)
 {
   GPU_VERTBUF_DISCARD_SAFE(cache->patch_coords);
+  GPU_VERTBUF_DISCARD_SAFE(cache->face_ptex_offset_buffer);
   GPU_VERTBUF_DISCARD_SAFE(cache->subdiv_polygon_offset_buffer);
-  GPU_VERTBUF_DISCARD_SAFE(cache->face_flags);
+  GPU_VERTBUF_DISCARD_SAFE(cache->extra_coarse_face_data);
   MEM_SAFE_FREE(cache->subdiv_loop_subdiv_vert_index);
   MEM_SAFE_FREE(cache->subdiv_loop_poly_index);
   MEM_SAFE_FREE(cache->point_indices);
@@ -708,30 +765,30 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   }
 }
 
-static void draw_subdiv_cache_update_face_flags(DRWSubdivCache *cache, Mesh *mesh)
+static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cache, Mesh *mesh)
 {
-  if (cache->face_flags == NULL) {
-    cache->face_flags = GPU_vertbuf_calloc();
+  if (cache->extra_coarse_face_data == NULL) {
+    cache->extra_coarse_face_data = GPU_vertbuf_calloc();
     static GPUVertFormat format;
     if (format.attr_len == 0) {
-      GPU_vertformat_attr_add(&format, "flag", GPU_COMP_U32, 1, GPU_FETCH_INT);
+      GPU_vertformat_attr_add(&format, "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
     }
-    GPU_vertbuf_init_with_format_ex(cache->face_flags, &format, GPU_USAGE_DYNAMIC);
-    GPU_vertbuf_data_alloc(cache->face_flags, mesh->totpoly);
+    GPU_vertbuf_init_with_format_ex(cache->extra_coarse_face_data, &format, GPU_USAGE_DYNAMIC);
+    GPU_vertbuf_data_alloc(cache->extra_coarse_face_data, mesh->totpoly);
   }
 
-  uint32_t *flags_data = (uint32_t *)(GPU_vertbuf_get_data(cache->face_flags));
+  uint32_t *flags_data = (uint32_t *)(GPU_vertbuf_get_data(cache->extra_coarse_face_data));
 
   for (int i = 0; i < mesh->totpoly; i++) {
-    uint8_t flag = 0;
+    uint32_t flag = 0;
     if ((mesh->mpoly[i].flag & ME_SMOOTH) != 0) {
       flag = 1;
     }
-    flags_data[i] = flag;
+    flags_data[i] = (uint)(mesh->mpoly[i].loopstart) | (flag << 31);
   }
 
   /* Make sure updated data is reuploaded. */
-  GPU_vertbuf_tag_dirty(cache->face_flags);
+  GPU_vertbuf_tag_dirty(cache->extra_coarse_face_data);
 }
 
 static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
@@ -746,7 +803,7 @@ static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
     memory_used += cache->coarse_poly_count * sizeof(int);
   }
 
-  if (cache->face_flags) {
+  if (cache->extra_coarse_face_data) {
     memory_used += cache->coarse_poly_count * sizeof(int);
   }
 
@@ -1138,6 +1195,9 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
 
   cache->subdiv_polygon_offset_buffer = build_origindex_buffer(cache->subdiv_polygon_offset,
                                                                mesh_eval->totpoly);
+
+  cache->face_ptex_offset_buffer = build_origindex_buffer(cache->face_ptex_offset,
+                                                          mesh_eval->totpoly + 1);
   cache->coarse_poly_count = mesh_eval->totpoly;
   cache->point_indices = cache_building_context.point_indices;
 
@@ -1163,8 +1223,9 @@ typedef struct DRWSubdivBuffers {
 
   GPUVertBuf *patch_coords;
   GPUVertBuf *fdots_patch_coords;
-  GPUVertBuf *face_flags;
+  GPUVertBuf *extra_coarse_face_data;
   GPUVertBuf *subdiv_polygon_offset;
+  GPUVertBuf *face_ptex_offset;
 
   GPUVertBuf *vert_origindex;
   GPUVertBuf *edge_origindex;
@@ -1184,11 +1245,12 @@ static void initialize_buffers(DRWSubdivBuffers *buffers, const DRWSubdivCache *
   buffers->patch_coords = draw_cache->patch_coords;
   buffers->edge_origindex = draw_cache->edges_orig_index;
   buffers->vert_origindex = draw_cache->verts_orig_index;
-  buffers->face_flags = draw_cache->face_flags;
+  buffers->extra_coarse_face_data = draw_cache->extra_coarse_face_data;
   buffers->subdiv_polygon_offset = draw_cache->subdiv_polygon_offset_buffer;
   buffers->coarse_poly_count = draw_cache->coarse_poly_count;
   buffers->fdots_patch_coords = draw_cache->fdots_patch_coords;
   buffers->gpu_patch_map = &draw_cache->gpu_patch_map;
+  buffers->face_ptex_offset = draw_cache->face_ptex_offset_buffer;
 }
 
 // --------------------------------------------------------
@@ -1362,6 +1424,81 @@ static void draw_subdiv_extract_uvs(DRWSubdivBuffers *buffers,
       draw_subdiv_extract_uvs_ex(buffers, face_varying, subdiv, i, offset);
     }
   }
+}
+
+static void draw_subdiv_extract_vcols_ex(DRWSubdivBuffers *buffers,
+                                         GPUVertBuf *src_data,
+                                         GPUVertBuf *dst_data,
+                                         int dst_offset)
+{
+  GPUShader *shader = get_patch_evaluation_shader(SHADER_COMP_CUSTOM_DATA_INTERP);
+  GPU_shader_bind(shader);
+
+  GPU_shader_uniform_1i(shader, "dst_offset", dst_offset);
+  GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->coarse_poly_count);
+
+  GPU_vertbuf_bind_as_ssbo(src_data, 0);
+  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, 1);
+  GPU_vertbuf_bind_as_ssbo(buffers->face_ptex_offset, 2);
+  GPU_vertbuf_bind_as_ssbo(buffers->patch_coords, 3);
+  GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, 4);
+  GPU_vertbuf_bind_as_ssbo(dst_data, 5);
+
+  GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
+
+  GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+
+  /* Cleanup. */
+  GPU_shader_unbind();
+}
+
+static void draw_subdiv_extract_vcols(DRWSubdivBuffers *buffers,
+                                      Mesh *coarse_mesh,
+                                      GPUVertBuf *dst_data,
+                                      uint vcol_layers)
+{
+  GPUVertBuf *src_data = GPU_vertbuf_calloc();
+  /* Dynamic as we upload and interpolate layers one at a time. */
+  GPU_vertbuf_init_with_format_ex(src_data, get_vcol_format(), GPU_USAGE_DYNAMIC);
+
+  GPU_vertbuf_data_alloc(src_data, coarse_mesh->totloop);
+
+  typedef struct gpuMeshVcol {
+    float r;
+    float g;
+    float b;
+    float a;
+  } gpuMeshVcol;
+
+  gpuMeshVcol *mesh_vcol = (gpuMeshVcol *)GPU_vertbuf_get_data(src_data);
+
+  const CustomData *cd_ldata = &coarse_mesh->ldata;
+
+  /* Index of the vertex color layer in the compact buffer. Used vertex color layers are stored in
+   * a single buffer. */
+  int pack_layer_index = 0;
+  for (int i = 0; i < MAX_MTFACE; i++) {
+    if (vcol_layers & (1 << i)) {
+      /* Include stride in offset. */
+      const int dst_offset = (int)buffers->number_of_loops * 4 * pack_layer_index++;
+      const MLoopCol *mloopcol = (MLoopCol *)CustomData_get_layer_n(cd_ldata, CD_MLOOPCOL, i);
+
+      gpuMeshVcol *vcol = mesh_vcol;
+
+      for (int ml_index = 0; ml_index < coarse_mesh->totloop; ml_index++, vcol++, mloopcol++) {
+        vcol->r = BLI_color_from_srgb_table[mloopcol->r];
+        vcol->g = BLI_color_from_srgb_table[mloopcol->g];
+        vcol->b = BLI_color_from_srgb_table[mloopcol->b];
+        vcol->a = mloopcol->a * (1.0f / 255.0f);
+      }
+
+      /* Ensure data is uploaded properly. */
+      GPU_vertbuf_tag_dirty(src_data);
+      draw_subdiv_extract_vcols_ex(buffers, src_data, dst_data, dst_offset);
+    }
+  }
+
+  GPU_vertbuf_discard(src_data);
 }
 
 static void do_accumulate_normals(DRWSubdivBuffers *buffers,
@@ -1570,7 +1707,7 @@ static void do_build_lnor_buffer(DRWSubdivBuffers *buffers, GPUVertBuf *pos_nor,
   int binding_point = 0;
   /* Inputs */
   GPU_vertbuf_bind_as_ssbo(pos_nor, binding_point++);
-  GPU_vertbuf_bind_as_ssbo(buffers->face_flags, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, binding_point++);
   GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, binding_point++);
 
   /* Outputs */
@@ -2010,7 +2147,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     draw_subdiv_cache_ensure_mat_offsets(draw_cache, mesh_eval, batch_cache->mat_len);
   }
 
-  draw_subdiv_cache_update_face_flags(draw_cache, mesh_eval);
+  draw_subdiv_cache_update_extra_coarse_face_data(draw_cache, mesh_eval);
   DRWSubdivBuffers subdiv_buffers = {0};
   /* We can only evaluate limit normals if the patches are adaptive. */
   const bool do_limit_normals = settings.is_adaptive;
@@ -2335,6 +2472,16 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     GPU_indexbuf_build_in_place(&data.elb, mbc->ibo.lines_adjacency);
     BLI_edgehash_free(data.eh, NULL);
     MEM_freeN(data.vert_to_loop);
+  }
+
+  if (DRW_vbo_requested(mbc->vbo.vcol)) {
+    GPUVertFormat vcol_format = {0};
+    initialize_vcol_format(
+        &vcol_format, &mesh_eval->ldata, &mesh_eval->vdata, batch_cache->cd_used.vcol);
+
+    GPU_vertbuf_init_build_on_device(mbc->vbo.vcol, &vcol_format, subdiv_buffers.number_of_loops);
+    draw_subdiv_extract_vcols(
+        &subdiv_buffers, mesh_eval, mbc->vbo.vcol, batch_cache->cd_used.vcol);
   }
 
   // draw_subdiv_cache_print_memory_used(draw_cache);

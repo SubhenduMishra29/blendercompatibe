@@ -7,9 +7,9 @@ layout(std430, binding = 0) readonly buffer inputVertexData
   PosNorLoop pos_nor[];
 };
 
-layout(std430, binding = 1) readonly buffer inputFaceFlags
+layout(std430, binding = 1) readonly buffer extraCoarseFaceData
 {
-  uint input_face_flags[];
+  uint extra_coarse_face_data[];
 };
 
 layout(std430, binding = 2) readonly buffer inputSubdivPolygonOffset
@@ -60,7 +60,7 @@ void main()
 
   uint coarse_quad_index = coarse_polygon_index_from_subdiv_loop_index(quad_index);
 
-  if ((input_face_flags[coarse_quad_index] & 0xff) != 0) {
+  if (((extra_coarse_face_data[coarse_quad_index] >> 31) & 0x1) != 0) {
     /* Face is smooth, use vertex normals. */
     for (int i = 0; i < 4; i++) {
       output_lnor[start_loop_index + i] = get_vertex_nor(pos_nor[start_loop_index + i]);
