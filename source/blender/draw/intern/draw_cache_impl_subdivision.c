@@ -620,12 +620,8 @@ typedef struct DRWSubdivCache {
 
   uint num_edges;
 
-  /* Maps subdivision loop to original coarse vertex index. */
-  int *subdiv_loop_vert_index;
   /* Maps subdivision loop to subdivided vertex index. */
   int *subdiv_loop_subdiv_vert_index;
-  /* Maps subdivision loop to original coarse edge index. */
-  int *subdiv_loop_edge_index;
   /* Maps subdivision loop to original coarse poly index. */
   int *subdiv_loop_poly_index;
 
@@ -637,8 +633,9 @@ typedef struct DRWSubdivCache {
   GPUVertBuf *subdiv_vertex_face_adjacency_offsets;
 
   /* Maps to original element in the coarse mesh, only for edit mode. */
+  /* Maps subdivision loop to original coarse vertex index. */
   GPUVertBuf *verts_orig_index;
-  GPUVertBuf *faces_orig_index;
+  /* Maps subdivision loop to original coarse edge index. */
   GPUVertBuf *edges_orig_index;
 
   int *face_ptex_offset;
@@ -678,7 +675,6 @@ static void draw_free_edit_mode_cache(DRWSubdivCache *cache)
 {
   GPU_VERTBUF_DISCARD_SAFE(cache->verts_orig_index);
   GPU_VERTBUF_DISCARD_SAFE(cache->edges_orig_index);
-  GPU_VERTBUF_DISCARD_SAFE(cache->faces_orig_index);
   GPU_VERTBUF_DISCARD_SAFE(cache->fdots_patch_coords);
 }
 
@@ -754,7 +750,7 @@ static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
     memory_used += cache->coarse_poly_count * sizeof(int);
   }
 
-  if (cache->subdiv_loop_edge_index) {
+  if (cache->edges_orig_index) {
     memory_used += cache->num_patch_coords * sizeof(int);
   }
 
@@ -766,7 +762,7 @@ static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
     memory_used += cache->num_patch_coords * sizeof(int);
   }
 
-  if (cache->subdiv_loop_vert_index) {
+  if (cache->verts_orig_index) {
     memory_used += cache->num_patch_coords * sizeof(int);
   }
 
@@ -881,13 +877,11 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
   GPU_vertbuf_init_with_format_ex(
       cache->verts_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
   GPU_vertbuf_data_alloc(cache->verts_orig_index, cache->num_patch_coords);
-  cache->subdiv_loop_vert_index = (int *)GPU_vertbuf_get_data(cache->verts_orig_index);
 
   cache->edges_orig_index = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(
       cache->edges_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
   GPU_vertbuf_data_alloc(cache->edges_orig_index, cache->num_patch_coords);
-  cache->subdiv_loop_edge_index = (int *)GPU_vertbuf_get_data(cache->edges_orig_index);
 
   cache->subdiv_loop_subdiv_vert_index = MEM_mallocN(cache->num_patch_coords * sizeof(int),
                                                      "subdiv_loop_subdiv_vert_index");
@@ -902,8 +896,8 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
 
   /* Initialize context pointers and temporary buffers. */
   ctx->patch_coords = (CompressedPatchCoord *)GPU_vertbuf_get_data(cache->patch_coords);
-  ctx->subdiv_loop_vert_index = cache->subdiv_loop_vert_index;
-  ctx->subdiv_loop_edge_index = cache->subdiv_loop_edge_index;
+  ctx->subdiv_loop_vert_index = (int *)GPU_vertbuf_get_data(cache->verts_orig_index);
+  ctx->subdiv_loop_edge_index = (int *)GPU_vertbuf_get_data(cache->edges_orig_index);
   ctx->subdiv_loop_subdiv_vert_index = cache->subdiv_loop_subdiv_vert_index;
   ctx->subdiv_loop_poly_index = cache->subdiv_loop_poly_index;
   ctx->point_indices = cache->point_indices;
@@ -1172,7 +1166,6 @@ typedef struct DRWSubdivBuffers {
   GPUVertBuf *face_flags;
   GPUVertBuf *subdiv_polygon_offset;
 
-  GPUVertBuf *face_origindex;
   GPUVertBuf *vert_origindex;
   GPUVertBuf *edge_origindex;
 
@@ -1191,7 +1184,6 @@ static void initialize_buffers(DRWSubdivBuffers *buffers, const DRWSubdivCache *
   buffers->patch_coords = draw_cache->patch_coords;
   buffers->edge_origindex = draw_cache->edges_orig_index;
   buffers->vert_origindex = draw_cache->verts_orig_index;
-  buffers->face_origindex = draw_cache->faces_orig_index;
   buffers->face_flags = draw_cache->face_flags;
   buffers->subdiv_polygon_offset = draw_cache->subdiv_polygon_offset_buffer;
   buffers->coarse_poly_count = draw_cache->coarse_poly_count;
@@ -1687,10 +1679,14 @@ static void update_edit_data(DRWSubdivCache *cache,
   mr.freestyle_face_ofs = CustomData_get_offset(&bm->pdata, CD_FREESTYLE_FACE);
 #endif
 
+  int *subdiv_loop_vert_index = (int *)GPU_vertbuf_get_data(cache->verts_orig_index);
+  int *subdiv_loop_edge_index = (int *)GPU_vertbuf_get_data(cache->edges_orig_index);
+  int *subdiv_loop_poly_index = cache->subdiv_loop_poly_index;
+
   for (uint i = 0; i < cache->num_patch_coords; i++) {
-    const int vert_origindex = cache->subdiv_loop_vert_index[i];
-    const int edge_origindex = cache->subdiv_loop_edge_index[i];
-    const int poly_origindex = cache->subdiv_loop_poly_index[i];
+    const int vert_origindex = subdiv_loop_vert_index[i];
+    const int edge_origindex = subdiv_loop_edge_index[i];
+    const int poly_origindex = subdiv_loop_poly_index[i];
 
     EditLoopData *edit_loop_data = &edit_data[i];
     memset(edit_loop_data, 0, sizeof(EditLoopData));
@@ -2187,7 +2183,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   if (DRW_vbo_requested(mbc->vbo.edge_idx)) {
     init_origindex_buffer(mbc->vbo.edge_idx,
-                          draw_cache->subdiv_loop_edge_index,
+                          GPU_vertbuf_get_data(draw_cache->edges_orig_index),
                           draw_cache->num_patch_coords,
                           draw_cache->edge_loose_len * 2);
 
@@ -2221,8 +2217,10 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     }
     else {
       loop_edge_idx = GPU_vertbuf_calloc();
-      init_origindex_buffer(
-          loop_edge_idx, draw_cache->subdiv_loop_edge_index, draw_cache->num_patch_coords, 0);
+      init_origindex_buffer(loop_edge_idx,
+                            GPU_vertbuf_get_data(draw_cache->edges_orig_index),
+                            draw_cache->num_patch_coords,
+                            0);
     }
 
     do_build_edge_fac_buffer(
