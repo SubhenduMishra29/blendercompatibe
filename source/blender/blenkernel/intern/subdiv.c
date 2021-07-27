@@ -234,13 +234,20 @@ int *BKE_subdiv_face_ptex_offset_get(Subdiv *subdiv)
     return NULL;
   }
   const int num_coarse_faces = topology_refiner->getNumFaces(topology_refiner);
+  /* +1 to store the final PTex offset (the total number of PTex faces) at the end of the array so
+   * that algorithms can compute the number of PTex faces for a given face by computing the delta
+   * with the offste for the next face without using a separate data structure, e.g.:
+   *
+   * const int num_face_ptex_faces = face_ptex_offset[i + 1] - face_ptex_offset[i];
+   */
   subdiv->cache_.face_ptex_offset = MEM_malloc_arrayN(
-      num_coarse_faces, sizeof(int), "subdiv face_ptex_offset");
+      num_coarse_faces + 1, sizeof(int), "subdiv face_ptex_offset");
   int ptex_offset = 0;
   for (int face_index = 0; face_index < num_coarse_faces; face_index++) {
     const int num_ptex_faces = topology_refiner->getNumFacePtexFaces(topology_refiner, face_index);
     subdiv->cache_.face_ptex_offset[face_index] = ptex_offset;
     ptex_offset += num_ptex_faces;
   }
+  subdiv->cache_.face_ptex_offset[num_coarse_faces] = ptex_offset;
   return subdiv->cache_.face_ptex_offset;
 }
