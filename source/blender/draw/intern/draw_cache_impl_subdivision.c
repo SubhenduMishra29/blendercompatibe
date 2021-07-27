@@ -855,6 +855,10 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
                                        const int *face_ptex_offset,
                                        const int *subdiv_polygon_offset)
 {
+  if (num_loops == 0) {
+    return false;
+  }
+
   DRWCacheBuildingContext *ctx = (DRWCacheBuildingContext *)(foreach_context->user_data);
   DRWSubdivCache *cache = ctx->cache;
 
