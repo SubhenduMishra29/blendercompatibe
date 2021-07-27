@@ -297,6 +297,8 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    copy_v4_uchar(btheme->space_sequencer.grid, 54);
+    btheme->space_sequencer.grid[3] = 255;
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
