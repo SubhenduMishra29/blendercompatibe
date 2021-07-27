@@ -97,7 +97,8 @@ enum {
   SHADER_PATCH_EVALUATION_LIMIT_NORMALS,
   SHADER_PATCH_EVALUATION_FVAR,
   SHADER_PATCH_EVALUATION_FACE_DOTS,
-  SHADER_COMP_CUSTOM_DATA_INTERP,
+  SHADER_COMP_CUSTOM_DATA_INTERP_1D,
+  SHADER_COMP_CUSTOM_DATA_INTERP_4D,
 
   NUM_SHADERS,
 };
@@ -132,7 +133,8 @@ static const char *get_shader_code(int shader_type)
     case SHADER_PATCH_EVALUATION_FACE_DOTS: {
       return datatoc_common_subdiv_patch_evaluation_comp_glsl;
     }
-    case SHADER_COMP_CUSTOM_DATA_INTERP: {
+    case SHADER_COMP_CUSTOM_DATA_INTERP_1D:
+    case SHADER_COMP_CUSTOM_DATA_INTERP_4D: {
       return datatoc_common_subdiv_custom_data_interp_comp_glsl;
     }
   }
@@ -173,8 +175,11 @@ static const char *get_shader_name(int shader_type)
     case SHADER_PATCH_EVALUATION_FACE_DOTS: {
       return "subdiv patch evaluation face dots";
     }
-    case SHADER_COMP_CUSTOM_DATA_INTERP: {
-      return "subdiv custom data interp";
+    case SHADER_COMP_CUSTOM_DATA_INTERP_1D: {
+      return "subdiv custom data interp 1D";
+    }
+    case SHADER_COMP_CUSTOM_DATA_INTERP_4D: {
+      return "subdiv custom data interp 4D";
     }
   }
   return NULL;
@@ -1426,12 +1431,24 @@ static void draw_subdiv_extract_uvs(DRWSubdivBuffers *buffers,
   }
 }
 
-static void draw_subdiv_extract_vcols_ex(DRWSubdivBuffers *buffers,
-                                         GPUVertBuf *src_data,
-                                         GPUVertBuf *dst_data,
-                                         int dst_offset)
+static void draw_subdiv_interp_custom_data(DRWSubdivBuffers *buffers,
+                                           GPUVertBuf *src_data,
+                                           GPUVertBuf *dst_data,
+                                           int dimensions,
+                                           int dst_offset)
 {
-  GPUShader *shader = get_patch_evaluation_shader(SHADER_COMP_CUSTOM_DATA_INTERP);
+  GPUShader *shader = NULL;
+
+  if (dimensions == 1) {
+    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_1D, "#define DIMENSIONS 1\n");
+  }
+  else if (dimensions == 4) {
+    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_4D, "#define DIMENSIONS 4\n");
+  }
+  else {
+    /* Crash if dimensions are not the supported. */
+  }
+
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1i(shader, "dst_offset", dst_offset);
@@ -1494,7 +1511,7 @@ static void draw_subdiv_extract_vcols(DRWSubdivBuffers *buffers,
 
       /* Ensure data is uploaded properly. */
       GPU_vertbuf_tag_dirty(src_data);
-      draw_subdiv_extract_vcols_ex(buffers, src_data, dst_data, dst_offset);
+      draw_subdiv_interp_custom_data(buffers, src_data, dst_data, 4, dst_offset);
     }
   }
 
@@ -2099,6 +2116,61 @@ static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
   MEM_freeN(vertex_used_map);
 }
 
+#include "BKE_deform.h"
+
+static float evaluate_vertex_weight(const MDeformVert *dvert, const DRW_MeshWeightState *wstate)
+{
+  /* Error state. */
+  if ((wstate->defgroup_active < 0) && (wstate->defgroup_len > 0)) {
+    return -2.0f;
+  }
+  if (dvert == NULL) {
+    return (wstate->alert_mode != OB_DRAW_GROUPUSER_NONE) ? -1.0f : 0.0f;
+  }
+
+  float input = 0.0f;
+  if (wstate->flags & DRW_MESH_WEIGHT_STATE_MULTIPAINT) {
+    /* Multi-Paint feature */
+    bool is_normalized = (wstate->flags & (DRW_MESH_WEIGHT_STATE_AUTO_NORMALIZE |
+                                           DRW_MESH_WEIGHT_STATE_LOCK_RELATIVE));
+    input = BKE_defvert_multipaint_collective_weight(dvert,
+                                                     wstate->defgroup_len,
+                                                     wstate->defgroup_sel,
+                                                     wstate->defgroup_sel_count,
+                                                     is_normalized);
+    /* make it black if the selected groups have no weight on a vertex */
+    if (input == 0.0f) {
+      return -1.0f;
+    }
+  }
+  else {
+    /* default, non tricky behavior */
+    input = BKE_defvert_find_weight(dvert, wstate->defgroup_active);
+
+    if (input == 0.0f) {
+      switch (wstate->alert_mode) {
+        case OB_DRAW_GROUPUSER_ACTIVE:
+          return -1.0f;
+          break;
+        case OB_DRAW_GROUPUSER_ALL:
+          if (BKE_defvert_is_weight_zero(dvert, wstate->defgroup_len)) {
+            return -1.0f;
+          }
+          break;
+      }
+    }
+  }
+
+  /* Lock-Relative: display the fraction of current weight vs total unlocked weight. */
+  if (wstate->flags & DRW_MESH_WEIGHT_STATE_LOCK_RELATIVE) {
+    input = BKE_defvert_lock_relative_weight(
+        input, dvert, wstate->defgroup_len, wstate->defgroup_locked, wstate->defgroup_unlocked);
+  }
+
+  CLAMP(input, 0.0f, 1.0f);
+  return input;
+}
+
 static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  Object *ob,
                                                  Mesh *mesh,
@@ -2482,6 +2554,44 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     GPU_vertbuf_init_build_on_device(mbc->vbo.vcol, &vcol_format, subdiv_buffers.number_of_loops);
     draw_subdiv_extract_vcols(
         &subdiv_buffers, mesh_eval, mbc->vbo.vcol, batch_cache->cd_used.vcol);
+  }
+
+  if (DRW_vbo_requested(mbc->vbo.weights)) {
+    static GPUVertFormat format = {0};
+    if (format.attr_len == 0) {
+      GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    }
+    GPU_vertbuf_init_build_on_device(mbc->vbo.weights, &format, draw_cache->num_patch_coords);
+
+    GPUVertBuf *coarse_weights = GPU_vertbuf_calloc();
+    GPU_vertbuf_init_with_format(coarse_weights, &format);
+    GPU_vertbuf_data_alloc(coarse_weights, mesh->totloop);
+    float *coarse_weights_data = GPU_vertbuf_get_data(coarse_weights);
+
+    const DRW_MeshWeightState *wstate = &batch_cache->weight_state;
+    const MDeformVert *dverts = (const MDeformVert *)CustomData_get_layer(&mesh_eval->vdata,
+                                                                          CD_MDEFORMVERT);
+
+    for (int i = 0; i < mesh_eval->totpoly; i++) {
+      const MPoly *mpoly = &mesh_eval->mpoly[i];
+
+      for (int loop_index = mpoly->loopstart; loop_index < mpoly->loopstart + mpoly->totloop;
+           loop_index++) {
+        const MLoop *ml = &mesh_eval->mloop[loop_index];
+
+        if (dverts != NULL) {
+          const MDeformVert *dvert = &dverts[ml->v];
+          coarse_weights_data[loop_index] = evaluate_vertex_weight(dvert, wstate);
+        }
+        else {
+          coarse_weights_data[loop_index] = evaluate_vertex_weight(NULL, wstate);
+        }
+      }
+    }
+
+    draw_subdiv_interp_custom_data(&subdiv_buffers, coarse_weights, mbc->vbo.weights, 1, 0);
+
+    GPU_vertbuf_discard(coarse_weights);
   }
 
   // draw_subdiv_cache_print_memory_used(draw_cache);

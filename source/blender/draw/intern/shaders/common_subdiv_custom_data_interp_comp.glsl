@@ -35,24 +35,60 @@ layout(binding = 5) writeonly restrict buffer destBuffer
 uniform int dst_offset = 0;
 uniform int coarse_poly_count = 0;
 
-vec4 read_vec4(uint index)
+struct Vertex {
+  float vertex_data[DIMENSIONS];
+};
+
+void clear(inout Vertex v)
 {
-  uint base_index = index * 4;
-  vec4 result;
-  result.x = src_data[base_index + 0];
-  result.y = src_data[base_index + 1];
-  result.z = src_data[base_index + 2];
-  result.w = src_data[base_index + 3];
+  for (int i = 0; i < DIMENSIONS; i++) {
+    v.vertex_data[i] = 0.0;
+  }
+}
+
+Vertex read_vertex(uint index)
+{
+  uint base_index = index * DIMENSIONS;
+  Vertex result;
+  for (int i = 0; i < DIMENSIONS; i++) {
+    result.vertex_data[i] = src_data[base_index + i];
+  }
   return result;
 }
 
-void write_vec4(uint index, vec4 data)
+void write_vertex(uint index, Vertex v)
 {
-  uint base_index = dst_offset + index * 4;
-  dst_data[base_index + 0] = data.x;
-  dst_data[base_index + 1] = data.y;
-  dst_data[base_index + 2] = data.z;
-  dst_data[base_index + 3] = data.w;
+  uint base_index = dst_offset + index * DIMENSIONS;
+  for (int i = 0; i < DIMENSIONS; i++) {
+    dst_data[base_index + i] = v.vertex_data[i];
+  }
+}
+
+Vertex interp_vertex(Vertex v0, Vertex v1, Vertex v2, Vertex v3, vec2 uv)
+{
+  Vertex result;
+  for (int i = 0; i < DIMENSIONS; i++) {
+    float e = mix(v0.vertex_data[i], v1.vertex_data[i], uv.x);
+    float f = mix(v2.vertex_data[i], v3.vertex_data[i], uv.x);
+    result.vertex_data[i] = mix(e, f, uv.y);
+  }
+  return result;
+}
+
+void add_with_weight(inout Vertex v0, Vertex v1, float weight)
+{
+  for (int i = 0; i < DIMENSIONS; i++) {
+    v0.vertex_data[i] += v1.vertex_data[i] * weight;
+  }
+}
+
+Vertex average(Vertex v0, Vertex v1)
+{
+  Vertex result;
+  for (int i = 0; i < DIMENSIONS; i++) {
+    result.vertex_data[i] = (v0.vertex_data[i] + v1.vertex_data[i]) * 0.5;
+  }
+  return result;
 }
 
 /* Given the index of the subdivision quad, return the index of the corresponding coarse polygon.
@@ -105,13 +141,6 @@ uint get_loop_start(uint coarse_polygon)
   return extra_coarse_face_data[coarse_polygon] & 0x7fffffff;
 }
 
-vec4 interp_vec4(vec4 a, vec4 b, vec4 c, vec4 d, vec2 uv)
-{
-  vec4 e = mix(a, b, uv.x);
-  vec4 f = mix(c, d, uv.x);
-  return mix(e, f, uv.y);
-}
-
 void main()
 {
   /* We execute for each quad. */
@@ -123,29 +152,31 @@ void main()
   uint loop_start = get_loop_start(coarse_polygon);
 
   /* Find the number of vertices for the coarse polygon. */
-  vec4 d0 = vec4(0.0);
-  vec4 d1 = vec4(0.0);
-  vec4 d2 = vec4(0.0);
-  vec4 d3 = vec4(0.0);
+  Vertex v0, v1, v2, v3;
+  clear(v0);
+  clear(v1);
+  clear(v2);
+  clear(v3);
 
   uint number_of_vertices = get_vertex_count(coarse_polygon);
   if (number_of_vertices == 4) {
     // Interpolate the src data.
-    d0 = read_vec4(loop_start + 0);
-    d1 = read_vec4(loop_start + 1);
-    d2 = read_vec4(loop_start + 2);
-    d3 = read_vec4(loop_start + 3);
+    v0 = read_vertex(loop_start + 0);
+    v1 = read_vertex(loop_start + 1);
+    v2 = read_vertex(loop_start + 2);
+    v3 = read_vertex(loop_start + 3);
   }
   else {
     // Interpolate the src data for the center.
     uint loop_end = loop_start + number_of_vertices - 1;
-    vec4 center_value = vec4(0.0);
+    Vertex center_value;
+    clear(center_value);
+
+    float weight = 1.0 / float(number_of_vertices);
 
     for (uint l = loop_start; l < loop_end; l++) {
-      center_value += read_vec4(l);
+      add_with_weight(center_value, read_vertex(l), weight);
     }
-
-    center_value /= float(number_of_vertices);
 
     // Interpolate between the previous and next corner for the middle values for the edges.
     uint patch_index = uint(patch_coords[start_loop_index].patch_index);
@@ -153,28 +184,28 @@ void main()
     uint next_coarse_corner = (current_coarse_corner + 1) % number_of_vertices;
     uint prev_coarse_corner = (current_coarse_corner + number_of_vertices - 1) % number_of_vertices;
 
-    d0 = read_vec4(loop_start);
-    d1 = (d0 + read_vec4(loop_start + next_coarse_corner)) * 0.5;
-    d3 = (d0 + read_vec4(loop_start + prev_coarse_corner)) * 0.5;
+    v0 = read_vertex(loop_start);
+    v1 = average(v0, read_vertex(loop_start + next_coarse_corner));
+    v3 = average(v0, read_vertex(loop_start + prev_coarse_corner));
 
     // Interpolate between the current value, and the ones for the center and mid-edges.
-    d2 = center_value;
+    v2 = center_value;
   }
 
   /* Do a linear interpolation of the data based on the UVs for each loop of this subdivided quad. */
   for (uint loop_index = start_loop_index; loop_index < start_loop_index + 4; loop_index++) {
     BlenderPatchCoord co = patch_coords[loop_index];
     vec2 uv = decode_uv(co.encoded_uv);
-    /* NOTE: d2 and d3 are reversed to stay consistent with the interpolation weight on the x-axis:
+    /* NOTE: v2 and v3 are reversed to stay consistent with the interpolation weight on the x-axis:
      *
-     * d3 +-----+ d2
+     * v3 +-----+ v2
      *    |     |
      *    |     |
-     * d0 +-----+ d1
+     * v0 +-----+ v1
      *
-     * otherwise, weight would be `1.0 - uv.x` for `d2 <-> d3`, but `uv.x` for `d0 <-> d1`.
+     * otherwise, weight would be `1.0 - uv.x` for `v2 <-> v3`, but `uv.x` for `v0 <-> v1`.
      */
-    vec4 result = interp_vec4(d0, d1, d3, d2, uv);
-    write_vec4(loop_index, result);
+    Vertex result = interp_vertex(v0, v1, v3, v2, uv);
+    write_vertex(loop_index, result);
   }
 }
