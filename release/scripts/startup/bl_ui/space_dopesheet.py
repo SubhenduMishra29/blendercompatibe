@@ -713,6 +713,8 @@ class DOPESHEET_PT_action(Panel):
         row.prop(action, "frame_start", text="Start")
         row.prop(action, "frame_end", text="End")
 
+        col.prop(action, "is_cyclic")
+
 
 class LayersDopeSheetPanel:
     bl_space_type = 'DOPESHEET_EDITOR'
