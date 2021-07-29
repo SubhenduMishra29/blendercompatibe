@@ -55,13 +55,21 @@ GHOST_TSuccess GHOST_ISystem::createSystem()
     m_system = new GHOST_SystemNULL();
 #elif defined(WITH_GHOST_X11) && defined(WITH_GHOST_WAYLAND)
     /* Special case, try Wayland, fall back to X11. */
-    try {
-      m_system = new GHOST_SystemWayland();
-    }
-    catch (const std::runtime_error &) {
-      /* fallback to X11. */
-      delete m_system;
-      m_system = nullptr;
+    if (std::getenv("BLENDER_WAYLAND")) {
+      try {
+        m_system = new GHOST_SystemWayland();
+      }
+      catch (const std::runtime_error &e) {
+        /* fallback to X11. */
+        fprintf(stderr,
+                "The Wayland backend was enabled via 'BLENDER_WAYLAND' "\
+                "but it could not be instantiated.\n"
+                "%s\n" \
+                "Falling back to X11.\n",
+                e.what());
+        delete m_system;
+        m_system = nullptr;
+      }
     }
     if (!m_system) {
       m_system = new GHOST_SystemX11();
