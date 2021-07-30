@@ -2685,6 +2685,12 @@ def km_sequencerpreview(params):
         ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_8', "value": 'PRESS'},
          {"properties": [("ratio", 0.125)]}),
         ("sequencer.sample", {"type": params.action_mouse, "value": 'PRESS'}, None),
+        ("transform.translate", {"type": 'G', "value": 'PRESS'},
+         {"properties": [("sequencer_image", True)]}),
+        ("transform.resize", {"type": 'S', "value": 'PRESS'},
+         {"properties": [("sequencer_image", True)]}),
+        ("transform.rotate", {"type": 'R', "value": 'PRESS'},
+         {"properties": [("sequencer_image", True)]}),
     ])
 
     return keymap

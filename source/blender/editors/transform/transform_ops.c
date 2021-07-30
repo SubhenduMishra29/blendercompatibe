@@ -735,6 +735,10 @@ void Transform_Properties(struct wmOperatorType *ot, int flags)
                            "Forces the use of Auto Merge and Split");
     RNA_def_property_flag(prop, PROP_HIDDEN);
   }
+
+  prop = RNA_def_boolean(
+      ot->srna, "sequencer_image", 0, "Edit Sequencer Image", "Edit sequencer image position");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
 static void TRANSFORM_OT_translate(struct wmOperatorType *ot)
