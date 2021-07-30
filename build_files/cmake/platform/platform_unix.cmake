@@ -574,20 +574,55 @@ endif()
 
 if(WITH_GHOST_WAYLAND)
   find_package(PkgConfig)
-  pkg_check_modules(wayland-client REQUIRED wayland-client>=1.12)
-  pkg_check_modules(wayland-egl REQUIRED wayland-egl)
-  pkg_check_modules(wayland-scanner REQUIRED wayland-scanner)
-  pkg_check_modules(xkbcommon REQUIRED xkbcommon)
-  pkg_check_modules(wayland-cursor REQUIRED wayland-cursor)
-  pkg_check_modules(dbus REQUIRED dbus-1)
+  pkg_check_modules(wayland-client QUIET wayland-client>=1.12)
+  pkg_check_modules(wayland-egl QUIET wayland-egl)
+  pkg_check_modules(wayland-scanner QUIET wayland-scanner)
+  pkg_check_modules(wayland-cursor QUIET wayland-cursor)
+  pkg_check_modules(xkbcommon QUIET xkbcommon)
+  pkg_check_modules(dbus QUIET dbus-1)
+  pkg_check_modules(wayland-protocols QUIET wayland-protocols>=1.15)
 
-  list(APPEND PLATFORM_LINKLIBS
-    ${wayland-client_LINK_LIBRARIES}
-    ${wayland-egl_LINK_LIBRARIES}
-    ${xkbcommon_LINK_LIBRARIES}
-    ${wayland-cursor_LINK_LIBRARIES}
-    ${dbus_LINK_LIBRARIES}
-  )
+  if (${wayland-protocols_FOUND})
+    pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
+  else()
+    find_path(WAYLAND_PROTOCOLS_DIR
+      NAMES unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+      PATH_SUFFIXES share/wayland-protocols
+    )
+  endif()
+
+  if(NOT wayland-client_FOUND)
+    message(STATUS "wayland-client not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  elseif(NOT wayland-egl_FOUND)
+    message(STATUS "wayland-egl not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  elseif(NOT wayland-scanner_FOUND)
+    message(STATUS "wayland-scanner not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  elseif(NOT wayland-cursor_FOUND)
+    message(STATUS "wayland-cursor not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  elseif(NOT xkbcommon_FOUND)
+    message(STATUS "xkbcommon not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  elseif(NOT dbus_FOUND)
+    message(STATUS "dbus not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  elseif(NOT EXISTS ${WAYLAND_PROTOCOLS_DIR})
+    message(STATUS "wayland-protocols not found, disabling WITH_GHOST_WAYLAND")
+    set(WITH_GHOST_WAYLAND OFF)
+  endif()
+
+  if(WITH_GHOST_WAYLAND)
+    list(APPEND PLATFORM_LINKLIBS
+      ${wayland-client_LINK_LIBRARIES}
+      ${wayland-egl_LINK_LIBRARIES}
+      ${xkbcommon_LINK_LIBRARIES}
+      ${wayland-cursor_LINK_LIBRARIES}
+      ${dbus_LINK_LIBRARIES}
+    )
+  endif()
 endif()
 
 if(WITH_GHOST_X11)
