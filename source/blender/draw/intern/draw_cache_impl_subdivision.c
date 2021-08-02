@@ -380,7 +380,12 @@ static GPUVertFormat *get_edge_fac_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "wd", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    if (GPU_crappy_amd_driver()) {
+      GPU_vertformat_attr_add(&format, "wd", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    }
+    else {
+      GPU_vertformat_attr_add(&format, "wd", GPU_COMP_U8, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    }
   }
   return &format;
 }
@@ -1698,7 +1703,10 @@ static void do_build_edge_fac_buffer(DRWSubdivBuffers *buffers,
                                      bool optimal_display,
                                      GPUVertBuf *edge_fac)
 {
-  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_EDGE_FAC, NULL);
+  /* No separate shader for the AMD driver case as we assume that the GPU will not change during
+   * the execution of the program. */
+  const char *defines = GPU_crappy_amd_driver() ? "#define GPU_AMD_DRIVER_BYTE_BUG\n" : NULL;
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_EDGE_FAC, defines);
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1b(shader, "optimal_display", optimal_display);
@@ -2441,12 +2449,23 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
     LooseEdge *loose_edge = draw_cache->loose_edges;
     uint offset = draw_cache->num_patch_coords;
-    float loose_edge_fac[2] = {1.0f, 1.0f};
-    while (loose_edge) {
-      GPU_vertbuf_update_sub(
-          mbc->vbo.edge_fac, offset * sizeof(float), sizeof(loose_edge_fac), loose_edge_fac);
-      loose_edge = loose_edge->next;
-      offset += 2;
+    if (GPU_crappy_amd_driver()) {
+      float loose_edge_fac[2] = {1.0f, 1.0f};
+      while (loose_edge) {
+        GPU_vertbuf_update_sub(
+            mbc->vbo.edge_fac, offset * sizeof(float), sizeof(loose_edge_fac), loose_edge_fac);
+        loose_edge = loose_edge->next;
+        offset += 2;
+      }
+    }
+    else {
+      char loose_edge_fac[2] = {255, 255};
+      while (loose_edge) {
+        GPU_vertbuf_update_sub(
+            mbc->vbo.edge_fac, offset * sizeof(char), sizeof(loose_edge_fac), loose_edge_fac);
+        loose_edge = loose_edge->next;
+        offset += 2;
+      }
     }
 
     if (!has_edge_idx) {

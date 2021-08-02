@@ -14,10 +14,31 @@ layout(std430, binding = 1) readonly buffer inputEdgeIndex
 
 layout(std430, binding = 2) writeonly buffer outputEdgeFactors
 {
+#ifdef GPU_AMD_DRIVER_BYTE_BUG
   float output_edge_fac[];
+#else
+  uint output_edge_fac[];
+#endif
 };
 
 uniform bool optimal_display;
+
+void write_vec4(uint index, vec4 edge_facs)
+{
+#ifdef GPU_AMD_DRIVER_BYTE_BUG
+  for (uint i = 0; i < 4; i++) {
+    output_edge_fac[index + i] = edge_facs[i];
+  }
+#else
+  /* Use same scaling as in extract_edge_fac_iter_poly_mesh. */
+  uint a = uint(clamp(edge_facs.x * 253.0 + 1.0, 0.0, 255.0));
+  uint b = uint(clamp(edge_facs.y * 253.0 + 1.0, 0.0, 255.0));
+  uint c = uint(clamp(edge_facs.z * 253.0 + 1.0, 0.0, 255.0));
+  uint d = uint(clamp(edge_facs.w * 253.0 + 1.0, 0.0, 255.0));
+  uint packed_edge_fac = a << 24 | b << 16 | c << 8 | d;
+  output_edge_fac[index] = packed_edge_fac;
+#endif
+}
 
 // From extract_mesh_vbo_edge_fac.cc, keep in sync!
 float loop_edge_factor_get(vec3 f_no, vec3 v_co, vec3 v_no, vec3 v_next_co)
@@ -30,31 +51,29 @@ float loop_edge_factor_get(vec3 f_no, vec3 v_co, vec3 v_no, vec3 v_next_co)
   return clamp(d, 0.0, 1.0);
 }
 
-void emit_line(uint start_loop_index, uint corner_index, vec3 face_normal)
+float compute_line_factor(uint start_loop_index, uint corner_index, vec3 face_normal)
 {
   uint vertex_index = start_loop_index + corner_index;
   uint edge_index = input_edge_index[vertex_index];
 
   if (edge_index == -1 && optimal_display) {
-    output_edge_fac[vertex_index] = 0.0;
-    return;
+    return 0.0;
   }
 
-  /* Mod 4 so we loop back at the first vertex on the last loop index (3). */
+  /* Mod 4 so we loop back at the first vertex on the last loop index (3), but only the corner index
+   * needs to be wrapped. */
   uint next_vertex_index = start_loop_index + (corner_index + 1) % 4;
-
   vec3 vertex_pos = get_vertex_pos(pos_nor[vertex_index]);
   vec3 vertex_nor = get_vertex_nor(pos_nor[vertex_index]);
   vec3 next_vertex_pos = get_vertex_pos(pos_nor[next_vertex_index]);
-
-  float factor = loop_edge_factor_get(face_normal, vertex_pos, vertex_nor, next_vertex_pos);
-  output_edge_fac[vertex_index] = factor;
+  return loop_edge_factor_get(face_normal, vertex_pos, vertex_nor, next_vertex_pos);
 }
 
 void main()
 {
   /* We execute for each quad, so the start index of the loop is quad_index * 4. */
-  uint start_loop_index = gl_GlobalInvocationID.x * 4;
+  uint quad_index = gl_GlobalInvocationID.x;
+  uint start_loop_index = quad_index * 4;
 
   /* First compute the face normal, we need it to compute the bihedral edge angle. */
   vec3 v0 = get_vertex_pos(pos_nor[start_loop_index + 0]);
@@ -62,7 +81,15 @@ void main()
   vec3 v2 = get_vertex_pos(pos_nor[start_loop_index + 2]);
   vec3 face_normal = normalize(cross(v1 - v0, v2 - v0));
 
+  vec4 edge_facs = vec4(0.0);
   for (int i = 0; i < 4; i++) {
-    emit_line(start_loop_index, i, face_normal);
+    edge_facs[i] = compute_line_factor(start_loop_index, i, face_normal);
   }
+
+#ifdef GPU_AMD_DRIVER_BYTE_BUG
+  write_vec4(start_loop_index, edge_facs);
+#else
+  /* When packed into bytes, the index is the same as for the quad. */
+  write_vec4(quad_index, edge_facs);
+#endif
 }
