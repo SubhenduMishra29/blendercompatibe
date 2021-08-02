@@ -4,7 +4,11 @@ layout(std430) buffer;
 
 layout(binding = 0) readonly restrict buffer sourceBuffer
 {
+#ifdef GPU_FETCH_U16_TO_FLOAT
+  uint src_data[];
+#else
   float src_data[];
+#endif
 };
 
 layout(binding = 1) readonly restrict buffer subdivPolygonOffset
@@ -29,7 +33,11 @@ layout(binding = 4) readonly restrict buffer extraCoarseFaceData
 
 layout(binding = 5) writeonly restrict buffer destBuffer
 {
+#ifdef GPU_FETCH_U16_TO_FLOAT
+  uint dst_data[];
+#else
   float dst_data[];
+#endif
 };
 
 uniform int dst_offset = 0;
@@ -48,20 +56,62 @@ void clear(inout Vertex v)
 
 Vertex read_vertex(uint index)
 {
-  uint base_index = index * DIMENSIONS;
   Vertex result;
+#ifdef GPU_FETCH_U16_TO_FLOAT
+  uint base_index = index * 2;
+  if (DIMENSIONS == 4) {
+    uint xy = src_data[base_index];
+    uint zw = src_data[base_index + 1];
+
+    float x = float((xy >> 16) & 0xffff) / 65535.0;
+    float y = float(xy & 0xffff) / 65535.0;
+    float z = float((zw >> 16) & 0xffff) / 65535.0;
+    float w = float(zw & 0xffff) / 65535.0;
+
+    result.vertex_data[0] = x;
+    result.vertex_data[1] = y;
+    result.vertex_data[2] = z;
+    result.vertex_data[3] = w;
+  }
+  else {
+    /* This case is unsupported for now. */
+    clear(result);
+  }
+#else
+  uint base_index = index * DIMENSIONS;
   for (int i = 0; i < DIMENSIONS; i++) {
     result.vertex_data[i] = src_data[base_index + i];
   }
+#endif
   return result;
 }
 
 void write_vertex(uint index, Vertex v)
 {
+#ifdef GPU_FETCH_U16_TO_FLOAT
+  uint base_index = dst_offset + index * 2;
+  if (DIMENSIONS == 4) {
+    uint x = uint(v.vertex_data[0] * 65535.0);
+    uint y = uint(v.vertex_data[1] * 65535.0);
+    uint z = uint(v.vertex_data[2] * 65535.0);
+    uint w = uint(v.vertex_data[3] * 65535.0);
+
+    uint xy = x << 16 | y;
+    uint zw = z << 16 | w;
+
+    dst_data[base_index] = xy;
+    dst_data[base_index + 1] = zw;
+  }
+  else {
+    /* This case is unsupported for now. */
+    dst_data[base_index] = 0;
+  }
+#else
   uint base_index = dst_offset + index * DIMENSIONS;
   for (int i = 0; i < DIMENSIONS; i++) {
     dst_data[base_index + i] = v.vertex_data[i];
   }
+#endif
 }
 
 Vertex interp_vertex(Vertex v0, Vertex v1, Vertex v2, Vertex v3, vec2 uv)

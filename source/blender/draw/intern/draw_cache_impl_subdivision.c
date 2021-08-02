@@ -542,7 +542,7 @@ static void initialize_vcol_format(GPUVertFormat *format,
       GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
       BLI_snprintf(attr_name, sizeof(attr_name), "c%s", attr_safe_name);
-      GPU_vertformat_attr_add(format, attr_name, GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+      GPU_vertformat_attr_add(format, attr_name, GPU_COMP_U16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
       if (i == CustomData_get_render_layer(cd_ldata, CD_MLOOPCOL)) {
         GPU_vertformat_alias_add(format, "c");
@@ -1443,7 +1443,8 @@ static void draw_subdiv_interp_custom_data(DRWSubdivBuffers *buffers,
     shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_1D, "#define DIMENSIONS 1\n");
   }
   else if (dimensions == 4) {
-    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_4D, "#define DIMENSIONS 4\n");
+    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_4D,
+                               "#define DIMENSIONS 4\n#define GPU_FETCH_U16_TO_FLOAT\n");
   }
   else {
     /* Crash if dimensions are not the supported. */
@@ -1481,10 +1482,10 @@ static void draw_subdiv_extract_vcols(DRWSubdivBuffers *buffers,
   GPU_vertbuf_data_alloc(src_data, coarse_mesh->totloop);
 
   typedef struct gpuMeshVcol {
-    float r;
-    float g;
-    float b;
-    float a;
+    ushort r;
+    ushort g;
+    ushort b;
+    ushort a;
   } gpuMeshVcol;
 
   gpuMeshVcol *mesh_vcol = (gpuMeshVcol *)GPU_vertbuf_get_data(src_data);
@@ -1496,17 +1497,17 @@ static void draw_subdiv_extract_vcols(DRWSubdivBuffers *buffers,
   int pack_layer_index = 0;
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (vcol_layers & (1 << i)) {
-      /* Include stride in offset. */
-      const int dst_offset = (int)buffers->number_of_loops * 4 * pack_layer_index++;
+      /* Include stride in offset, we use a stride of 2 since colors are packed into 2 uints. */
+      const int dst_offset = (int)buffers->number_of_loops * 2 * pack_layer_index++;
       const MLoopCol *mloopcol = (MLoopCol *)CustomData_get_layer_n(cd_ldata, CD_MLOOPCOL, i);
 
       gpuMeshVcol *vcol = mesh_vcol;
 
       for (int ml_index = 0; ml_index < coarse_mesh->totloop; ml_index++, vcol++, mloopcol++) {
-        vcol->r = BLI_color_from_srgb_table[mloopcol->r];
-        vcol->g = BLI_color_from_srgb_table[mloopcol->g];
-        vcol->b = BLI_color_from_srgb_table[mloopcol->b];
-        vcol->a = mloopcol->a * (1.0f / 255.0f);
+        vcol->r = unit_float_to_ushort_clamp(BLI_color_from_srgb_table[mloopcol->r]);
+        vcol->g = unit_float_to_ushort_clamp(BLI_color_from_srgb_table[mloopcol->g]);
+        vcol->b = unit_float_to_ushort_clamp(BLI_color_from_srgb_table[mloopcol->b]);
+        vcol->a = unit_float_to_ushort_clamp(mloopcol->a * (1.0f / 255.0f));
       }
 
       /* Ensure data is uploaded properly. */
