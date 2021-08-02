@@ -57,7 +57,13 @@ uint get_index(uint i)
  * the format.  */
 struct PosNorLoop {
   float x, y, z;
+#ifdef HQ_NORMALS
+  /* High quality normals are stored in 16-bits, so store 2 per uint. */
+  uint nor_xy;
+  uint nor_zw;
+#else
   uint nor;
+#endif
 };
 
 vec3 get_vertex_pos(PosNorLoop vertex_data)
@@ -65,12 +71,33 @@ vec3 get_vertex_pos(PosNorLoop vertex_data)
   return vec3(vertex_data.x, vertex_data.y, vertex_data.z);
 }
 
+#ifdef HQ_NORMALS
+float gpu_unpack_float_from_uint(uint x)
+{
+  return (float(x) - 32768.0) / 32767.0;
+}
+
+uint gpu_pack_uint_from_float(float x)
+{
+  return uint(clamp(x * 32767.0 + 32768.0, 0.0, 65535.0));
+}
+
+vec3 get_vertex_nor(PosNorLoop vertex_data)
+{
+  uint inor_xy = vertex_data.nor_xy;
+  uint inor_zw = vertex_data.nor_zw;
+  float x = gpu_unpack_float_from_uint((inor_xy >> 16) & 0xffff);
+  float y = gpu_unpack_float_from_uint(inor_xy & 0xffff);
+  float z = gpu_unpack_float_from_uint((inor_zw >> 16) & 0xffff);
+  return vec3(x, y, z);
+}
+#else
 float gpu_unpack_float_from_uint(uint x)
 {
   return (float(x) - 512.0) / 511.0;
 }
 
-uint gpu_pack_float_from_uint(float x)
+uint gpu_pack_uint_from_float(float x)
 {
   return uint(clamp(x * 511.0 + 512.0, 0.0, 1023.0));
 }
@@ -83,6 +110,7 @@ vec3 get_vertex_nor(PosNorLoop vertex_data)
   float z = gpu_unpack_float_from_uint((inor >> 20) & 0x3ff);
   return vec3(x, y, z);
 }
+#endif
 
 void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
 {
@@ -96,21 +124,42 @@ void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
  * set by two separate compute pass. */
 void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor)
 {
-  uint x = gpu_pack_float_from_uint(nor.x);
-  uint y = gpu_pack_float_from_uint(nor.y);
-  uint z = gpu_pack_float_from_uint(nor.z);
+#ifdef HQ_NORMALS
+  uint x = gpu_pack_uint_from_float(nor.x);
+  uint y = gpu_pack_uint_from_float(nor.y);
+  uint z = gpu_pack_uint_from_float(nor.z);
+  uint flag = vertex_data.nor_zw & 0xffff;
+  uint nor_xy = x << 16 | y;
+  uint nor_zw = z << 16 | (flag & 0xffff);
+  vertex_data.nor_xy = nor_xy;
+  vertex_data.nor_zw = nor_zw;
+#else
+  uint x = gpu_pack_uint_from_float(nor.x);
+  uint y = gpu_pack_uint_from_float(nor.y);
+  uint z = gpu_pack_uint_from_float(nor.z);
   uint flag = (vertex_data.nor >> 30) & 0x3;
   uint inor = x | y << 10 | z << 20 | flag << 30;
   vertex_data.nor = inor;
+#endif
 }
 
 void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor, uint flag)
 {
-  uint x = gpu_pack_float_from_uint(nor.x);
-  uint y = gpu_pack_float_from_uint(nor.y);
-  uint z = gpu_pack_float_from_uint(nor.z);
+#ifdef HQ_NORMALS
+  uint x = gpu_pack_uint_from_float(nor.x);
+  uint y = gpu_pack_uint_from_float(nor.y);
+  uint z = gpu_pack_uint_from_float(nor.z);
+  uint nor_xy = x << 16 | y;
+  uint nor_zw = z << 16 | (flag & 0xffff);
+  vertex_data.nor_xy = nor_xy;
+  vertex_data.nor_zw = nor_zw;
+#else
+  uint x = gpu_pack_uint_from_float(nor.x);
+  uint y = gpu_pack_uint_from_float(nor.y);
+  uint z = gpu_pack_uint_from_float(nor.z);
   uint inor = x | y << 10 | z << 20 | flag << 30;
   vertex_data.nor = inor;
+#endif
 }
 
 #define ORIGINDEX_NONE -1
