@@ -2,18 +2,13 @@
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout(std430) buffer;
 
-layout(binding = 0) readonly restrict buffer sourceBuffer
+layout(binding = 1) readonly restrict buffer sourceBuffer
 {
 #ifdef GPU_FETCH_U16_TO_FLOAT
   uint src_data[];
 #else
   float src_data[];
 #endif
-};
-
-layout(binding = 1) readonly restrict buffer subdivPolygonOffset
-{
-  uint subdiv_polygon_offset[];
 };
 
 layout(binding = 2) readonly restrict buffer facePTexOffset
@@ -141,34 +136,6 @@ Vertex average(Vertex v0, Vertex v1)
   return result;
 }
 
-/* Given the index of the subdivision quad, return the index of the corresponding coarse polygon.
- * This uses subdiv_polygon_offset and since it is a growing list of offsets, we can use binary
- * search to locate the right index.
- * TODO(kevindietrich): try to deduplicate this with the version in common_subdiv_tris_comp.glsl
- * but we cannot pass an array to a function. */
-uint coarse_polygon_index_from_subdiv_quad_index(uint subdiv_quad_index)
-{
-  uint first = 0;
-  uint last = coarse_poly_count;
-
-  while (first != last) {
-    uint middle = (first + last) / 2;
-
-    if (subdiv_polygon_offset[middle] < subdiv_quad_index) {
-      first = middle + 1;
-    }
-    else {
-      last = middle;
-    }
-  }
-
-  if (subdiv_polygon_offset[first] == subdiv_quad_index) {
-    return first;
-  }
-
-  return first - 1;
-}
-
 uint get_vertex_count(uint coarse_polygon)
 {
   uint number_of_patches = face_ptex_offset[coarse_polygon + 1] - face_ptex_offset[coarse_polygon];
@@ -198,7 +165,7 @@ void main()
   uint start_loop_index = quad_index * 4;
 
   /* Find which coarse polygon we came from. */
-  uint coarse_polygon = coarse_polygon_index_from_subdiv_quad_index(quad_index);
+  uint coarse_polygon = coarse_polygon_index_from_subdiv_quad_index(quad_index, coarse_poly_count);
   uint loop_start = get_loop_start(coarse_polygon);
 
   /* Find the number of vertices for the coarse polygon. */

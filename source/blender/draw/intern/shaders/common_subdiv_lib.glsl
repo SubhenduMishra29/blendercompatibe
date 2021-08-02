@@ -114,3 +114,36 @@ void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor, uint flag)
 }
 
 #define ORIGINDEX_NONE -1
+
+#ifdef SUBDIV_POLYGON_OFFSET
+layout(std430, binding = 0) readonly buffer inputSubdivPolygonOffset
+{
+  uint subdiv_polygon_offset[];
+};
+
+/* Given the index of the subdivision quad, return the index of the corresponding coarse polygon.
+ * This uses subdiv_polygon_offset and since it is a growing list of offsets, we can use binary
+ * search to locate the right index. */
+uint coarse_polygon_index_from_subdiv_quad_index(uint subdiv_quad_index, uint coarse_poly_count)
+{
+  uint first = 0;
+  uint last = coarse_poly_count;
+
+  while (first != last) {
+    uint middle = (first + last) / 2;
+
+    if (subdiv_polygon_offset[middle] < subdiv_quad_index) {
+      first = middle + 1;
+    }
+    else {
+      last = middle;
+    }
+  }
+
+  if (subdiv_polygon_offset[first] == subdiv_quad_index) {
+    return first;
+  }
+
+  return first - 1;
+}
+#endif

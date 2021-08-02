@@ -1445,11 +1445,13 @@ static void draw_subdiv_interp_custom_data(DRWSubdivBuffers *buffers,
   GPUShader *shader = NULL;
 
   if (dimensions == 1) {
-    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_1D, "#define DIMENSIONS 1\n");
+    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_1D,
+                               "#define SUBDIV_POLYGON_OFFSET\n#define DIMENSIONS 1\n");
   }
   else if (dimensions == 4) {
-    shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_4D,
-                               "#define DIMENSIONS 4\n#define GPU_FETCH_U16_TO_FLOAT\n");
+    shader = get_subdiv_shader(
+        SHADER_COMP_CUSTOM_DATA_INTERP_4D,
+        "#define SUBDIV_POLYGON_OFFSET\n#define DIMENSIONS 4\n#define GPU_FETCH_U16_TO_FLOAT\n");
   }
   else {
     /* Crash if dimensions are not the supported. */
@@ -1460,8 +1462,9 @@ static void draw_subdiv_interp_custom_data(DRWSubdivBuffers *buffers,
   GPU_shader_uniform_1i(shader, "dst_offset", dst_offset);
   GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->coarse_poly_count);
 
-  GPU_vertbuf_bind_as_ssbo(src_data, 0);
-  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, 1);
+  /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
+  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, 0);
+  GPU_vertbuf_bind_as_ssbo(src_data, 1);
   GPU_vertbuf_bind_as_ssbo(buffers->face_ptex_offset, 2);
   GPU_vertbuf_bind_as_ssbo(buffers->patch_coords, 3);
   GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, 4);
@@ -1574,26 +1577,23 @@ static void do_build_tris_buffer(DRWSubdivBuffers *buffers,
 {
   const bool do_single_material = material_count <= 1;
 
-  const char *defines = NULL;
+  const char *defines = "#define SUBDIV_POLYGON_OFFSET\n";
   if (do_single_material) {
-    defines = "#define SINGLE_MATERIAL\n";
+    defines = "#define SUBDIV_POLYGON_OFFSET\n#define SINGLE_MATERIAL\n";
   }
 
   GPUShader *shader = get_subdiv_shader(
       do_single_material ? SHADER_BUFFER_TRIS : SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS, defines);
   GPU_shader_bind(shader);
 
-  int binding_point = 0;
-
-  /* Inputs */
-
   /* Outputs */
-  GPU_indexbuf_bind_as_ssbo(subdiv_tris, binding_point++);
+  GPU_indexbuf_bind_as_ssbo(subdiv_tris, 1);
 
   if (!do_single_material) {
     GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->coarse_poly_count);
-    GPU_vertbuf_bind_as_ssbo(buffers->polygon_mat_offset, binding_point++);
-    GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, binding_point++);
+    GPU_vertbuf_bind_as_ssbo(buffers->polygon_mat_offset, 2);
+    /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
+    GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, 0);
   }
 
   GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
@@ -1725,19 +1725,19 @@ static void do_build_edge_fac_buffer(DRWSubdivBuffers *buffers,
 
 static void do_build_lnor_buffer(DRWSubdivBuffers *buffers, GPUVertBuf *pos_nor, GPUVertBuf *lnor)
 {
-  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LNOR, NULL);
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LNOR, "#define SUBDIV_POLYGON_OFFSET\n");
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->coarse_poly_count);
 
-  int binding_point = 0;
   /* Inputs */
-  GPU_vertbuf_bind_as_ssbo(pos_nor, binding_point++);
-  GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, binding_point++);
-  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(pos_nor, 1);
+  GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, 2);
+  /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
+  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset, 0);
 
   /* Outputs */
-  GPU_vertbuf_bind_as_ssbo(lnor, binding_point++);
+  GPU_vertbuf_bind_as_ssbo(lnor, 3);
 
   GPU_compute_dispatch(shader, buffers->number_of_quads, 1, 1);
 
