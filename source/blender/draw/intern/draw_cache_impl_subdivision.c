@@ -1145,19 +1145,6 @@ static GPUVertBuf *gpu_vertbuf_create_from_format(GPUVertFormat *format, uint le
   return verts;
 }
 
-static GPUVertBuf *gpu_vertbuf_from_blender_patch_coords(CompressedPatchCoord *patch_coords,
-                                                         uint len)
-{
-  GPUVertBuf *blender_patch_coords = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(
-      blender_patch_coords, get_blender_patch_coords_format(), GPU_USAGE_STATIC);
-  GPU_vertbuf_data_alloc(blender_patch_coords, len);
-  memcpy(GPU_vertbuf_get_data(blender_patch_coords),
-         patch_coords,
-         len * sizeof(CompressedPatchCoord));
-  return blender_patch_coords;
-}
-
 static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
 {
   /* +1 so that we do not require a special for the last vertex, this extra offset will contain the
