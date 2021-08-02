@@ -91,6 +91,15 @@ vec3 get_vertex_nor(PosNorLoop vertex_data)
   float z = gpu_unpack_float_from_uint((inor_zw >> 16) & 0xffff);
   return vec3(x, y, z);
 }
+
+void compress_normal(vec3 nor, uint flag, out uint nor_xy, out uint nor_zw)
+{
+  uint x = gpu_pack_uint_from_float(nor.x);
+  uint y = gpu_pack_uint_from_float(nor.y);
+  uint z = gpu_pack_uint_from_float(nor.z);
+  nor_xy = x << 16 | y;
+  nor_zw = z << 16 | (flag & 0xffff);
+}
 #else
 float gpu_unpack_float_from_uint(uint x)
 {
@@ -110,6 +119,14 @@ vec3 get_vertex_nor(PosNorLoop vertex_data)
   float z = gpu_unpack_float_from_uint((inor >> 20) & 0x3ff);
   return vec3(x, y, z);
 }
+
+uint compress_normal(vec3 nor, uint flag)
+{
+  uint x = gpu_pack_uint_from_float(nor.x);
+  uint y = gpu_pack_uint_from_float(nor.y);
+  uint z = gpu_pack_uint_from_float(nor.z);
+  return x | y << 10 | z << 20 | flag << 30;
+}
 #endif
 
 void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
@@ -125,40 +142,20 @@ void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
 void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor)
 {
 #ifdef HQ_NORMALS
-  uint x = gpu_pack_uint_from_float(nor.x);
-  uint y = gpu_pack_uint_from_float(nor.y);
-  uint z = gpu_pack_uint_from_float(nor.z);
   uint flag = vertex_data.nor_zw & 0xffff;
-  uint nor_xy = x << 16 | y;
-  uint nor_zw = z << 16 | (flag & 0xffff);
-  vertex_data.nor_xy = nor_xy;
-  vertex_data.nor_zw = nor_zw;
+  compress_normal(nor, flag, vertex_data.nor_xy, vertex_data.nor_zw);
 #else
-  uint x = gpu_pack_uint_from_float(nor.x);
-  uint y = gpu_pack_uint_from_float(nor.y);
-  uint z = gpu_pack_uint_from_float(nor.z);
   uint flag = (vertex_data.nor >> 30) & 0x3;
-  uint inor = x | y << 10 | z << 20 | flag << 30;
-  vertex_data.nor = inor;
+  vertex_data.nor = compress_normal(nor, flag);
 #endif
 }
 
 void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor, uint flag)
 {
 #ifdef HQ_NORMALS
-  uint x = gpu_pack_uint_from_float(nor.x);
-  uint y = gpu_pack_uint_from_float(nor.y);
-  uint z = gpu_pack_uint_from_float(nor.z);
-  uint nor_xy = x << 16 | y;
-  uint nor_zw = z << 16 | (flag & 0xffff);
-  vertex_data.nor_xy = nor_xy;
-  vertex_data.nor_zw = nor_zw;
+  compress_normal(nor, flag, vertex_data.nor_xy, vertex_data.nor_zw);
 #else
-  uint x = gpu_pack_uint_from_float(nor.x);
-  uint y = gpu_pack_uint_from_float(nor.y);
-  uint z = gpu_pack_uint_from_float(nor.z);
-  uint inor = x | y << 10 | z << 20 | flag << 30;
-  vertex_data.nor = inor;
+  vertex_data.nor = compress_normal(nor, flag);
 #endif
 }
 

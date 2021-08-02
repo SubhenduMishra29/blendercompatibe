@@ -199,7 +199,8 @@ void main()
     uint patch_index = uint(patch_coords[start_loop_index].patch_index);
     uint current_coarse_corner = get_polygon_corner_index(coarse_polygon, patch_index);
     uint next_coarse_corner = (current_coarse_corner + 1) % number_of_vertices;
-    uint prev_coarse_corner = (current_coarse_corner + number_of_vertices - 1) % number_of_vertices;
+    uint prev_coarse_corner = (current_coarse_corner + number_of_vertices - 1) %
+                              number_of_vertices;
 
     v0 = read_vertex(loop_start);
     v1 = average(v0, read_vertex(loop_start + next_coarse_corner));
@@ -209,7 +210,8 @@ void main()
     v2 = center_value;
   }
 
-  /* Do a linear interpolation of the data based on the UVs for each loop of this subdivided quad. */
+  /* Do a linear interpolation of the data based on the UVs for each loop of this subdivided quad.
+   */
   for (uint loop_index = start_loop_index; loop_index < start_loop_index + 4; loop_index++) {
     BlenderPatchCoord co = patch_coords[loop_index];
     vec2 uv = decode_uv(co.encoded_uv);

@@ -60,8 +60,8 @@ float compute_line_factor(uint start_loop_index, uint corner_index, vec3 face_no
     return 0.0;
   }
 
-  /* Mod 4 so we loop back at the first vertex on the last loop index (3), but only the corner index
-   * needs to be wrapped. */
+  /* Mod 4 so we loop back at the first vertex on the last loop index (3), but only the corner
+   * index needs to be wrapped. */
   uint next_vertex_index = start_loop_index + (corner_index + 1) % 4;
   vec3 vertex_pos = get_vertex_pos(pos_nor[vertex_index]);
   vec3 vertex_nor = get_vertex_nor(pos_nor[vertex_index]);

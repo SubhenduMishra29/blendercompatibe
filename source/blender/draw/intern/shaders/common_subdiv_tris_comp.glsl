@@ -25,7 +25,8 @@ void main()
 #ifdef SINGLE_MATERIAL
   uint triangle_loop_index = quad_index * 6;
 #else
-  uint coarse_quad_index = coarse_polygon_index_from_subdiv_quad_index(quad_index, coarse_poly_count);
+  uint coarse_quad_index = coarse_polygon_index_from_subdiv_quad_index(quad_index,
+                                                                       coarse_poly_count);
   int mat_offset = polygon_mat_offset[coarse_quad_index];
 
   int triangle_loop_index = (int(quad_index) + mat_offset) * 6;
