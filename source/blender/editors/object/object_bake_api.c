@@ -1391,7 +1391,7 @@ static int bake(const BakeAPIRender *bkr,
          * already up to date. This means we can do a cheap single object update
          * (as an opposite of full depsgraph update). */
         BKE_object_eval_reset(ob_low_eval);
-        BKE_object_handle_data_update(depsgraph, scene, ob_low_eval);
+        BKE_object_handle_data_update(depsgraph, scene, ob_low_eval, false);
       }
 
       me_cage_eval = BKE_mesh_new_from_object(NULL, ob_low_eval, false, preserve_origindex);

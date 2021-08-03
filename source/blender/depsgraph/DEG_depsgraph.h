@@ -115,6 +115,9 @@ void DEG_graph_tag_on_visible_update(Depsgraph *depsgraph, const bool do_time);
 /* Tag all dependency graphs for update when visible scenes/layers changes. */
 void DEG_tag_on_visible_update(struct Main *bmain, const bool do_time);
 
+/* Tag dependency graph for updates to compute subdivision on the CPU. */
+void DEG_graph_tag_on_subdivision_update(Depsgraph *depsgraph);
+
 /* NOTE: Will return NULL if the flag is not known, allowing to gracefully handle situations
  * when recalc flag has been removed. */
 const char *DEG_update_tag_as_string(IDRecalcFlag flag);

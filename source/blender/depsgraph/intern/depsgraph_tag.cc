@@ -38,6 +38,7 @@
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 #include "DNA_screen_types.h"
@@ -140,6 +141,14 @@ void depsgraph_base_flags_tag_to_component_opcode(const ID *id,
   }
 }
 
+void depsgraph_subdivision_tag_to_component_type(const ID *id, NodeType *component_type)
+{
+  const ID_Type id_type = GS(id->name);
+  if (id_type == ID_OB) {
+    *component_type = NodeType::SUBDIVISION;
+  }
+}
+
 OperationCode psysTagToOperationCode(IDRecalcFlag tag)
 {
   if (tag == ID_RECALC_PSYS_RESET) {
@@ -229,6 +238,9 @@ void depsgraph_tag_to_component_opcode(const ID *id,
       break;
     case ID_RECALC_SOURCE:
       *component_type = NodeType::PARAMETERS;
+      break;
+    case ID_RECALC_SUBDIVISION:
+      depsgraph_subdivision_tag_to_component_type(id, component_type);
       break;
     case ID_RECALC_GEOMETRY_ALL_MODES:
     case ID_RECALC_ALL:
@@ -451,6 +463,8 @@ const char *update_source_as_string(eUpdateSource source)
       return "RELATIONS";
     case DEG_UPDATE_SOURCE_VISIBILITY:
       return "VISIBILITY";
+    case DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION:
+      return "SUBDIVISION";
   }
   BLI_assert_msg(0, "Should never happen.");
   return "UNKNOWN";
@@ -505,6 +519,11 @@ void graph_tag_on_visible_update(Depsgraph *graph, const bool do_time)
 {
   graph->need_visibility_update = true;
   graph->need_visibility_time_update |= do_time;
+}
+
+void graph_tag_on_subdivision_update(Depsgraph *graph)
+{
+  graph->need_subdivision_update = true;
 }
 
 } /* namespace */
@@ -578,6 +597,47 @@ void graph_tag_ids_for_visible_update(Depsgraph *graph)
 
   graph->need_visibility_update = false;
   graph->need_visibility_time_update = false;
+}
+
+// TODO(kevindietrich): deduplicate
+static SubsurfModifierData *get_subsurf_modifier(Object *ob)
+{
+  ModifierData *md = (ModifierData *)(ob->modifiers.last);
+
+  if (md == NULL) {
+    return NULL;
+  }
+
+  if (md->type != eModifierType_Subsurf) {
+    return NULL;
+  }
+
+  return (SubsurfModifierData *)(md);
+}
+
+void graph_tag_ids_for_subdivision_update(Depsgraph *graph)
+{
+  if (!graph->need_subdivision_update) {
+    return;
+  }
+
+  Main *bmain = graph->bmain;
+
+  for (deg::IDNode *id_node : graph->id_nodes) {
+    const ID_Type id_type = GS(id_node->id_orig->name);
+    if (id_type == ID_OB) {
+      Object *object_orig = reinterpret_cast<Object *>(id_node->id_orig);
+
+      if (get_subsurf_modifier(object_orig)) {
+        std::cerr << "Tagging an object with a subsurf modifier for an update.\n";
+        int flag = ID_RECALC_SUBDIVISION;
+        graph_id_tag_update(
+            bmain, graph, id_node->id_orig, flag, DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION);
+      }
+    }
+  }
+
+  graph->need_subdivision_update = false;
 }
 
 NodeType geometry_tag_to_component(const ID *id)
@@ -754,6 +814,8 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
       return "ALL";
     case ID_RECALC_TAG_FOR_UNDO:
       return "TAG_FOR_UNDO";
+    case ID_RECALC_SUBDIVISION:
+      return "SUBDIVISION";
   }
   return nullptr;
 }
@@ -834,6 +896,12 @@ void DEG_tag_on_visible_update(Main *bmain, const bool do_time)
   for (deg::Depsgraph *depsgraph : deg::get_all_registered_graphs(bmain)) {
     deg::graph_tag_on_visible_update(depsgraph, do_time);
   }
+}
+
+void DEG_graph_tag_on_subdivision_update(Depsgraph *depsgraph)
+{
+  deg::Depsgraph *graph = (deg::Depsgraph *)depsgraph;
+  deg::graph_tag_on_subdivision_update(graph);
 }
 
 void DEG_enable_editors_update(Depsgraph *depsgraph)

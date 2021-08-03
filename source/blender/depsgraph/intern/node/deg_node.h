@@ -132,6 +132,8 @@ enum class NodeType {
   SYNCHRONIZATION,
   /* Simulation component. */
   SIMULATION,
+  /* Subdivision component. */
+  SUBDIVISION,
 
   /* Total number of meaningful node types. */
   NUM_TYPES,

@@ -371,7 +371,8 @@ void makeDerivedMesh(struct Depsgraph *depsgraph,
                      struct Scene *scene,
                      struct Object *ob,
                      struct BMEditMesh *em,
-                     const struct CustomData_MeshMasks *dataMask);
+                     const struct CustomData_MeshMasks *dataMask,
+                     const bool eval_subdiv_on_cpu);
 
 void DM_calc_loop_tangents(DerivedMesh *dm,
                            bool calc_active_tangent,

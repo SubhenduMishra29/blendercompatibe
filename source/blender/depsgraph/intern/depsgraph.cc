@@ -64,6 +64,7 @@ Depsgraph::Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluati
       need_update(true),
       need_visibility_update(true),
       need_visibility_time_update(false),
+      need_subdivision_update(false),
       bmain(bmain),
       scene(scene),
       view_layer(view_layer),

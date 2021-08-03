@@ -697,6 +697,8 @@ typedef enum IDRecalcFlag {
    */
   ID_RECALC_TAG_FOR_UNDO = (1 << 24),
 
+  ID_RECALC_SUBDIVISION = (1 << 25),
+
   /***************************************************************************
    * Pseudonyms, to have more semantic meaning in the actual code without
    * using too much low-level and implementation specific tags. */

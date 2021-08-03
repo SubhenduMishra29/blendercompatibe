@@ -293,7 +293,8 @@ bool BKE_object_eval_proxy_copy(struct Depsgraph *depsgraph, struct Object *obje
 void BKE_object_eval_uber_transform(struct Depsgraph *depsgraph, struct Object *ob);
 void BKE_object_eval_uber_data(struct Depsgraph *depsgraph,
                                struct Scene *scene,
-                               struct Object *ob);
+                               struct Object *ob,
+                               const bool eval_subdiv_on_cpu);
 void BKE_object_eval_assign_data(struct Object *object, struct ID *data, bool is_owned);
 
 void BKE_object_sync_to_original(struct Depsgraph *depsgraph, struct Object *object);
@@ -318,7 +319,8 @@ void BKE_object_eval_eval_base_flags(struct Depsgraph *depsgraph,
 
 void BKE_object_handle_data_update(struct Depsgraph *depsgraph,
                                    struct Scene *scene,
-                                   struct Object *ob);
+                                   struct Object *ob,
+                                   const bool eval_subdiv_on_cpu);
 void BKE_object_handle_update(struct Depsgraph *depsgraph, struct Scene *scene, struct Object *ob);
 void BKE_object_handle_update_ex(struct Depsgraph *depsgraph,
                                  struct Scene *scene,

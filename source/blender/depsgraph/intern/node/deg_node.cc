@@ -116,6 +116,8 @@ const char *nodeTypeAsString(NodeType type)
       return "GENERIC_DATABLOCK";
     case NodeType::SIMULATION:
       return "SIMULATION";
+    case NodeType::SUBDIVISION:
+      return "SUBDIVISION";
 
     /* Total number of meaningful node types. */
     case NodeType::NUM_TYPES:
@@ -175,6 +177,7 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::CACHE:
     case NodeType::PROXY:
     case NodeType::SIMULATION:
+    case NodeType::SUBDIVISION:
       return DEG_SCENE_COMP_PARAMETERS;
   }
   BLI_assert_msg(0, "Unhandled node type, not suppsed to happen.");
@@ -251,6 +254,7 @@ eDepsObjectComponentType nodeTypeToObjectComponent(NodeType type)
     case NodeType::SIMULATION:
     case NodeType::UNDEFINED:
     case NodeType::NUM_TYPES:
+    case NodeType::SUBDIVISION:
       return DEG_OB_COMP_PARAMETERS;
   }
   BLI_assert_msg(0, "Unhandled node type, not suppsed to happen.");

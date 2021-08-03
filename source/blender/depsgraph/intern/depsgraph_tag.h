@@ -45,5 +45,8 @@ void graph_id_tag_update(
  * Will do nothing if the graph is not tagged for visibility update. */
 void graph_tag_ids_for_visible_update(Depsgraph *graph);
 
+/* Tag IDs of the graph for recomputing subdivision on the CPU side. */
+void graph_tag_ids_for_subdivision_update(Depsgraph *graph);
+
 }  // namespace deg
 }  // namespace blender

@@ -226,7 +226,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* Delay evaluation to the draw code if possible, provided we do not have to apply the modifier.
    */
-  if ((ctx->flag & MOD_APPLY_TO_BASE_MESH) == 0) {
+  if ((ctx->flag & (MOD_APPLY_TO_BASE_MESH | MOD_APPLY_CPU_SUBDIVISION)) == 0) {
     if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ctx->object, smd)) {
       return result;
     }

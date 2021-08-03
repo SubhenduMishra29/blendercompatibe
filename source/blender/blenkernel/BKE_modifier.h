@@ -141,6 +141,8 @@ typedef enum ModifierApplyFlag {
    * This flag can be checked to ignore rendering display data to the mesh.
    * See `OBJECT_OT_modifier_apply` operator. */
   MOD_APPLY_TO_BASE_MESH = 1 << 4,
+  /** Evaluate subdivision modifier on the CPU side. */
+  MOD_APPLY_CPU_SUBDIVISION = 1 << 5,
 } ModifierApplyFlag;
 
 typedef struct ModifierUpdateDepsgraphContext {
