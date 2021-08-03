@@ -24,6 +24,7 @@
 
 #include "BKE_editmesh.h"
 #include "BKE_modifier.h"
+#include "BKE_object.h"
 #include "BKE_scene.h"
 #include "BKE_subdiv.h"
 #include "BKE_subdiv_eval.h"
@@ -1807,22 +1808,6 @@ static void do_build_lnor_buffer(DRWSubdivBuffers *buffers,
   GPU_shader_unbind();
 }
 
-// --------------------------------------------------------
-
-static SubsurfModifierData *get_subsurf_modifier(Object *ob)
-{
-  ModifierData *md = (ModifierData *)(ob->modifiers.last);
-
-  if (md == NULL) {
-    return NULL;
-  }
-
-  if (md->type != eModifierType_Subsurf) {
-    return NULL;
-  }
-
-  return (SubsurfModifierData *)(md);
-}
 /* -------------------------------------------------------------------- */
 
 static void print_requests(MeshBufferCache *mbc)
@@ -2248,7 +2233,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  const ToolSettings *toolsettings,
                                                  OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
-  SubsurfModifierData *smd = get_subsurf_modifier(ob);
+  SubsurfModifierData *smd = BKE_object_get_last_modifier_if_subsurf(ob);
   BLI_assert(smd);
 
   const bool is_final_render = DRW_state_is_scene_render();

@@ -599,22 +599,6 @@ void graph_tag_ids_for_visible_update(Depsgraph *graph)
   graph->need_visibility_time_update = false;
 }
 
-// TODO(kevindietrich): deduplicate
-static SubsurfModifierData *get_subsurf_modifier(Object *ob)
-{
-  ModifierData *md = (ModifierData *)(ob->modifiers.last);
-
-  if (md == NULL) {
-    return NULL;
-  }
-
-  if (md->type != eModifierType_Subsurf) {
-    return NULL;
-  }
-
-  return (SubsurfModifierData *)(md);
-}
-
 void graph_tag_ids_for_subdivision_update(Depsgraph *graph)
 {
   if (!graph->need_subdivision_update) {
@@ -628,7 +612,7 @@ void graph_tag_ids_for_subdivision_update(Depsgraph *graph)
     if (id_type == ID_OB) {
       Object *object_orig = reinterpret_cast<Object *>(id_node->id_orig);
 
-      if (get_subsurf_modifier(object_orig)) {
+      if (BKE_object_get_last_modifier_if_subsurf(object_orig)) {
         std::cerr << "Tagging an object with a subsurf modifier for an update.\n";
         int flag = ID_RECALC_SUBDIVISION;
         graph_id_tag_update(

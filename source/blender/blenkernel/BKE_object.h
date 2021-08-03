@@ -48,6 +48,7 @@ struct RegionView3D;
 struct RigidBodyWorld;
 struct Scene;
 struct ShaderFxData;
+struct SubsurfModifierData;
 struct View3D;
 struct ViewLayer;
 
@@ -456,6 +457,9 @@ void BKE_object_modifiers_lib_link_common(void *userData,
                                           struct Object *ob,
                                           struct ID **idpoin,
                                           int cb_flag);
+
+/* Return the last modifier as a subsurf modifier if it is one, NULL otherwise. */
+struct SubsurfModifierData *BKE_object_get_last_modifier_if_subsurf(struct Object *ob);
 
 struct PartEff;
 struct PartEff *BKE_object_do_version_give_parteff_245(struct Object *ob);
