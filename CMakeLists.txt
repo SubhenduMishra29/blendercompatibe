@@ -1201,8 +1201,6 @@ if(WITH_GL_EGL)
       )
     endif()
 
-    list(APPEND BLENDER_GL_LIBRARIES ${OPENGLES_EGL_LIBRARY})
-
   else()
     set(OPENGLES_EGL_LIBRARY "" CACHE FILEPATH "EGL library file")
     mark_as_advanced(OPENGLES_EGL_LIBRARY)
