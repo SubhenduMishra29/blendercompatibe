@@ -1189,7 +1189,11 @@ endif()
 
 if(WITH_GL_EGL)
   find_package(OpenGL REQUIRED EGL)
-  list(APPEND BLENDER_GL_LIBRARIES OpenGL::EGL)
+  list(APPEND BLENDER_GL_LIBRARIES ${OPENGL_egl_LIBRARY})
+
+  # TODO: This links libGL, since libOpenGL is not installed by default on some
+  # distributions. This should be removed once GLVND is properly supported.
+  list(APPEND BLENDER_GL_LIBRARIES ${OPENGL_gl_LIBRARY})
 
   list(APPEND GL_DEFINITIONS -DWITH_GL_EGL -DGLEW_EGL -DGLEW_INC_EGL)
 
