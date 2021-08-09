@@ -1189,7 +1189,17 @@ endif()
 
 if(WITH_GL_EGL)
   find_package(OpenGL REQUIRED EGL)
-  list(APPEND BLENDER_GL_LIBRARIES OpenGL::EGL)
+
+  if (WITH_GHOST_WAYLAND AND NOT WITH_GHOST_X11)
+    # Link to libOpenGL (GLVND) and libEGL for pure Wayland builds, since libGL may not
+    # be available on Wayland only systems.
+    list(APPEND BLENDER_GL_LIBRARIES OpenGL::EGL)
+  else()
+    # Link to libGL and libEGL for X11 or mixed X11/Wayland builds, since libOpenGL
+    # is not installed by default on Linux distributions like Ubuntu and we want to
+    # create portable builds.
+    list(APPEND BLENDER_GL_LIBRARIES ${OPENGL_egl_LIBRARY} ${OPENGL_gl_LIBRARY})
+  endif()
 
   list(APPEND GL_DEFINITIONS -DWITH_GL_EGL -DGLEW_EGL -DGLEW_INC_EGL)
 
