@@ -2088,12 +2088,14 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
                                       int hits,
                                       Base *startbase,
                                       bool has_bones,
-                                      bool do_nearest)
+                                      bool do_nearest,
+                                      int *r_sub_selection)
 {
   ViewLayer *view_layer = vc->view_layer;
   View3D *v3d = vc->v3d;
   Base *base, *basact = NULL;
   int a;
+  int sub_selection_id = 0;
 
   if (do_nearest) {
     uint min = 0xFFFFFFFF;
@@ -2105,6 +2107,7 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
         if (min > buffer[4 * a + 1] && (buffer[4 * a + 3] & 0xFFFF0000)) {
           min = buffer[4 * a + 1];
           selcol = buffer[4 * a + 3] & 0xFFFF;
+          sub_selection_id = (buffer[4 * a + 3] & 0xFFFF0000) >> 16;
         }
       }
     }
@@ -2118,6 +2121,7 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
         if (min > buffer[4 * a + 1] && notcol != (buffer[4 * a + 3] & 0xFFFF)) {
           min = buffer[4 * a + 1];
           selcol = buffer[4 * a + 3] & 0xFFFF;
+          sub_selection_id = (buffer[4 * a + 3] & 0xFFFF0000) >> 16;
         }
       }
     }
@@ -2184,11 +2188,16 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
     }
   }
 
+  if (basact && r_sub_selection) {
+    *r_sub_selection = sub_selection_id;
+  }
+
   return basact;
 }
 
-/* mval comes from event->mval, only use within region handlers */
-Base *ED_view3d_give_base_under_cursor(bContext *C, const int mval[2])
+static Base *ed_view3d_give_base_under_cursor_ex(bContext *C,
+                                                 const int mval[2],
+                                                 int *r_material_slot)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
@@ -2206,17 +2215,39 @@ Base *ED_view3d_give_base_under_cursor(bContext *C, const int mval[2])
       &vc, buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest, false);
 
   if (hits > 0) {
-    const bool has_bones = selectbuffer_has_bones(buffer, hits);
-    basact = mouse_select_eval_buffer(
-        &vc, buffer, hits, vc.view_layer->object_bases.first, has_bones, do_nearest);
+    const bool has_bones = (r_material_slot == NULL) && selectbuffer_has_bones(buffer, hits);
+    basact = mouse_select_eval_buffer(&vc,
+                                      buffer,
+                                      hits,
+                                      vc.view_layer->object_bases.first,
+                                      has_bones,
+                                      do_nearest,
+                                      r_material_slot);
   }
 
   return basact;
 }
 
+/* mval comes from event->mval, only use within region handlers */
+Base *ED_view3d_give_base_under_cursor(bContext *C, const int mval[2])
+{
+  return ed_view3d_give_base_under_cursor_ex(C, mval, NULL);
+}
+
 Object *ED_view3d_give_object_under_cursor(bContext *C, const int mval[2])
 {
   Base *base = ED_view3d_give_base_under_cursor(C, mval);
+  if (base) {
+    return base->object;
+  }
+  return NULL;
+}
+
+struct Object *ED_view3d_give_material_slot_under_cursor(struct bContext *C,
+                                                         const int mval[2],
+                                                         int *r_material_slot)
+{
+  Base *base = ed_view3d_give_base_under_cursor_ex(C, mval, r_material_slot);
   if (base) {
     return base->object;
   }
@@ -2374,7 +2405,8 @@ static bool ed_object_select_pick(bContext *C,
         }
       }
       else {
-        basact = mouse_select_eval_buffer(&vc, buffer, hits, startbase, has_bones, do_nearest);
+        basact = mouse_select_eval_buffer(
+            &vc, buffer, hits, startbase, has_bones, do_nearest, NULL);
       }
 
       if (has_bones && basact) {
@@ -2436,7 +2468,7 @@ static bool ed_object_select_pick(bContext *C,
             if (!changed) {
               /* fallback to regular object selection if no new bundles were selected,
                * allows to select object parented to reconstruction object */
-              basact = mouse_select_eval_buffer(&vc, buffer, hits, startbase, 0, do_nearest);
+              basact = mouse_select_eval_buffer(&vc, buffer, hits, startbase, 0, do_nearest, NULL);
             }
           }
         }

@@ -638,6 +638,9 @@ void ED_view3d_draw_setup_view(const struct wmWindowManager *wm,
 
 struct Base *ED_view3d_give_base_under_cursor(struct bContext *C, const int mval[2]);
 struct Object *ED_view3d_give_object_under_cursor(struct bContext *C, const int mval[2]);
+struct Object *ED_view3d_give_material_slot_under_cursor(struct bContext *C,
+                                                         const int mval[2],
+                                                         int *r_material_slot);
 bool ED_view3d_is_object_under_cursor(struct bContext *C, const int mval[2]);
 void ED_view3d_quadview_update(struct ScrArea *area, struct ARegion *region, bool do_clip);
 void ED_view3d_update_viewmat(struct Depsgraph *depsgraph,
