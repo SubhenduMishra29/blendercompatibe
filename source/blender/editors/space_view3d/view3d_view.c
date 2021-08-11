@@ -970,7 +970,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
                             const rcti *input,
                             eV3DSelectMode select_mode,
                             eV3DSelectObjectFilter select_filter,
-                            const bool do_material_sub_selection)
+                            const bool do_material_slot_selection)
 {
   struct bThemeState theme_state;
   const wmWindowManager *wm = CTX_wm_manager(vc->C);
@@ -1120,7 +1120,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
                          use_obedit_skip,
                          draw_surface,
                          use_nearest,
-                         do_material_sub_selection,
+                         do_material_slot_selection,
                          &rect,
                          drw_select_loop_pass,
                          &drw_select_loop_user_data,
@@ -1151,7 +1151,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
                          use_obedit_skip,
                          draw_surface,
                          use_nearest,
-                         do_material_sub_selection,
+                         do_material_slot_selection,
                          &rect,
                          drw_select_loop_pass,
                          &drw_select_loop_user_data,
