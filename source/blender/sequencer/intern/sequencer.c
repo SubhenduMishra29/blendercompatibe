@@ -363,6 +363,12 @@ void SEQ_tool_settings_fit_method_set(Scene *scene, eSeqImageFitMethod fit_metho
   tool_settings->fit_method = fit_method;
 }
 
+eSeqOverlapMode SEQ_tool_settings_overlap_mode_get(Scene *scene)
+{
+  const SequencerToolSettings *tool_settings = SEQ_tool_settings_ensure(scene);
+  return tool_settings->overlap_mode;
+}
+
 /**
  * Get seqbase that is being viewed currently. This can be main seqbase or meta strip seqbase
  *

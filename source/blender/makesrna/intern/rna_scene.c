@@ -3542,6 +3542,11 @@ static void rna_def_sequencer_tool_settings(BlenderRNA *brna)
   RNA_def_property_int_default(prop, 15);
   RNA_def_property_ui_range(prop, 0, 50, 1, 1);
   RNA_def_property_ui_text(prop, "Snapping Distance", "Maximum distance for snapping in pixels");
+
+  /* Transform overlap handling. */
+  prop = RNA_def_property(srna, "use_overwrite_mode", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "overlap_mode", SEQ_OVERLAP_OVERWRITE);
+  RNA_def_property_ui_text(prop, "Overlap Mode", "How to resolve overlap after transformation");
 }
 
 static void rna_def_unified_paint_settings(BlenderRNA *brna)

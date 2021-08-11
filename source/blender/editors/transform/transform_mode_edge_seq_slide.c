@@ -57,6 +57,12 @@
 static eRedrawFlag seq_slide_handleEvent(struct TransInfo *t, const wmEvent *event)
 {
   BLI_assert(t->mode == TFM_SEQ_SLIDE);
+
+  eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(t->scene);
+  if ((overlap_mode & SEQ_OVERLAP_OVERWRITE) != 0) {
+    return TREDRAW_NOTHING;
+  }
+
   const wmKeyMapItem *kmi = t->custom.mode.data;
   if (kmi && event->type == kmi->type && event->val == kmi->val) {
     /* Allows the "Expand to Fit" effect to be enabled as a toggle. */
@@ -79,7 +85,14 @@ static void headerSeqSlide(TransInfo *t, const float val[2], char str[UI_MAX_DRA
   }
 
   ofs += BLI_snprintf_rlen(
-      str + ofs, UI_MAX_DRAW_STR - ofs, TIP_("Sequence Slide: %s%s, ("), &tvec[0], t->con.text);
+      str + ofs, UI_MAX_DRAW_STR - ofs, TIP_("Sequence Slide: %s%s"), &tvec[0], t->con.text);
+
+  eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(t->scene);
+  if ((overlap_mode & SEQ_OVERLAP_OVERWRITE) != 0) {
+    return;
+  }
+
+  ofs += BLI_snprintf_rlen(str + ofs, UI_MAX_DRAW_STR - ofs, ", (", &tvec[0], t->con.text);
 
   const wmKeyMapItem *kmi = t->custom.mode.data;
   if (kmi) {

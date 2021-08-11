@@ -34,10 +34,12 @@ struct GSet;
 struct GSetIterator;
 struct Sequence;
 
-#define SEQ_ITERATOR_FOREACH(var, collection) \
-  for (SeqIterator iter = {{{NULL}}}; \
-       SEQ_iterator_ensure(collection, &iter, &var) && var != NULL; \
-       var = SEQ_iterator_yield(&iter))
+#define SEQ_ITERATOR_FOREACH_IMPL(var, collection, suffix) \
+  for (SeqIterator iter##suffix = {{{NULL}}}; \
+       SEQ_iterator_ensure(collection, &iter##suffix, &var) && var != NULL; \
+       var = SEQ_iterator_yield(&iter##suffix))
+
+#define SEQ_ITERATOR_FOREACH(var, collection) SEQ_ITERATOR_FOREACH_IMPL(var, collection, __LINE__)
 
 #define SEQ_ALL_BEGIN(ed, var) \
   { \
@@ -89,6 +91,7 @@ SeqCollection *SEQ_query_by_reference(struct Sequence *seq_reference,
                                                           struct ListBase *seqbase,
                                                           SeqCollection *collection));
 SeqCollection *SEQ_query_selected_strips(struct ListBase *seqbase);
+SeqCollection *SEQ_query_unselected_strips(struct ListBase *seqbase);
 SeqCollection *SEQ_query_all_strips(ListBase *seqbase);
 SeqCollection *SEQ_query_all_strips_recursive(ListBase *seqbase);
 void SEQ_query_strip_effect_chain(struct Sequence *seq_reference,
