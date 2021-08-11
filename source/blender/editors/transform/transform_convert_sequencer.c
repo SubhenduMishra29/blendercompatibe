@@ -407,46 +407,36 @@ static SeqCollection *query_overwrite_targets(TransInfo *t, SeqCollection *trans
   return collection;
 }
 
-static bool is_same_channel(Sequence *transformed, Sequence *target)
-{
-  if (transformed->machine == target->machine) {
-    return true;
-  }
-  return false;
-}
+typedef enum eOvelapDescrition {
+  STRIP_OVERLAP_NONE,
+  STRIP_OVERLAP_IS_FULL,
+  STRIP_OVERLAP_IS_INSIDE,
+  STRIP_OVERLAP_LEFT_SIDE,
+  STRIP_OVERLAP_RIGHT_SIDE,
+} eOvelapDescrition;
 
-static bool is_full_overlap(Sequence *transformed, Sequence *target)
+static eOvelapDescrition overlap_description_get(Sequence *transformed, Sequence *target)
 {
+  eOvelapDescrition overlap = STRIP_OVERLAP_NONE;
+  /* Overlapping strip covers overlapped completely. */
   if (transformed->startdisp <= target->startdisp && transformed->enddisp >= target->enddisp) {
-    return true;
+    overlap = STRIP_OVERLAP_IS_FULL;
   }
-  return false;
-}
 
-static bool is_inside_overlap(Sequence *transformed, Sequence *target)
-{
-  if (transformed->startdisp > target->startdisp && transformed->enddisp < target->enddisp) {
-    return true;
+  /* Overlapping strip is inside overlapped. */
+  else if (transformed->startdisp > target->startdisp && transformed->enddisp < target->enddisp) {
+    overlap = STRIP_OVERLAP_IS_INSIDE;
   }
-  return false;
-}
 
-typedef enum ePartialOvelapSide {
-  LEFT_SIDE_OVERLAP,
-  RIGHT_SIDE_OVERLAP,
-} ePartialOvelapSide;
-
-static bool is_partial_overlap(Sequence *transformed, Sequence *target, ePartialOvelapSide *r_side)
-{
-  if (transformed->startdisp <= target->startdisp && target->startdisp <= transformed->enddisp) {
-    *r_side = LEFT_SIDE_OVERLAP;
-    return true;
+  /* Partial overlap between 2 strips. */
+  else if (transformed->startdisp <= target->startdisp &&
+           target->startdisp <= transformed->enddisp) {
+    overlap = STRIP_OVERLAP_LEFT_SIDE;
   }
-  if (transformed->startdisp <= target->enddisp && target->enddisp <= transformed->enddisp) {
-    *r_side = RIGHT_SIDE_OVERLAP;
-    return true;
+  else if (transformed->startdisp <= target->enddisp && target->enddisp <= transformed->enddisp) {
+    overlap = STRIP_OVERLAP_RIGHT_SIDE;
   }
-  return false;
+  return overlap;
 }
 
 static void seq_transform_handle_overwrite_split(TransInfo *t,
@@ -470,7 +460,7 @@ static void seq_transform_handle_overwrite_split(TransInfo *t,
 static void seq_transform_handle_overwrite_trim(TransInfo *t,
                                                 Sequence *transformed,
                                                 Sequence *target,
-                                                ePartialOvelapSide overlap_side)
+                                                eOvelapDescrition overlap)
 {
   SeqCollection *targets = SEQ_query_by_reference(
       target, seqbase_active_get(t), SEQ_query_strip_effect_chain);
@@ -486,17 +476,14 @@ static void seq_transform_handle_overwrite_trim(TransInfo *t,
     if ((seq->type & SEQ_TYPE_EFFECT) != 0 && SEQ_effect_get_num_inputs(seq->type) > 0) {
       continue;
     }
-    if (is_partial_overlap(transformed, seq, &overlap_side)) {
-      if (overlap_side == LEFT_SIDE_OVERLAP) {
-        SEQ_transform_set_left_handle_frame(seq, transformed->enddisp);
-      }
-      if (overlap_side == RIGHT_SIDE_OVERLAP) {
-        SEQ_transform_set_right_handle_frame(seq, transformed->startdisp);
-      }
+    if (overlap == STRIP_OVERLAP_LEFT_SIDE) {
+      SEQ_transform_set_left_handle_frame(seq, transformed->enddisp);
+    }
+    else if (overlap == STRIP_OVERLAP_RIGHT_SIDE) {
+      SEQ_transform_set_right_handle_frame(seq, transformed->startdisp);
     }
     SEQ_time_update_sequence(t->scene, seq);
   }
-
   SEQ_collection_free(targets);
 }
 
@@ -504,29 +491,30 @@ static void seq_transform_handle_overwrite(TransInfo *t, SeqCollection *transfor
 {
   SeqCollection *targets = query_overwrite_targets(t, transformed_strips);
 
-  ePartialOvelapSide overlap_side;
   bool strips_delete = false;
   Sequence *target;
   Sequence *transformed;
   SEQ_ITERATOR_FOREACH (target, targets) {
     SEQ_ITERATOR_FOREACH (transformed, transformed_strips) {
-      if (!is_same_channel(transformed, target)) {
+      if (transformed->machine != target->machine) {
         continue;
       }
 
+      eOvelapDescrition overlap = overlap_description_get(transformed, target);
+
       /* Remove covered strip. */
-      if (is_full_overlap(transformed, target)) {
+      if (overlap == STRIP_OVERLAP_IS_FULL) {
         SEQ_edit_flag_for_removal(t->scene, seqbase_active_get(t), target);
         strips_delete = true;
       }
       /* Split strip in 3 parts, remove middle part and fit transformed inside. */
-      else if (is_inside_overlap(transformed, target)) {
+      else if (overlap == STRIP_OVERLAP_IS_INSIDE) {
         seq_transform_handle_overwrite_split(t, transformed, target);
         strips_delete = true;
       }
       /* Nove handle by amount of overlap. */
-      else if (is_partial_overlap(transformed, target, &overlap_side)) {
-        seq_transform_handle_overwrite_trim(t, transformed, target, overlap_side);
+      else if (overlap == STRIP_OVERLAP_LEFT_SIDE || overlap == STRIP_OVERLAP_RIGHT_SIDE) {
+        seq_transform_handle_overwrite_trim(t, transformed, target, overlap);
       }
     }
   }
