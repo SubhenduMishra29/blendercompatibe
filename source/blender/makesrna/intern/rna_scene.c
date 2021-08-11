@@ -3504,6 +3504,21 @@ static void rna_def_sequencer_tool_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem scale_overlap_modes[] = {
+      {SEQ_OVERLAP_EXPAND, "EXPAND", 0, "Expand", "Move strips so transformed strips fits"},
+      {SEQ_OVERLAP_OVERWRITE,
+       "OVERWRITE",
+       0,
+       "Overwrite",
+       "Trim or split strips to resolve overlap"},
+      {SEQ_OVERLAP_SHUFFLE,
+       "SHUFFLE",
+       0,
+       "Shuffle",
+       "Move transformed strips to nearest free space to resolve overlap"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "SequencerToolSettings", NULL);
   RNA_def_struct_path_func(srna, "rna_SequencerToolSettings_path");
   RNA_def_struct_ui_text(srna, "Sequencer Tool Settings", "");
@@ -3544,8 +3559,8 @@ static void rna_def_sequencer_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Snapping Distance", "Maximum distance for snapping in pixels");
 
   /* Transform overlap handling. */
-  prop = RNA_def_property(srna, "use_overwrite_mode", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "overlap_mode", SEQ_OVERLAP_OVERWRITE);
+  prop = RNA_def_property(srna, "overlap_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, scale_overlap_modes);
   RNA_def_property_ui_text(prop, "Overlap Mode", "How to resolve overlap after transformation");
 }
 

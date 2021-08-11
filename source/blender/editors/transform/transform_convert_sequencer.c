@@ -483,7 +483,7 @@ static void seq_transform_handle_overwrite_trim(TransInfo *t,
   /* Trim all non effects, that have influence on effect length which is overlapping. */
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, targets) {
-    if (SEQ_effect_get_num_inputs(seq->type) > 0) {
+    if ((seq->type & SEQ_TYPE_EFFECT) != 0 && SEQ_effect_get_num_inputs(seq->type) > 0) {
       continue;
     }
     if (is_partial_overlap(transformed, seq, &overlap_side)) {
@@ -554,16 +554,18 @@ static void seq_transform_handle_overlap_shuffle(TransInfo *t, SeqCollection *tr
 static void seq_transform_handle_overlap(TransInfo *t, SeqCollection *transformed_strips)
 {
   ListBase *seqbasep = seqbase_active_get(t);
-  eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(t->scene);
+  const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(t->scene);
 
-  if ((overlap_mode & SEQ_OVERLAP_OVERWRITE) == 0 && t->flag & T_ALT_TRANSFORM) {
-    seq_transform_handle_expand_to_fit(t, transformed_strips);
-  }
-  else if ((overlap_mode & SEQ_OVERLAP_OVERWRITE) != 0) {
-    seq_transform_handle_overwrite(t, transformed_strips);
-  }
-  else {
-    seq_transform_handle_overlap_shuffle(t, transformed_strips);
+  switch (overlap_mode) {
+    case SEQ_OVERLAP_EXPAND:
+      seq_transform_handle_expand_to_fit(t, transformed_strips);
+      break;
+    case SEQ_OVERLAP_OVERWRITE:
+      seq_transform_handle_overwrite(t, transformed_strips);
+      break;
+    case SEQ_OVERLAP_SHUFFLE:
+      seq_transform_handle_overlap_shuffle(t, transformed_strips);
+      break;
   }
 
   if (seq_transform_check_strip_effects(transformed_strips)) {
