@@ -80,6 +80,7 @@ typedef struct BASIC_PrivateData {
   DRWShadingGroup *depth_shgrp[2];
   DRWShadingGroup *depth_shgrp_cull[2];
   DRWShadingGroup *depth_hair_shgrp[2];
+  bool use_material_slot_selection;
 } BASIC_PrivateData; /* Transient data */
 
 /* Functions */
@@ -130,6 +131,8 @@ static void basic_cache_init(void *vedata)
     /* Alloc transient pointers */
     stl->g_data = MEM_callocN(sizeof(*stl->g_data), __func__);
   }
+
+  stl->g_data->use_material_slot_selection = DRW_state_is_material_select();
 
   /* Twice for normal and in front objects. */
   for (int i = 0; i < 2; i++) {
@@ -211,9 +214,24 @@ static void basic_cache_populate(void *vedata, Object *ob)
     DRW_shgroup_call_sculpt(shgrp, ob, false, false);
   }
   else {
-    struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
-    if (geom) {
-      DRW_shgroup_call(shgrp, geom, ob);
+    if (stl->g_data->use_material_slot_selection) {
+      struct GPUBatch **geoms = DRW_cache_mesh_surface_texpaint_get(ob);
+      if (geoms) {
+        const int materials_len = DRW_cache_object_material_count_get(ob);
+        for (int i = 0; i < materials_len; i++) {
+          if (geoms[i] == NULL) {
+            continue;
+          }
+          const short material_slot_select_id = i + 1;
+          DRW_shgroup_call_subselection(shgrp, geoms[i], ob, material_slot_select_id);
+        }
+      }
+    }
+    else {
+      struct GPUBatch *geom = DRW_cache_object_surface_get(ob);
+      if (geom) {
+        DRW_shgroup_call(shgrp, geom, ob);
+      }
     }
   }
 }

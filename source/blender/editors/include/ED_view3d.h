@@ -566,6 +566,13 @@ eV3DSelectObjectFilter ED_view3d_select_filter_from_mode(const struct Scene *sce
 void view3d_opengl_select_cache_begin(void);
 void view3d_opengl_select_cache_end(void);
 
+int view3d_opengl_select_ex(struct ViewContext *vc,
+                            unsigned int *buffer,
+                            unsigned int bufsize,
+                            const struct rcti *input,
+                            eV3DSelectMode select_mode,
+                            eV3DSelectObjectFilter select_filter,
+                            const bool do_material_slot_selection);
 int view3d_opengl_select(struct ViewContext *vc,
                          unsigned int *buffer,
                          unsigned int bufsize,

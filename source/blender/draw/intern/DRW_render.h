@@ -411,24 +411,28 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          float (*obmat)[4],
                          struct GPUBatch *geom,
                          bool bypass_culling,
+                         short sub_select_id,
                          void *user_data);
 
 /* If ob is NULL, unit modelmatrix is assumed and culling is bypassed. */
 #define DRW_shgroup_call(shgroup, geom, ob) \
-  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, false, NULL)
+  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, false, 0, NULL)
 
 /* Same as DRW_shgroup_call but override the obmat. Not culled. */
 #define DRW_shgroup_call_obmat(shgroup, geom, obmat) \
-  DRW_shgroup_call_ex(shgroup, NULL, obmat, geom, false, NULL)
+  DRW_shgroup_call_ex(shgroup, NULL, obmat, geom, false, 0, NULL)
 
 /* TODO(fclem): remove this when we have DRWView */
 /* user_data is used by DRWCallVisibilityFn defined in DRWView. */
 #define DRW_shgroup_call_with_callback(shgroup, geom, ob, user_data) \
-  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, false, user_data)
+  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, false, 0, user_data)
 
 /* Same as DRW_shgroup_call but bypass culling even if ob is not NULL. */
 #define DRW_shgroup_call_no_cull(shgroup, geom, ob) \
-  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, true, NULL)
+  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, true, 0, NULL)
+
+#define DRW_shgroup_call_subselection(shgroup, geom, ob, sub_select_id) \
+  DRW_shgroup_call_ex(shgroup, ob, NULL, geom, false, sub_select_id, NULL)
 
 void DRW_shgroup_call_range(
     DRWShadingGroup *shgroup, Object *ob, struct GPUBatch *geom, uint v_sta, uint v_ct);
@@ -727,6 +731,7 @@ void DRW_select_load_id(uint id);
 /* Draw State */
 bool DRW_state_is_fbo(void);
 bool DRW_state_is_select(void);
+bool DRW_state_is_material_select(void);
 bool DRW_state_is_depth(void);
 bool DRW_state_is_image_render(void);
 bool DRW_state_do_color_management(void);

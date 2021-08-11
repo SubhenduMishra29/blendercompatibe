@@ -1953,7 +1953,8 @@ static int mixed_bones_object_selectbuffer(ViewContext *vc,
                                            const int mval[2],
                                            eV3DSelectObjectFilter select_filter,
                                            bool do_nearest,
-                                           bool do_nearest_xray_if_supported)
+                                           bool do_nearest_xray_if_supported,
+                                           const bool do_material_slot_selection)
 {
   rcti rect;
   int hits15, hits9 = 0, hits5 = 0;
@@ -1972,7 +1973,8 @@ static int mixed_bones_object_selectbuffer(ViewContext *vc,
   view3d_opengl_select_cache_begin();
 
   BLI_rcti_init_pt_radius(&rect, mval, 14);
-  hits15 = view3d_opengl_select(vc, buffer, MAXPICKBUF, &rect, select_mode, select_filter);
+  hits15 = view3d_opengl_select_ex(
+      vc, buffer, MAXPICKBUF, &rect, select_mode, select_filter, do_material_slot_selection);
   if (hits15 == 1) {
     hits = selectbuffer_ret_hits_15(buffer, hits15);
     goto finally;
@@ -2071,7 +2073,8 @@ static int mixed_bones_object_selectbuffer_extended(ViewContext *vc,
 
   do_nearest = do_nearest && !enumerate;
 
-  int hits = mixed_bones_object_selectbuffer(vc, buffer, mval, select_filter, do_nearest, true);
+  int hits = mixed_bones_object_selectbuffer(
+      vc, buffer, mval, select_filter, do_nearest, true, false);
 
   return hits;
 }
@@ -2211,8 +2214,9 @@ static Base *ed_view3d_give_base_under_cursor_ex(bContext *C,
   ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   const bool do_nearest = !XRAY_ACTIVE(vc.v3d);
+  const bool do_material_slot_selection = r_material_slot != NULL;
   const int hits = mixed_bones_object_selectbuffer(
-      &vc, buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest, false);
+      &vc, buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest, false, do_material_slot_selection);
 
   if (hits > 0) {
     const bool has_bones = (r_material_slot == NULL) && selectbuffer_has_bones(buffer, hits);
@@ -2707,7 +2711,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
 
         uint buffer[MAXPICKBUF];
         const int hits = mixed_bones_object_selectbuffer(
-            &vc, buffer, location, VIEW3D_SELECT_FILTER_NOP, false, true);
+            &vc, buffer, location, VIEW3D_SELECT_FILTER_NOP, false, true, false);
         retval = bone_mouse_select_menu(C, buffer, hits, true, extend, deselect, toggle);
       }
       if (!retval) {

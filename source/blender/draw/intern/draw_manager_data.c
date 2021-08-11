@@ -793,11 +793,12 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
                          float (*obmat)[4],
                          struct GPUBatch *geom,
                          bool bypass_culling,
+                         short sub_select_id,
                          void *user_data)
 {
   BLI_assert(geom != NULL);
   if (G.f & G_FLAG_PICKSEL) {
-    drw_command_set_select_id(shgroup, NULL, DST.select_id);
+    drw_command_set_select_id(shgroup, NULL, DST.select_id + (sub_select_id << 16));
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : obmat, ob);
   drw_command_draw(shgroup, geom, handle);
