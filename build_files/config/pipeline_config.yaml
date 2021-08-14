@@ -65,6 +65,8 @@ buildbot:
         darwin-x86_64:
             overrides: {}
         linux-x86_64:
-            overrides: {}
+            overrides: {
+                WITH_GHOST_X11: "OFF"
+            }
         windows-amd64:
             overrides: {}
