@@ -5732,3 +5732,9 @@ void BKE_object_modifiers_lib_link_common(void *userData,
     id_us_plus_no_lib(*idpoin);
   }
 }
+
+bool BKE_object_supports_material_slots(struct Object *ob)
+{
+  return ELEM(
+      ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL, OB_HAIR, OB_POINTCLOUD, OB_VOLUME);
+}

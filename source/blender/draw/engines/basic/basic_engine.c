@@ -25,6 +25,7 @@
 
 #include "DRW_render.h"
 
+#include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_particle.h"
 
@@ -160,12 +161,6 @@ static void basic_cache_init(void *vedata)
   }
 }
 
-static bool basic_object_type_has_material_slots(Object *ob)
-{
-  return ELEM(
-      ob->type, OB_MESH, OB_CURVE, OB_SURF, OB_FONT, OB_MBALL, OB_HAIR, OB_POINTCLOUD, OB_VOLUME);
-}
-
 /* TODO(fclem): DRW_cache_object_surface_material_get needs a refactor to allow passing NULL
  * instead of gpumat_array. Avoiding all this boilerplate code. */
 static struct GPUBatch **basic_object_surface_material_get(Object *ob)
@@ -233,7 +228,7 @@ static void basic_cache_populate(void *vedata, Object *ob)
     DRW_shgroup_call_sculpt(shgrp, ob, false, false);
   }
   else {
-    if (stl->g_data->use_material_slot_selection && basic_object_type_has_material_slots(ob)) {
+    if (stl->g_data->use_material_slot_selection && BKE_object_supports_material_slots(ob)) {
       struct GPUBatch **geoms = basic_object_surface_material_get(ob);
       if (geoms) {
         const int materials_len = DRW_cache_object_material_count_get(ob);

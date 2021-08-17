@@ -458,6 +458,8 @@ void BKE_object_modifiers_lib_link_common(void *userData,
 struct PartEff;
 struct PartEff *BKE_object_do_version_give_parteff_245(struct Object *ob);
 
+bool BKE_object_supports_material_slots(struct Object *ob);
+
 #ifdef __cplusplus
 }
 #endif
