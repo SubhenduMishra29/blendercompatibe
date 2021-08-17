@@ -2351,8 +2351,6 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
   DST.viewport = viewport;
   DST.options.is_select = true;
   DST.options.is_material_select = do_material_sub_selection;
-  BLI_assert_msg(!DST.options.is_material_select || object_mode == OB_MODE_OBJECT,
-                 "Material selection only supported in object mode.");
   drw_task_graph_init();
   /* Get list of enabled engines */
   if (use_obedit) {
