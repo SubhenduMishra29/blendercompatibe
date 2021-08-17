@@ -172,6 +172,30 @@ static struct GPUBatch **basic_object_surface_material_get(Object *ob)
   return DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
 }
 
+static void basic_cache_populate_particles(void *vedata, Object *ob)
+{
+  const bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
+  BASIC_StorageList *stl = ((BASIC_Data *)vedata)->stl;
+  for (ParticleSystem *psys = ob->particlesystem.first; psys != NULL; psys = psys->next) {
+    if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
+      continue;
+    }
+    ParticleSettings *part = psys->part;
+    const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
+    if (draw_as == PART_DRAW_PATH) {
+      struct GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, NULL);
+      if (stl->g_data->use_material_slot_selection) {
+        const short material_slot = part->omat;
+        DRW_shgroup_call_subselection(
+            stl->g_data->depth_hair_shgrp[do_in_front], hairs, NULL, material_slot);
+      }
+      else {
+        DRW_shgroup_call(stl->g_data->depth_hair_shgrp[do_in_front], hairs, NULL);
+      }
+    }
+  }
+}
+
 static void basic_cache_populate(void *vedata, Object *ob)
 {
   BASIC_StorageList *stl = ((BASIC_Data *)vedata)->stl;
@@ -182,24 +206,13 @@ static void basic_cache_populate(void *vedata, Object *ob)
     return;
   }
 
-  bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
-
   const DRWContextState *draw_ctx = DRW_context_state_get();
   if (ob != draw_ctx->object_edit) {
-    for (ParticleSystem *psys = ob->particlesystem.first; psys != NULL; psys = psys->next) {
-      if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
-        continue;
-      }
-      ParticleSettings *part = psys->part;
-      const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
-      if (draw_as == PART_DRAW_PATH) {
-        struct GPUBatch *hairs = DRW_cache_particles_get_hair(ob, psys, NULL);
-        DRW_shgroup_call(stl->g_data->depth_hair_shgrp[do_in_front], hairs, NULL);
-      }
-    }
+    basic_cache_populate_particles(vedata, ob);
   }
 
   /* Make flat object selectable in ortho view if wireframe is enabled. */
+  const bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
   if ((draw_ctx->v3d->overlay.flag & V3D_OVERLAY_WIREFRAMES) ||
       (draw_ctx->v3d->shading.type == OB_WIRE) || (ob->dtx & OB_DRAWWIRE) || (ob->dt == OB_WIRE)) {
     int flat_axis = 0;
