@@ -25,6 +25,8 @@
 
 #include "extract_mesh.h"
 
+#include "draw_subdivision.h"
+
 namespace blender::draw {
 
 /* ---------------------------------------------------------------------- */
@@ -155,10 +157,38 @@ static void extract_lines_finish(const MeshRenderData *UNUSED(mr),
   GPU_indexbuf_build_in_place(elb, ibo);
 }
 
+static void extract_lines_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                      struct MeshBatchCache *UNUSED(cache),
+                                      void *buffer,
+                                      void *UNUSED(data))
+{
+  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
+  GPU_indexbuf_init_build_on_device(
+      ibo, subdiv_cache->num_patch_coords * 2 + subdiv_cache->edge_loose_len * 2);
+
+  draw_subdiv_build_lines_buffer(subdiv_cache, ibo, subdiv_cache->optimal_display);
+
+  /* Make sure buffer is active for sending loose data. */
+  GPU_indexbuf_use(ibo);
+
+  LooseEdge *loose_edge = subdiv_cache->loose_edges;
+  uint offset = subdiv_cache->num_patch_coords * 2;
+  uint loop_index = subdiv_cache->num_patch_coords;
+  while (loose_edge) {
+    GPU_indexbuf_update_sub(ibo, (offset) * sizeof(uint), sizeof(uint), &loop_index);
+    loop_index += 1;
+    GPU_indexbuf_update_sub(ibo, (offset + 1) * sizeof(uint), sizeof(uint), &loop_index);
+    loose_edge = loose_edge->next;
+    loop_index += 1;
+    offset += 2;
+  }
+}
+
 constexpr MeshExtract create_extractor_lines()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lines_init;
+  extractor.init_subdiv = extract_lines_init_subdiv;
   extractor.iter_poly_bm = extract_lines_iter_poly_bm;
   extractor.iter_poly_mesh = extract_lines_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_lines_iter_ledge_bm;

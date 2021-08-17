@@ -39,6 +39,8 @@
 extern "C" {
 #endif
 
+struct DRWSubdivCache;
+
 #define MIN_RANGE_LEN 1024
 
 /* ---------------------------------------------------------------------- */
@@ -212,6 +214,17 @@ typedef void(ExtractFinishFn)(const MeshRenderData *mr,
                               void *data);
 typedef void(ExtractTaskReduceFn)(void *userdata, void *task_userdata);
 
+typedef void(ExtractInitSubdivFn)(const struct DRWSubdivCache *subdiv_cache,
+                                  struct MeshBatchCache *cache,
+                                  void *buf,
+                                  void *data);
+typedef void(ExtractIterSubdivFn)(const struct DRWSubdivCache *subdiv_cache,
+                                  const MeshRenderData *mr,
+                                  void *data);
+typedef void(ExtractFinishSubdivFn)(const struct DRWSubdivCache *subdiv_cache,
+                                    void *buf,
+                                    void *data);
+
 typedef struct MeshExtract {
   /** Executed on main thread and return user data for iteration functions. */
   ExtractInitFn *init;
@@ -227,6 +240,10 @@ typedef struct MeshExtract {
   /** Executed on one worker thread after all elements iterations. */
   ExtractTaskReduceFn *task_reduce;
   ExtractFinishFn *finish;
+  /** Executed on main thread for subdivision evaluation. */
+  ExtractInitSubdivFn *init_subdiv;
+  ExtractIterSubdivFn *iter_subdiv;
+  ExtractFinishSubdivFn *finish_subdiv;
   /** Used to request common data. */
   eMRDataType data_type;
   size_t data_size;
@@ -292,14 +309,6 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData *mr,
                                      BMLoop *l,
                                      const int cd_ofs,
                                      EditLoopData *eattr);
-
-/* Initialize the vertex format to be used for UVs. Return true if any UV layer is
- * found, false otherwise. */
-bool mesh_extract_uv_format_init(GPUVertFormat *format,
-                                 struct MeshBatchCache *cache,
-                                 CustomData *cd_ldata,
-                                 eMRExtractType extract_type,
-                                 uint32_t *r_uv_layers);
 
 extern const MeshExtract extract_tris;
 extern const MeshExtract extract_tris_single_mat;

@@ -23,15 +23,22 @@
 
 #include "BLI_string.h"
 
+#include "draw_subdivision.h"
 #include "extract_mesh.h"
 
-extern "C" {
+namespace blender::draw {
 
-bool mesh_extract_uv_format_init(GPUVertFormat *format,
-                                 struct MeshBatchCache *cache,
-                                 CustomData *cd_ldata,
-                                 eMRExtractType extract_type,
-                                 uint32_t *r_uv_layers)
+/* ---------------------------------------------------------------------- */
+/** \name Extract UV  layers
+ * \{ */
+
+/* Initialize the vertex format to be used for UVs. Return true if any UV layer is
+ * found, false otherwise. */
+static bool mesh_extract_uv_format_init(GPUVertFormat *format,
+                                        struct MeshBatchCache *cache,
+                                        CustomData *cd_ldata,
+                                        eMRExtractType extract_type,
+                                        uint32_t &r_uv_layers)
 {
   GPU_vertformat_deinterleave(format);
 
@@ -44,9 +51,7 @@ bool mesh_extract_uv_format_init(GPUVertFormat *format,
     }
   }
 
-  if (r_uv_layers) {
-    *r_uv_layers = uv_layers;
-  }
+  r_uv_layers = uv_layers;
 
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (uv_layers & (1 << i)) {
@@ -84,13 +89,6 @@ bool mesh_extract_uv_format_init(GPUVertFormat *format,
 
   return true;
 }
-}
-
-namespace blender::draw {
-
-/* ---------------------------------------------------------------------- */
-/** \name Extract UV  layers
- * \{ */
 
 static void extract_uv_init(const MeshRenderData *mr,
                             struct MeshBatchCache *cache,
@@ -103,7 +101,7 @@ static void extract_uv_init(const MeshRenderData *mr,
   CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
   int v_len = mr->loop_len;
   uint32_t uv_layers = cache->cd_used.uv;
-  if (!mesh_extract_uv_format_init(&format, cache, cd_ldata, mr->extract_type, &uv_layers)) {
+  if (!mesh_extract_uv_format_init(&format, cache, cd_ldata, mr->extract_type, uv_layers)) {
     /* VBO will not be used, only allocate minimum of memory. */
     v_len = 1;
   }
@@ -138,10 +136,44 @@ static void extract_uv_init(const MeshRenderData *mr,
   }
 }
 
+static void extract_uv_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                   struct MeshBatchCache *cache,
+                                   void *buffer,
+                                   void *UNUSED(data))
+{
+  Mesh *coarse_mesh = subdiv_cache->mesh;
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
+  GPUVertFormat format = {0};
+
+  uint v_len = subdiv_cache->num_patch_coords;
+  uint uv_layers;
+  if (!mesh_extract_uv_format_init(
+          &format, cache, &coarse_mesh->ldata, MR_EXTRACT_MESH, uv_layers)) {
+    // TODO(kevindietrich): handle this more gracefully.
+    v_len = 1;
+  }
+
+  GPU_vertbuf_init_build_on_device(vbo, &format, v_len);
+
+  if (uv_layers == 0) {
+    return;
+  }
+
+  /* Index of the UV layer in the compact buffer. Used UV layers are stored in a single buffer. */
+  int pack_layer_index = 0;
+  for (int i = 0; i < MAX_MTFACE; i++) {
+    if (uv_layers & (1 << i)) {
+      const int offset = (int)subdiv_cache->num_patch_coords * pack_layer_index++;
+      draw_subdiv_extract_uvs(subdiv_cache, vbo, i, offset);
+    }
+  }
+}
+
 constexpr MeshExtract create_extractor_uv()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_uv_init;
+  extractor.init_subdiv = extract_uv_init_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = 0;
   extractor.use_threading = false;

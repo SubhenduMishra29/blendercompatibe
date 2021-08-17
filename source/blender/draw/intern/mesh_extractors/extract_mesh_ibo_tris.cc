@@ -25,6 +25,8 @@
 
 #include "extract_mesh.h"
 
+#include "draw_subdivision.h"
+
 namespace blender::draw {
 
 static void extract_tris_mat_task_reduce(void *_userdata_to, void *_userdata_from)
@@ -124,10 +126,37 @@ static void extract_tris_finish(const MeshRenderData *mr,
   }
 }
 
+static void extract_tris_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                     struct MeshBatchCache *cache,
+                                     void *buffer,
+                                     void *UNUSED(data))
+{
+  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
+  /* Initialise the index buffer, it was already allocated, it will be filled on the device. */
+  GPU_indexbuf_init_build_on_device(ibo, subdiv_cache->number_of_triangles * 3);
+
+  if (cache->final.tris_per_mat) {
+    MeshBufferCache *mbc_final = &cache->final;
+    for (int i = 0; i < cache->mat_len; i++) {
+      if (mbc_final->tris_per_mat[i] == nullptr) {
+        mbc_final->tris_per_mat[i] = GPU_indexbuf_calloc();
+      }
+
+      /* Multiply by 6 since we have 2 triangles per quad. */
+      const int start = subdiv_cache->mat_start[i] * 6;
+      const int len = (subdiv_cache->mat_end[i] - subdiv_cache->mat_start[i]) * 6;
+      GPU_indexbuf_create_subrange_in_place(mbc_final->tris_per_mat[i], ibo, start, len);
+    }
+  }
+
+  draw_subdiv_build_tris_buffer(subdiv_cache, ibo, cache->mat_len);
+}
+
 constexpr MeshExtract create_extractor_tris()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_tris_init;
+  extractor.init_subdiv = extract_tris_init_subdiv;
   extractor.iter_poly_bm = extract_tris_iter_poly_bm;
   extractor.iter_poly_mesh = extract_tris_iter_poly_mesh;
   extractor.task_reduce = extract_tris_mat_task_reduce;
@@ -216,6 +245,7 @@ constexpr MeshExtract create_extractor_tris_single_mat()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_tris_single_mat_init;
+  extractor.init_subdiv = extract_tris_init_subdiv;
   extractor.iter_looptri_bm = extract_tris_single_mat_iter_looptri_bm;
   extractor.iter_looptri_mesh = extract_tris_single_mat_iter_looptri_mesh;
   extractor.task_reduce = extract_tris_mat_task_reduce;

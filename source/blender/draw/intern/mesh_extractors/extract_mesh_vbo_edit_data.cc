@@ -25,11 +25,24 @@
 
 #include "draw_cache_impl.h"
 
+#include "draw_subdivision.h"
+
 namespace blender::draw {
 
 /* ---------------------------------------------------------------------- */
 /** \name Extract Edit Mode Data / Flags
  * \{ */
+
+static GPUVertFormat *get_edit_data_format(void)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    /* WARNING: Adjust #EditLoopData struct accordingly. */
+    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U16, 4, GPU_FETCH_INT);
+    GPU_vertformat_alias_add(&format, "flag");
+  }
+  return &format;
+}
 
 static void extract_edit_data_init(const MeshRenderData *mr,
                                    struct MeshBatchCache *UNUSED(cache),
@@ -37,13 +50,8 @@ static void extract_edit_data_init(const MeshRenderData *mr,
                                    void *tls_data)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    /* WARNING: Adjust #EditLoopData struct accordingly. */
-    GPU_vertformat_attr_add(&format, "data", GPU_COMP_U16, 4, GPU_FETCH_INT);
-    GPU_vertformat_alias_add(&format, "flag");
-  }
-  GPU_vertbuf_init_with_format(vbo, &format);
+  GPUVertFormat *format = get_edit_data_format();
+  GPU_vertbuf_init_with_format(vbo, format);
   GPU_vertbuf_data_alloc(vbo, mr->loop_len + mr->loop_loose_len);
   EditLoopData *vbo_data = (EditLoopData *)GPU_vertbuf_get_data(vbo);
   *(EditLoopData **)tls_data = vbo_data;
@@ -164,6 +172,66 @@ static void extract_edit_data_iter_lvert_mesh(const MeshRenderData *mr,
   }
 }
 
+static void extract_edit_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                          MeshBatchCache *UNUSED(cache),
+                                          void *buf,
+                                          void *data)
+{
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  GPU_vertbuf_init_with_format(vbo, get_edit_data_format());
+  GPU_vertbuf_data_alloc(vbo, subdiv_cache->num_patch_coords + subdiv_cache->loop_loose_len);
+  EditLoopData *vbo_data = (EditLoopData *)GPU_vertbuf_get_data(vbo);
+  *(EditLoopData **)data = vbo_data;
+}
+
+static void extract_edit_data_iter_subdiv(const DRWSubdivCache *subdiv_cache,
+                                          const MeshRenderData *mr,
+                                          void *_data)
+{
+  EditLoopData *vbo_data = *(EditLoopData **)_data;
+  int *subdiv_loop_vert_index = (int *)GPU_vertbuf_get_data(subdiv_cache->verts_orig_index);
+  int *subdiv_loop_edge_index = (int *)GPU_vertbuf_get_data(subdiv_cache->edges_orig_index);
+  int *subdiv_loop_poly_index = subdiv_cache->subdiv_loop_poly_index;
+
+  for (uint i = 0; i < subdiv_cache->num_patch_coords; i++) {
+    const int vert_origindex = subdiv_loop_vert_index[i];
+    const int edge_origindex = subdiv_loop_edge_index[i];
+    const int poly_origindex = subdiv_loop_poly_index[i];
+
+    EditLoopData *edit_loop_data = &vbo_data[i];
+    memset(edit_loop_data, 0, sizeof(EditLoopData));
+
+    if (vert_origindex != -1) {
+      const BMVert *eve = BM_vert_at_index(mr->bm, vert_origindex);
+      mesh_render_data_vert_flag(mr, eve, edit_loop_data);
+    }
+
+    if (edge_origindex != -1) {
+      const BMEdge *eed = BM_edge_at_index(mr->bm, edge_origindex);
+      mesh_render_data_edge_flag(mr, eed, edit_loop_data);
+    }
+
+    BMFace *efa = BM_face_at_index(mr->bm, poly_origindex);
+    /* The -1 parameter is for edit_uvs, which we don't do here. */
+    mesh_render_data_face_flag(mr, efa, -1, edit_loop_data);
+  }
+
+  LooseEdge *loose_edge = subdiv_cache->loose_edges;
+  int ledge_index = 0;
+  while (loose_edge) {
+    const int offset = subdiv_cache->num_patch_coords + ledge_index * 2;
+    EditLoopData *data = &vbo_data[offset];
+    memset(data, 0, sizeof(EditLoopData));
+    BMEdge *eed = BM_edge_at_index(mr->bm, loose_edge->coarse_edge_index);
+    mesh_render_data_edge_flag(mr, eed, &data[0]);
+    data[1] = data[0];
+    mesh_render_data_vert_flag(mr, eed->v1, &data[0]);
+    mesh_render_data_vert_flag(mr, eed->v2, &data[1]);
+    ledge_index += 1;
+    loose_edge = loose_edge->next;
+  }
+}
+
 constexpr MeshExtract create_extractor_edit_data()
 {
   MeshExtract extractor = {nullptr};
@@ -174,6 +242,8 @@ constexpr MeshExtract create_extractor_edit_data()
   extractor.iter_ledge_mesh = extract_edit_data_iter_ledge_mesh;
   extractor.iter_lvert_bm = extract_edit_data_iter_lvert_bm;
   extractor.iter_lvert_mesh = extract_edit_data_iter_lvert_mesh;
+  extractor.init_subdiv = extract_edit_data_init_subdiv;
+  extractor.iter_subdiv = extract_edit_data_iter_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(EditLoopData *);
   extractor.use_threading = true;

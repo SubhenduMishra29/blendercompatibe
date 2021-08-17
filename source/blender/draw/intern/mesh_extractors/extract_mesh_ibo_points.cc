@@ -25,6 +25,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "draw_subdivision.h"
 #include "extract_mesh.h"
 
 namespace blender::draw {
@@ -154,10 +155,60 @@ static void extract_points_finish(const MeshRenderData *UNUSED(mr),
   GPU_indexbuf_build_in_place(elb, ibo);
 }
 
+static void extract_weights_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                        struct MeshBatchCache *UNUSED(cache),
+                                        void *buffer,
+                                        void *UNUSED(data))
+{
+  GPUIndexBufBuilder builder;
+  /* Copy the points as the data upload will free them. */
+  builder.data = (uint *)MEM_dupallocN(subdiv_cache->point_indices);
+  builder.index_len = subdiv_cache->num_vertices;
+  builder.index_min = 0;
+  builder.index_max = subdiv_cache->num_patch_coords - 1;
+  builder.prim_type = GPU_PRIM_POINTS;
+
+  if (subdiv_cache->loop_loose_len) {
+    builder.data = static_cast<uint32_t *>(MEM_reallocN(
+        builder.data,
+        sizeof(uint) * (subdiv_cache->num_patch_coords + subdiv_cache->loop_loose_len)));
+
+    uint offset = subdiv_cache->num_patch_coords;
+    LooseEdge *loose_edge = subdiv_cache->loose_edges;
+    while (loose_edge) {
+      if (builder.data[loose_edge->v1] == -1u) {
+        builder.data[loose_edge->v1] = offset;
+      }
+      if (builder.data[loose_edge->v2] == -1u) {
+        builder.data[loose_edge->v2] = offset + 1;
+      }
+      builder.index_max += 2;
+      builder.index_len += 2;
+      offset += 2;
+      loose_edge = loose_edge->next;
+    }
+
+    LooseVertex *loose_vert = subdiv_cache->loose_verts;
+    while (loose_vert) {
+      if (builder.data[loose_vert->coarse_vertex_index] == -1u) {
+        builder.data[loose_vert->coarse_vertex_index] = offset;
+      }
+      builder.index_max += 1;
+      builder.index_len += 1;
+      offset += 1;
+      loose_vert = loose_vert->next;
+    }
+  }
+
+  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
+  GPU_indexbuf_build_in_place(&builder, ibo);
+}
+
 constexpr MeshExtract create_extractor_points()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_points_init;
+  extractor.init_subdiv = extract_weights_init_subdiv;
   extractor.iter_poly_bm = extract_points_iter_poly_bm;
   extractor.iter_poly_mesh = extract_points_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_points_iter_ledge_bm;
