@@ -638,7 +638,7 @@ void BKE_nurb_free(Nurb *nu)
     MEM_freeN(nu->knotsv);
   }
   nu->knotsv = NULL;
-  /* if (nu->trim.first) freeNurblist(&(nu->trim)); */
+  // if (nu->trim.first) freeNurblist(&(nu->trim));
 
   MEM_freeN(nu);
 }
@@ -5010,10 +5010,7 @@ bool BKE_nurb_type_convert(Nurb *nu,
         MEM_freeN(nu->knotsu); /* python created nurbs have a knotsu of zero */
       }
       nu->knotsu = NULL;
-      if (nu->knotsv) {
-        MEM_freeN(nu->knotsv);
-      }
-      nu->knotsv = NULL;
+      MEM_SAFE_FREE(nu->knotsv);
     }
     else if (type == CU_BEZIER) { /* to Bezier */
       nr = nu->pntsu / 3;

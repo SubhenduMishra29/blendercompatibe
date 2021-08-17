@@ -22,6 +22,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -29,6 +30,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_genfile.h"
 #include "DNA_listBase.h"
@@ -383,6 +385,19 @@ static void do_version_bones_bbone_len_scale(ListBase *lb)
   }
 }
 
+static void do_version_constraints_spline_ik_joint_bindings(ListBase *lb)
+{
+  /* Binding array data could be freed without properly resetting its size data. */
+  LISTBASE_FOREACH (bConstraint *, con, lb) {
+    if (con->type == CONSTRAINT_TYPE_SPLINEIK) {
+      bSplineIKConstraint *data = (bSplineIKConstraint *)con->data;
+      if (data->points == NULL) {
+        data->numpoints = 0;
+      }
+    }
+  }
+}
+
 /* NOLINTNEXTLINE: readability-function-size */
 void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
 {
@@ -643,12 +658,12 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(
             fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library")) {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
-        BKE_asset_library_reference_init_default(&workspace->asset_library);
+        BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
       }
     }
 
     if (!DNA_struct_elem_find(
-            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library")) {
+            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
@@ -657,7 +672,7 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
               if (sfile->browse_mode != FILE_BROWSE_MODE_ASSETS) {
                 continue;
               }
-              BKE_asset_library_reference_init_default(&sfile->asset_params->asset_library);
+              BKE_asset_library_reference_init_default(&sfile->asset_params->asset_library_ref);
             }
           }
         }
@@ -687,6 +702,76 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
             sseq->flag |= SEQ_SHOW_GRID;
           }
         }
+      }
+    }
+  }
+
+  /* Font names were copied directly into ID names, see: T90417. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 16)) {
+    ListBase *lb = which_libbase(bmain, ID_VF);
+    BKE_main_id_repair_duplicate_names_listbase(lb);
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->overlay.normals_constant_screen_size = 7.0f;
+            }
+          }
+        }
+      }
+    }
+
+    /* Fix SplineIK constraint's inconsistency between binding points array and its stored size. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      /* NOTE: Objects should never have SplineIK constraint, so no need to apply this fix on
+       * their constraints. */
+      if (ob->pose) {
+        LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+          do_version_constraints_spline_ik_joint_bindings(&pchan->constraints);
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 18)) {
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
+      LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
+        BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
+      }
+    }
+
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
+            if (space->spacetype != SPACE_FILE) {
+              continue;
+            }
+
+            SpaceFile *sfile = (SpaceFile *)space;
+            if (sfile->browse_mode != FILE_BROWSE_MODE_ASSETS) {
+              continue;
+            }
+            BKE_asset_library_reference_init_default(&sfile->asset_params->asset_library_ref);
+          }
+        }
+      }
+    }
+
+    /* Previously, only text ending with `.py` would run, apply this logic
+     * to existing files so text that happens to have the "Register" enabled
+     * doesn't suddenly start running code on startup that was previously ignored. */
+    LISTBASE_FOREACH (Text *, text, &bmain->texts) {
+      if ((text->flags & TXT_ISSCRIPT) && !BLI_path_extension_check(text->id.name + 2, ".py")) {
+        text->flags &= ~TXT_ISSCRIPT;
       }
     }
   }

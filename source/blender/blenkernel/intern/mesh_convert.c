@@ -38,6 +38,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.h"
+#include "BKE_deform.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
 #include "BKE_key.h"
@@ -271,8 +272,8 @@ static int mesh_nurbs_displist_to_mdata(const Curve *cu,
   }
 
   if (totvert == 0) {
-    /* error("can't convert"); */
-    /* Make Sure you check ob->data is a curve */
+    /* Make Sure you check ob->data is a curve. */
+    // error("can't convert");
     return -1;
   }
 
@@ -1664,6 +1665,10 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src,
 
   /* skip the listbase */
   MEMCPY_STRUCT_AFTER(mesh_dst, &tmp, id.prev);
+
+  BLI_freelistN(&mesh_dst->vertex_group_names);
+  BKE_defgroup_copy_list(&mesh_dst->vertex_group_names, &mesh_src->vertex_group_names);
+  mesh_dst->vertex_group_active_index = mesh_src->vertex_group_active_index;
 
   if (take_ownership) {
     if (alloctype == CD_ASSIGN) {

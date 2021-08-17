@@ -508,7 +508,7 @@ void BKE_collection_add_from_collection(Main *bmain,
  * \{ */
 
 /** Free (or release) any data used by this collection (does not free the collection itself). */
-void BKE_collection_free(Collection *collection)
+void BKE_collection_free_data(Collection *collection)
 {
   BKE_libblock_free_data(&collection->id, false);
   collection_free_data(&collection->id);
@@ -806,10 +806,10 @@ static void collection_object_cache_fill(ListBase *lb,
     /* Only collection flags are checked here currently, object restrict flag is checked
      * in FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN since it can be animated
      * without updating the cache. */
-    if (((child_restrict & COLLECTION_RESTRICT_VIEWPORT) == 0)) {
+    if (((child_restrict & COLLECTION_HIDE_VIEWPORT) == 0)) {
       base->flag |= BASE_ENABLED_VIEWPORT;
     }
-    if (((child_restrict & COLLECTION_RESTRICT_RENDER) == 0)) {
+    if (((child_restrict & COLLECTION_HIDE_RENDER) == 0)) {
       base->flag |= BASE_ENABLED_RENDER;
     }
   }
@@ -1755,7 +1755,7 @@ static bool collection_objects_select(ViewLayer *view_layer, Collection *collect
 {
   bool changed = false;
 
-  if (collection->flag & COLLECTION_RESTRICT_SELECT) {
+  if (collection->flag & COLLECTION_HIDE_SELECT) {
     return false;
   }
 

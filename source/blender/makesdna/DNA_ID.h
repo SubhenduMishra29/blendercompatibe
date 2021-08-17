@@ -429,7 +429,8 @@ typedef struct PreviewImage {
  * BKE_library_override typically (especially due to the check on LIB_TAG_EXTERN). */
 #define ID_IS_OVERRIDABLE_LIBRARY(_id) \
   (ID_IS_LINKED(_id) && !ID_MISSING(_id) && (((const ID *)(_id))->tag & LIB_TAG_EXTERN) != 0 && \
-   (BKE_idtype_get_info_from_id((const ID *)(_id))->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0)
+   (BKE_idtype_get_info_from_id((const ID *)(_id))->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0 && \
+   !ELEM(GS(((ID *)(_id))->name), ID_SCE))
 
 /* NOTE: The three checks below do not take into account whether given ID is linked or not (when
  * chaining overrides over several libraries). User must ensure the ID is not linked itself
@@ -550,7 +551,7 @@ enum {
   /* tag data-block as having actually increased user-count for the extra virtual user. */
   LIB_TAG_EXTRAUSER_SET = 1 << 7,
 
-  /* RESET_AFTER_USE tag newly duplicated/copied IDs.
+  /* RESET_AFTER_USE tag newly duplicated/copied IDs (see #ID_NEW_SET macro above).
    * Also used internally in readfile.c to mark data-blocks needing do_versions. */
   LIB_TAG_NEW = 1 << 8,
   /* RESET_BEFORE_USE free test flag.
@@ -562,13 +563,32 @@ enum {
   /**
    * The data-block is a copy-on-write/localized version.
    *
+   * RESET_NEVER
+   *
    * \warning This should not be cleared on existing data.
    * If support for this is needed, see T88026 as this flag controls memory ownership
    * of physics *shared* pointers.
    */
   LIB_TAG_COPIED_ON_WRITE = 1 << 12,
-
+  /**
+   * The data-block is not the original COW ID created by the depsgraph, but has be re-allocated
+   * during the evaluation process of another ID.
+   *
+   * RESET_NEVER
+   *
+   * Typical example is object data, when evaluating the object's modifier stack the final obdata
+   * can be different than the COW initial obdata ID.
+   */
   LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT = 1 << 13,
+
+  /**
+   * The data-block is fully outside of any ID management area, and should be considered as a
+   * purely independent data.
+   *
+   * RESET_NEVER
+   *
+   * NOTE: Only used by node-groups currently.
+   */
   LIB_TAG_LOCALIZED = 1 << 14,
 
   /* RESET_NEVER tag data-block for freeing etc. behavior

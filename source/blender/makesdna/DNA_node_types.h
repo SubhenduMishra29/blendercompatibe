@@ -1328,6 +1328,13 @@ typedef struct NodeAttributeConvert {
   int8_t domain;
 } NodeAttributeConvert;
 
+typedef struct NodeGeometrySubdivisionSurface {
+  /* eSubsurfUVSmooth. */
+  uint8_t uv_smooth;
+  /* eSubsurfBoundarySmooth. */
+  uint8_t boundary_smooth;
+} NodeGeometrySubdivisionSurface;
+
 typedef struct NodeGeometryMeshCircle {
   /* GeometryNodeMeshCircleFillType. */
   uint8_t fill_type;
@@ -1355,12 +1362,24 @@ typedef struct NodeSwitch {
   uint8_t input_type;
 } NodeSwitch;
 
+typedef struct NodeGeometryCurveSplineType {
+  /* GeometryNodeSplineType. */
+  uint8_t spline_type;
+} NodeGeometryCurveSplineType;
+
 typedef struct NodeGeometryCurveSetHandles {
   /* GeometryNodeCurveHandleType. */
   uint8_t handle_type;
   /* GeometryNodeCurveHandleMode. */
   uint8_t mode;
 } NodeGeometryCurveSetHandles;
+
+typedef struct NodeGeometryCurveSelectHandles {
+  /* GeometryNodeCurveHandleType. */
+  uint8_t handle_type;
+  /* GeometryNodeCurveHandleMode. */
+  uint8_t mode;
+} NodeGeometryCurveSelectHandles;
 
 typedef struct NodeGeometryCurvePrimitiveLine {
   /* GeometryNodeCurvePrimitiveLineMode. */
@@ -1827,6 +1846,12 @@ typedef enum GeometryNodeBooleanOperation {
   GEO_NODE_BOOLEAN_UNION = 1,
   GEO_NODE_BOOLEAN_DIFFERENCE = 2,
 } GeometryNodeBooleanOperation;
+
+typedef enum GeometryNodeSplineType {
+  GEO_NODE_SPLINE_TYPE_BEZIER = 0,
+  GEO_NODE_SPLINE_TYPE_NURBS = 1,
+  GEO_NODE_SPLINE_TYPE_POLY = 2,
+} GeometryNodeSplineType;
 
 typedef enum GeometryNodeCurvePrimitiveCircleMode {
   GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_POINTS = 0,

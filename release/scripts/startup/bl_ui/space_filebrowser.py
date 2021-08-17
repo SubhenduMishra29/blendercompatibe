@@ -37,9 +37,9 @@ class FILEBROWSER_HT_header(Header):
         params = space_data.params
 
         row = layout.row(align=True)
-        row.prop(params, "asset_library", text="")
+        row.prop(params, "asset_library_ref", text="")
         # External libraries don't auto-refresh, add refresh button.
-        if params.asset_library != 'LOCAL':
+        if params.asset_library_ref != 'LOCAL':
             row.operator("file.refresh", text="", icon='FILE_REFRESH')
 
         layout.separator_spacer()
@@ -195,7 +195,7 @@ class FILEBROWSER_PT_filter(FileBrowserPanel, Panel):
 
                 sub = row.column(align=True)
 
-                if context.preferences.experimental.use_asset_browser:
+                if context.preferences.experimental.use_extended_asset_browser:
                     sub.prop(params, "use_filter_asset_only")
 
                 filter_id = params.filter_id
@@ -373,6 +373,7 @@ class FILEBROWSER_PT_advanced_filter(Panel):
     def poll(cls, context):
         # only useful in append/link (library) context currently...
         return (
+            context.space_data.params and
             context.space_data.params.use_library_browsing and
             panel_poll_is_upper_region(context.region) and
             not panel_poll_is_asset_browsing(context)
@@ -383,19 +384,17 @@ class FILEBROWSER_PT_advanced_filter(Panel):
         space = context.space_data
         params = space.params
 
-        if params and params.use_library_browsing:
-            layout.prop(params, "use_filter_blendid")
-            if params.use_filter_blendid:
-                layout.separator()
-                col = layout.column(align=True)
+        layout.prop(params, "use_filter_blendid")
+        if params.use_filter_blendid:
+            layout.separator()
+            col = layout.column(align=True)
 
-                if context.preferences.experimental.use_asset_browser:
-                    col.prop(params, "use_filter_asset_only")
+            col.prop(params, "use_filter_asset_only")
 
-                filter_id = params.filter_id
-                for identifier in dir(filter_id):
-                    if identifier.startswith("filter_"):
-                        col.prop(filter_id, identifier, toggle=True)
+            filter_id = params.filter_id
+            for identifier in dir(filter_id):
+                if identifier.startswith("filter_"):
+                    col.prop(filter_id, identifier, toggle=True)
 
 
 def is_option_region_visible(context, space):
@@ -422,6 +421,10 @@ class FILEBROWSER_PT_directory_path(Panel):
                 return False
 
         return True
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.params
 
     def draw(self, context):
         layout = self.layout
@@ -650,6 +653,10 @@ class ASSETBROWSER_PT_navigation_bar(asset_utils.AssetBrowserPanel, Panel):
     bl_region_type = 'TOOLS'
     bl_options = {'HIDE_HEADER'}
 
+    @classmethod
+    def poll(cls, context):
+        return context.preferences.experimental.use_extended_asset_browser
+
     def draw(self, context):
         layout = self.layout
 
@@ -675,8 +682,8 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
             layout.label(text="No asset selected", icon='INFO')
             return
 
-        asset_library = context.asset_library
-        asset_lib_path = bpy.types.AssetHandle.get_full_library_path(asset_file_handle, asset_library)
+        asset_library_ref = context.asset_library_ref
+        asset_lib_path = bpy.types.AssetHandle.get_full_library_path(asset_file_handle, asset_library_ref)
 
         if asset_file_handle.local_id:
             # If the active file is an ID, use its name directly so renaming is possible from right here.
