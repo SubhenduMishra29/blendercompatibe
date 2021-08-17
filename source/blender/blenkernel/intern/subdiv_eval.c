@@ -120,7 +120,7 @@ typedef struct FaceVaryingDataFromUVContext {
 
 static void set_face_varying_data_from_uv_task(void *__restrict userdata,
                                                const int face_index,
-                                               const TaskParallelTLS *__restrict tls)
+                                               const TaskParallelTLS *__restrict UNUSED(tls))
 {
   FaceVaryingDataFromUVContext *ctx = userdata;
   OpenSubdiv_TopologyRefiner *topology_refiner = ctx->topology_refiner;
