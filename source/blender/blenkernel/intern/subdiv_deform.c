@@ -119,7 +119,8 @@ static bool subdiv_mesh_topology_info(const SubdivForeachContext *foreach_contex
                                       const int UNUSED(num_vertices),
                                       const int UNUSED(num_edges),
                                       const int UNUSED(num_loops),
-                                      const int UNUSED(num_polygons))
+                                      const int UNUSED(num_polygons),
+                                      const int *UNUSED(subdiv_polygon_offset))
 {
   SubdivDeformContext *subdiv_context = foreach_context->user_data;
   subdiv_mesh_prepare_accumulator(subdiv_context, subdiv_context->coarse_mesh->totvert);

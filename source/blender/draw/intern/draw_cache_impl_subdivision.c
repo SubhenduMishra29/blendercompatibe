@@ -758,6 +758,7 @@ typedef struct DRWSubdivCache {
   GPUVertBuf *edges_orig_index;
 
   GPUVertBuf *face_ptex_offset_buffer;
+  /* Owned by Subdiv struct. */
   int *face_ptex_offset;
   GPUVertBuf *subdiv_polygon_offset_buffer;
   int *subdiv_polygon_offset;
@@ -808,7 +809,6 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   MEM_SAFE_FREE(cache->subdiv_loop_subdiv_vert_index);
   MEM_SAFE_FREE(cache->subdiv_loop_poly_index);
   MEM_SAFE_FREE(cache->point_indices);
-  MEM_SAFE_FREE(cache->face_ptex_offset);
   MEM_SAFE_FREE(cache->subdiv_polygon_offset);
   GPU_VERTBUF_DISCARD_SAFE(cache->subdiv_vertex_face_adjacency_offsets);
   GPU_VERTBUF_DISCARD_SAFE(cache->subdiv_vertex_face_adjacency);
@@ -892,10 +892,6 @@ static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
     memory_used += cache->num_vertices * sizeof(int);
   }
 
-  if (cache->face_ptex_offset) {
-    memory_used += cache->coarse_poly_count * sizeof(int);
-  }
-
   if (cache->subdiv_vertex_face_adjacency_offsets) {
     memory_used += cache->num_vertices * sizeof(int);
   }
@@ -970,7 +966,6 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
                                        const int num_edges,
                                        const int num_loops,
                                        const int UNUSED(num_polygons),
-                                       const int *face_ptex_offset,
                                        const int *subdiv_polygon_offset)
 {
   if (num_loops == 0) {
@@ -984,7 +979,6 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
   cache->num_edges = (uint)num_edges;
   cache->num_patch_coords = (uint)num_loops;
   cache->num_vertices = (uint)num_vertices;
-  cache->face_ptex_offset = MEM_dupallocN(face_ptex_offset);
   cache->subdiv_polygon_offset = MEM_dupallocN(subdiv_polygon_offset);
 
   /* Initialize cache buffers, prefer dynamic usage so we can reuse memory on the host even after
@@ -1216,13 +1210,14 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
 
   build_cached_data_from_subdiv(&cache_building_context, subdiv);
   if (cache->num_patch_coords == 0) {
-    MEM_SAFE_FREE(cache->face_ptex_offset);
     MEM_SAFE_FREE(cache->subdiv_polygon_offset);
     return false;
   }
 
   /* Build buffers for the PatchMap. */
   gpu_patch_map_build(&cache->gpu_patch_map, subdiv);
+
+  cache->face_ptex_offset = BKE_subdiv_face_ptex_offset_get(subdiv);
 
   // Build patch coordinates for all the face dots
   cache->fdots_patch_coords = gpu_vertbuf_create_from_format(get_blender_patch_coords_format(),

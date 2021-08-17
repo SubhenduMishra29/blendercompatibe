@@ -39,7 +39,6 @@ typedef bool (*SubdivForeachTopologyInformationCb)(const struct SubdivForeachCon
                                                    const int num_edges,
                                                    const int num_loops,
                                                    const int num_polygons,
-                                                   const int *face_ptex_offset,
                                                    const int *subdiv_polygon_offset);
 
 typedef void (*SubdivForeachVertexFromCornerCb)(const struct SubdivForeachContext *context,

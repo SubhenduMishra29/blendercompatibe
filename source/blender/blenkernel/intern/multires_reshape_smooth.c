@@ -582,7 +582,6 @@ static bool foreach_topology_info(const SubdivForeachContext *foreach_context,
                                   const int num_edges,
                                   const int num_loops,
                                   const int num_polygons,
-                                  const int *UNUSED(face_ptex_offset),
                                   const int *UNUSED(subdiv_polygon_offset))
 {
   MultiresReshapeSmoothContext *reshape_smooth_context = foreach_context->user_data;

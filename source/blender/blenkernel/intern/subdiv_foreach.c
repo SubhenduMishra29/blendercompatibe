@@ -1911,7 +1911,6 @@ bool BKE_subdiv_foreach_subdiv_geometry(Subdiv *subdiv,
                                 ctx.num_subdiv_edges,
                                 ctx.num_subdiv_loops,
                                 ctx.num_subdiv_polygons,
-                                ctx.face_ptex_offset,
                                 ctx.subdiv_polygon_offset)) {
       subdiv_foreach_ctx_free(&ctx);
       return false;
