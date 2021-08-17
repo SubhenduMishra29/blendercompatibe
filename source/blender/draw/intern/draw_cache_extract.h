@@ -320,6 +320,11 @@ void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
                                         const struct ToolSettings *ts,
                                         const bool use_hide);
 
+void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
+                                               MeshBufferCache *mbc,
+                                               struct DRWSubdivCache *subdiv_cache,
+                                               const struct ToolSettings *ts);
+
 #ifdef __cplusplus
 }
 #endif

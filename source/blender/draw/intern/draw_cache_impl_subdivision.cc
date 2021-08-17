@@ -1516,7 +1516,7 @@ static void print_requests(MeshBufferCache *mbc)
 #undef PRINT_VBO_REQUEST
 }
 
-static void init_mesh_render_data(Mesh *mesh, MeshRenderData *mr, const ToolSettings *toolsettings)
+void draw_subdiv_init_mesh_render_data(Mesh *mesh, MeshRenderData *mr, const ToolSettings *toolsettings)
 {
   /* MeshRenderData is only used for generating edit mode data here. */
   if (!mesh->edit_mesh) {
@@ -1773,105 +1773,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   // print_requests(mbc);
 
-  if (DRW_ibo_requested(mbc->ibo.tris)) {
-    MeshExtract extractor = extract_tris;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.pos_nor)) {
-    MeshExtract extractor = extract_pos_nor;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.lnor)) {
-    MeshExtract extractor = extract_lnor;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.fdots)) {
-    MeshExtract extractor = extract_fdots;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.lines)) {
-    MeshExtract extractor = extract_lines;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.vert_idx)) {
-    MeshExtract extractor = extract_vert_idx;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.edge_idx)) {
-    MeshExtract extractor = extract_edge_idx;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.poly_idx)) {
-    MeshExtract extractor = extract_poly_idx;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.edge_fac)) {
-    MeshExtract extractor = extract_edge_fac;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.points)) {
-    MeshExtract extractor = extract_points;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.edit_data)) {
-    MeshRenderData mr;
-    init_mesh_render_data(mesh_eval, &mr, toolsettings);
-
-    MeshExtract extractor = extract_edit_data;
-    void *data = MEM_mallocN(extractor.data_size, __func__);
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, data);
-    extractor.iter_subdiv(draw_cache, &mr, data);
-    MEM_freeN(data);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.uv)) {
-    MeshExtract extractor = extract_uv;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_ibo_requested(mbc->ibo.lines_adjacency)) {
-    MeshExtract extractor = extract_lines_adjacency;
-    void *data = MEM_mallocN(extractor.data_size, __func__);
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, data);
-    extractor.iter_subdiv(draw_cache, NULL, data);
-    extractor.finish_subdiv(draw_cache, buffer, data);
-    MEM_freeN(data);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.vcol)) {
-    MeshExtract extractor = extract_vcol;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
-
-  if (DRW_vbo_requested(mbc->vbo.weights)) {
-    MeshExtract extractor = extract_weights;
-    void *buffer = mesh_extract_buffer_get(&extractor, mbc);
-    extractor.init_subdiv(draw_cache, batch_cache, buffer, NULL);
-  }
+  mesh_buffer_cache_create_requested_subdiv(batch_cache, mbc, draw_cache, toolsettings);
 
   // draw_subdiv_cache_print_memory_used(draw_cache);
   return true;

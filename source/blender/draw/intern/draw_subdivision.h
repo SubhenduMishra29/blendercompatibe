@@ -27,6 +27,7 @@ struct Object;
 struct Scene;
 struct MeshBatchCache;
 struct MeshBufferCache;
+struct MeshRenderData;
 struct Subdiv;
 struct ToolSettings;
 
@@ -140,6 +141,10 @@ typedef struct DRWSubdivCache {
   int edge_loose_len;
   int loop_loose_len;
 } DRWSubdivCache;
+
+void draw_subdiv_init_mesh_render_data(struct Mesh *mesh,
+                                       struct MeshRenderData *mr,
+                                       const struct ToolSettings *toolsettings);
 
 void draw_subdiv_init_origindex_buffer(struct GPUVertBuf *buffer,
                                        int *vert_origindex,
