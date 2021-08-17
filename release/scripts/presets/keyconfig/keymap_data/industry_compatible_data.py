@@ -465,6 +465,7 @@ def km_property_editor(params):
         # Constraint panels
         ("constraint.delete", {"type": 'BACK_SPACE', "value": 'PRESS'}, {"properties": [("report", True)]}),
         ("constraint.delete", {"type": 'DEL', "value": 'PRESS'}, {"properties": [("report", True)]}),
+        ("constraint.copy", {"type": 'D', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     return keymap
@@ -1248,6 +1249,10 @@ def km_file_browser(params):
          {"properties": [("increment", -10)]}),
         ("file.filenum", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True},
          {"properties": [("increment", -100)]}),
+
+        # Select file under cursor before spawning the context menu.
+        ("file.select", {"type": 'RIGHTMOUSE', "value": 'PRESS'},
+         {"properties": [("open", False), ("only_activate_if_selected", True), ("pass_through", True)]}),
         *_template_items_context_menu("FILEBROWSER_MT_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
         *_template_items_context_menu("ASSETBROWSER_MT_context_menu", {"type": 'RIGHTMOUSE', "value": 'PRESS'}),
     ])
