@@ -29,7 +29,6 @@
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
 #include "BLI_math_base.h"
@@ -3550,117 +3549,6 @@ static void rna_def_mesh(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, "rna_Mesh_is_editmode_get", NULL);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Is Editmode", "True when used in editmode");
-
-  /* render-time subdivision */
-  static const EnumPropertyItem prop_uv_smooth_items[] = {
-      {SUBSURF_UV_SMOOTH_NONE,
-       "NONE",
-       0,
-       "None",
-       "UVs are not smoothed, boundaries are kept sharp"},
-      {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS,
-       "PRESERVE_CORNERS",
-       0,
-       "Keep Corners",
-       "UVs are smoothed, corners on discontinuous boundary are kept sharp"},
-      {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_AND_JUNCTIONS,
-       "PRESERVE_CORNERS_AND_JUNCTIONS",
-       0,
-       "Keep Corners, Junctions",
-       "UVs are smoothed, corners on discontinuous boundary and "
-       "junctions of 3 or more regions are kept sharp"},
-      {SUBSURF_UV_SMOOTH_PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE,
-       "PRESERVE_CORNERS_JUNCTIONS_AND_CONCAVE",
-       0,
-       "Keep Corners, Junctions, Concave",
-       "UVs are smoothed, corners on discontinuous boundary, "
-       "junctions of 3 or more regions and darts and concave corners are kept sharp"},
-      {SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES,
-       "PRESERVE_BOUNDARIES",
-       0,
-       "Keep boundaries",
-       "UVs are smoothed, boundaries are kept sharp"},
-      {SUBSURF_UV_SMOOTH_ALL, "SMOOTH_ALL", 0, "All", "UVs and boundaries are smoothed"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static const EnumPropertyItem prop_boundary_smooth_items[] = {
-      {SUBSURF_BOUNDARY_SMOOTH_PRESERVE_CORNERS,
-       "PRESERVE_CORNERS",
-       0,
-       "Keep Corners",
-       "Smooth boundaries, but corners are kept sharp"},
-      {SUBSURF_BOUNDARY_SMOOTH_ALL, "ALL", 0, "All", "Smooth boundaries, including corners"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  static const EnumPropertyItem prop_subdivision_type_items[] = {
-      {ME_CC_SUBSURF, "CATMULL_CLARK", 0, "Catmull-Clark", ""},
-      {ME_SIMPLE_SUBSURF, "SIMPLE", 0, "Simple", ""},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  prop = RNA_def_property(srna, "subdivision_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "subdivision_type");
-  RNA_def_property_enum_items(prop, prop_subdivision_type_items);
-  RNA_def_property_ui_text(prop, "Subdivision Type", "Select type of subdivision algorithm");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "uv_smooth", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "uv_smooth");
-  RNA_def_property_enum_items(prop, prop_uv_smooth_items);
-  RNA_def_property_ui_text(prop, "UV Smooth", "Controls how smoothing is applied to UVs");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "boundary_smooth", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "boundary_smooth");
-  RNA_def_property_enum_items(prop, prop_boundary_smooth_items);
-  RNA_def_property_ui_text(prop, "Boundary Smooth", "Controls how open boundaries are smoothed");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "use_subdivision", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "use_subdivision", 0);
-  RNA_def_property_ui_text(prop, "Use Subdivision", "Render this mesh using subdivision");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "use_limit_surface", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop,
-                           "Use Limit Surface",
-                           "Place vertices at the surface that would be produced with infinite "
-                           "levels of subdivision (smoothest possible shape)");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "adaptive_subdivision", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "adaptive_subdivision", 0);
-  RNA_def_property_ui_text(
-      prop, "Adaptive Subdivision", "Render this mesh using adaptive subdivision");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  /* see CCGSUBSURF_LEVEL_MAX for max limit */
-  prop = RNA_def_property(srna, "preview_subdivision_levels", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, NULL, "subdiv_viewport_level");
-  RNA_def_property_range(prop, 0, 11);
-  RNA_def_property_ui_range(prop, 0, 6, 1, -1);
-  RNA_def_property_ui_text(
-      prop, "Viewport Levels", "Number of subdivisions to perform when rendering in the viewport");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "render_subdivision_levels", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, NULL, "subdiv_render_level");
-  RNA_def_property_range(prop, 0, 11);
-  RNA_def_property_ui_range(prop, 0, 6, 1, -1);
-  RNA_def_property_ui_text(
-      prop, "Render Levels", "Number of subdivisions to perform when rendering");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-
-  prop = RNA_def_property(srna, "subdivision_quality", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, NULL, "subdivision_quality");
-  RNA_def_property_range(prop, 0, 11);
-  RNA_def_property_ui_range(prop, 0, 6, 1, -1);
-  RNA_def_property_ui_text(
-      prop, "Quality", "Number of subdivisions to perform when rendering in the viewport");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_draw");
-  /* end render-time subdivision */
 
   /* pointers */
   rna_def_animdata_common(srna);

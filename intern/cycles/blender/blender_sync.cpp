@@ -176,8 +176,8 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
             object_map.set_recalc(b_ob);
           }
 
-          // todo(@kevindietrich): check for subdivision
-          if (updated_geometry) {
+          if (updated_geometry ||
+              (object_subdivision_type(b_ob, preview, experimental) != Mesh::SUBDIVISION_NONE)) {
             BL::ID key = BKE_object_is_modified(b_ob) ? b_ob : b_ob.data();
             geometry_map.set_recalc(key);
           }

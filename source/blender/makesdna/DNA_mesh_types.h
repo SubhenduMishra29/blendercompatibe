@@ -86,8 +86,7 @@ typedef struct Mesh_Runtime {
   void *batch_cache;
 
   struct SubdivCCG *subdiv_ccg;
-  /* Subdivision mesh for OpenGL rendering. */
-  void *subdivision_mesh;
+  void *_pad1;
   int subdiv_ccg_tot_level;
   char _pad2[4];
 
@@ -234,18 +233,6 @@ typedef struct Mesh {
 
   void *_pad2;
   Mesh_Runtime runtime;
-
-  char use_subdivision;
-  char adaptive_subdivision;
-  char subdivision_type;
-  char use_limit_surface;
-  char subdiv_viewport_level;
-  char subdiv_render_level;
-  char subdivision_quality;
-  char _pad2;
-  short uv_smooth;
-  short boundary_smooth;
-  int _pad4;
 } Mesh;
 
 /* deprecated by MTFace, only here for file reading */

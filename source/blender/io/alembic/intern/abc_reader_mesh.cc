@@ -918,10 +918,6 @@ void AbcSubDReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSelec
     return;
   }
 
-  mesh->use_subdivision = true;
-  mesh->adaptive_subdivision = true;
-  // todo(@kevindietrich) : validate and parse interpolation settings
-
   /* Read egde creases. */
   Int32ArraySamplePtr indices = sample.getCreaseIndices();
   Alembic::Abc::FloatArraySamplePtr sharpnesses = sample.getCreaseSharpnesses();

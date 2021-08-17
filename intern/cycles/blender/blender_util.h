@@ -49,8 +49,25 @@ void python_thread_state_restore(void **python_thread_state);
 static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
                                       BL::Object &object,
                                       BL::Depsgraph & /*depsgraph*/,
-                                      bool /*calc_undeformed*/)
+                                      bool /*calc_undeformed*/,
+                                      Mesh::SubdivisionType subdivision_type)
 {
+  /* TODO: make this work with copy-on-write, modifiers are already evaluated. */
+#if 0
+  bool subsurf_mod_show_render = false;
+  bool subsurf_mod_show_viewport = false;
+
+  if (subdivision_type != Mesh::SUBDIVISION_NONE) {
+    BL::Modifier subsurf_mod = object.modifiers[object.modifiers.length() - 1];
+
+    subsurf_mod_show_render = subsurf_mod.show_render();
+    subsurf_mod_show_viewport = subsurf_mod.show_viewport();
+
+    subsurf_mod.show_render(false);
+    subsurf_mod.show_viewport(false);
+  }
+#endif
+
   BL::Mesh mesh(PointerRNA_NULL);
   if (object.type() == BL::Object::type_MESH) {
     /* TODO: calc_undeformed is not used. */
@@ -59,7 +76,8 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
     /* Make a copy to split faces if we use autosmooth, otherwise not needed.
      * Also in edit mode do we need to make a copy, to ensure data layers like
      * UV are not empty. */
-    if (mesh.is_editmode() || (mesh.use_auto_smooth() && !mesh.use_subdivision())) {
+    if (mesh.is_editmode() ||
+        (mesh.use_auto_smooth() && subdivision_type == Mesh::SUBDIVISION_NONE)) {
       BL::Depsgraph depsgraph(PointerRNA_NULL);
       mesh = object.to_mesh(false, depsgraph);
     }
@@ -69,7 +87,16 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
     mesh = object.to_mesh(false, depsgraph);
   }
 
-  if ((bool)mesh && !mesh.use_subdivision()) {
+#if 0
+  if (subdivision_type != Mesh::SUBDIVISION_NONE) {
+    BL::Modifier subsurf_mod = object.modifiers[object.modifiers.length() - 1];
+
+    subsurf_mod.show_render(subsurf_mod_show_render);
+    subsurf_mod.show_viewport(subsurf_mod_show_viewport);
+  }
+#endif
+
+  if ((bool)mesh && subdivision_type == Mesh::SUBDIVISION_NONE) {
     if (mesh.use_auto_smooth()) {
       mesh.split_faces(false);
     }
@@ -539,6 +566,32 @@ static inline BL::FluidDomainSettings object_fluid_gas_domain_find(BL::Object &b
   }
 
   return BL::FluidDomainSettings(PointerRNA_NULL);
+}
+
+static inline Mesh::SubdivisionType object_subdivision_type(BL::Object &b_ob,
+                                                            bool preview,
+                                                            bool experimental)
+{
+  PointerRNA cobj = RNA_pointer_get(&b_ob.ptr, "cycles");
+
+  if (cobj.data && b_ob.modifiers.length() > 0 && experimental) {
+    BL::Modifier mod = b_ob.modifiers[b_ob.modifiers.length() - 1];
+    bool enabled = preview ? mod.show_viewport() : mod.show_render();
+
+    if (enabled && mod.type() == BL::Modifier::type_SUBSURF &&
+        RNA_boolean_get(&cobj, "use_adaptive_subdivision")) {
+      BL::SubsurfModifier subsurf(mod);
+
+      if (subsurf.subdivision_type() == BL::SubsurfModifier::subdivision_type_CATMULL_CLARK) {
+        return Mesh::SUBDIVISION_CATMULL_CLARK;
+      }
+      else {
+        return Mesh::SUBDIVISION_LINEAR;
+      }
+    }
+  }
+
+  return Mesh::SUBDIVISION_NONE;
 }
 
 static inline uint object_ray_visibility(BL::Object &b_ob)

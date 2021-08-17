@@ -69,7 +69,6 @@ void BKE_mesh_runtime_reset_on_copy(Mesh *mesh, const int UNUSED(flag))
   memset(&runtime->looptris, 0, sizeof(runtime->looptris));
   runtime->bvh_cache = NULL;
   runtime->shrinkwrap_data = NULL;
-  runtime->subdivision_mesh = NULL;
 
   mesh->runtime.eval_mutex = MEM_mallocN(sizeof(ThreadMutex), "mesh runtime eval_mutex");
   BLI_mutex_init(mesh->runtime.eval_mutex);
@@ -90,7 +89,6 @@ void BKE_mesh_runtime_clear_cache(Mesh *mesh)
   BKE_mesh_runtime_clear_geometry(mesh);
   BKE_mesh_batch_cache_free(mesh);
   BKE_mesh_runtime_clear_edit_data(mesh);
-  BKE_mesh_subdivision_mesh_free(mesh);
 }
 
 /* This is a ported copy of DM_ensure_looptri_data(dm) */
@@ -273,15 +271,6 @@ void BKE_mesh_batch_cache_free(Mesh *me)
 {
   if (me->runtime.batch_cache) {
     BKE_mesh_batch_cache_free_cb(me);
-  }
-}
-
-void BKE_mesh_subdivision_mesh_free(Mesh *me)
-{
-  Subdiv *subdiv = (Subdiv *)(me->runtime.subdivision_mesh);
-  if (subdiv) {
-    BKE_subdiv_free(subdiv);
-    me->runtime.subdivision_mesh = NULL;
   }
 }
 

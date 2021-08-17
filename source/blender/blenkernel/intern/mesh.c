@@ -1023,16 +1023,6 @@ void BKE_mesh_copy_parameters_for_eval(Mesh *me_dst, const Mesh *me_src)
   }
   me_dst->mat = MEM_dupallocN(me_src->mat);
   me_dst->totcol = me_src->totcol;
-
-  me_dst->use_subdivision = me_src->use_subdivision;
-  me_dst->adaptive_subdivision = me_src->adaptive_subdivision;
-  me_dst->subdivision_type = me_src->subdivision_type;
-  me_dst->use_limit_surface = me_src->use_limit_surface;
-  me_dst->subdiv_viewport_level = me_src->subdiv_viewport_level;
-  me_dst->subdiv_render_level = me_src->subdiv_render_level;
-  me_dst->subdivision_quality = me_src->subdivision_quality;
-  me_dst->uv_smooth = me_src->uv_smooth;
-  me_dst->boundary_smooth = me_src->boundary_smooth;
 }
 
 Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
