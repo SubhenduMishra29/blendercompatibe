@@ -3157,7 +3157,7 @@ void seq_effect_speed_rebuild_map(Scene *scene, Sequence *seq)
   }
 }
 
-static void seq_effect_speed_frame_map_ensure(Scene *scene, Sequence *seq, FCurve *fcu)
+static void seq_effect_speed_frame_map_ensure(Scene *scene, Sequence *seq)
 {
   SpeedControlVars *v = (SpeedControlVars *)seq->effectdata;
   if (v->frameMap != NULL) {
@@ -3194,7 +3194,7 @@ float seq_speed_effect_target_frame_get(Scene *scene,
     case SEQ_SPEED_MULTIPLY: {
       FCurve *fcu = seq_effect_speed_speed_factor_curve_get(scene, seq_speed);
       if (fcu != NULL) {
-        seq_effect_speed_frame_map_ensure(scene, seq_speed, fcu);
+        seq_effect_speed_frame_map_ensure(scene, seq_speed);
         target_frame = s->frameMap[frame_index];
       }
       else {
