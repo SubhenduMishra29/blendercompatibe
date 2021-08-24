@@ -171,9 +171,6 @@ static void text_free_data(ID *id)
 
 static void text_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
-  if (id->us < 1 && !BLO_write_is_undo(writer)) {
-    return;
-  }
   Text *text = (Text *)id;
 
   /* NOTE: we are clearing local temp data here, *not* the flag in the actual 'real' ID. */
@@ -311,7 +308,7 @@ int txt_extended_ascii_as_utf8(char **str)
   int added = 0;
 
   while ((*str)[i]) {
-    if ((bad_char = BLI_utf8_invalid_byte(*str + i, length - i)) == -1) {
+    if ((bad_char = BLI_str_utf8_invalid_byte(*str + i, length - i)) == -1) {
       break;
     }
 
@@ -325,7 +322,7 @@ int txt_extended_ascii_as_utf8(char **str)
     i = 0;
 
     while ((*str)[i]) {
-      if ((bad_char = BLI_utf8_invalid_byte((*str) + i, length - i)) == -1) {
+      if ((bad_char = BLI_str_utf8_invalid_byte((*str) + i, length - i)) == -1) {
         memcpy(newstr + mi, (*str) + i, length - i + 1);
         break;
       }

@@ -125,7 +125,7 @@ static void extract_lnor_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                      void *UNUSED(data))
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  GPUVertBuf *pos_nor = cache->final.vbo.pos_nor;
+  GPUVertBuf *pos_nor = cache->final.buff.vbo.pos_nor;
   BLI_assert(pos_nor);
   GPU_vertbuf_init_build_on_device(vbo, get_lnor_format(), subdiv_cache->num_patch_coords);
   draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo, subdiv_cache->do_hq_normals);
@@ -141,7 +141,7 @@ constexpr MeshExtract create_extractor_lnor()
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(GPUPackedNormal *);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferCache, vbo.lnor);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.lnor);
   return extractor;
 }
 
@@ -240,7 +240,7 @@ constexpr MeshExtract create_extractor_lnor_hq()
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(gpuHQNor *);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferCache, vbo.lnor);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.lnor);
   return extractor;
 }
 

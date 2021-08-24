@@ -120,8 +120,8 @@ static void extract_fdots_init_subdiv(const DRWSubdivCache *subdiv_cache,
 {
   /* We "extract" positions, normals, and indices at once. */
   GPUVertBuf *fdots_pos_vbo = static_cast<GPUVertBuf *>(buffer);
-  GPUVertBuf *fdots_nor_vbo = cache->final.vbo.fdots_nor;
-  GPUIndexBuf *fdots_pos_ibo = cache->final.ibo.fdots;
+  GPUVertBuf *fdots_nor_vbo = cache->final.buff.vbo.fdots_nor;
+  GPUIndexBuf *fdots_pos_ibo = cache->final.buff.ibo.fdots;
 
   GPU_vertbuf_init_build_on_device(
       fdots_nor_vbo, get_fdots_nor_format_subdiv(), subdiv_cache->coarse_poly_count);
@@ -141,7 +141,7 @@ constexpr MeshExtract create_extractor_fdots_pos()
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(float(*)[3]);
   extractor.use_threading = true;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferCache, vbo.fdots_pos);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.fdots_pos);
   return extractor;
 }
 

@@ -1446,8 +1446,13 @@ static int sequencer_split_exec(bContext *C, wmOperator *op)
     }
 
     if (ignore_selection || seq->flag & SELECT) {
-      if (SEQ_edit_strip_split(bmain, scene, ed->seqbasep, seq, split_frame, method) != NULL) {
+      const char *error_msg = NULL;
+      if (SEQ_edit_strip_split(bmain, scene, ed->seqbasep, seq, split_frame, method, &error_msg) !=
+          NULL) {
         changed = true;
+      }
+      if (error_msg != NULL) {
+        BKE_report(op->reports, RPT_ERROR, error_msg);
       }
     }
   }
@@ -2826,7 +2831,7 @@ static int sequencer_change_path_exec(bContext *C, wmOperator *op)
     }
     else {
       RNA_BEGIN (op->ptr, itemptr, "files") {
-        char *filename = RNA_string_get_alloc(&itemptr, "name", NULL, 0);
+        char *filename = RNA_string_get_alloc(&itemptr, "name", NULL, 0, NULL);
         BLI_strncpy(se->name, filename, sizeof(se->name));
         MEM_freeN(filename);
         se++;

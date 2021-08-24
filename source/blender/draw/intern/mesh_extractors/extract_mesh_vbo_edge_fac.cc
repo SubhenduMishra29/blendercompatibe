@@ -238,8 +238,8 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                          void *buffer,
                                          void *UNUSED(data))
 {
-  GPUVertBuf *edge_idx = cache->final.vbo.edge_idx;
-  GPUVertBuf *pos_nor = cache->final.vbo.pos_nor;
+  GPUVertBuf *edge_idx = cache->final.buff.vbo.edge_idx;
+  GPUVertBuf *pos_nor = cache->final.buff.vbo.pos_nor;
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   GPU_vertbuf_init_build_on_device(vbo,
                                    get_subdiv_edge_fac_format(),
@@ -307,7 +307,7 @@ constexpr MeshExtract create_extractor_edge_fac()
   extractor.data_type = MR_DATA_POLY_NOR;
   extractor.data_size = sizeof(MeshExtract_EdgeFac_Data);
   extractor.use_threading = false;
-  extractor.mesh_buffer_offset = offsetof(MeshBufferCache, vbo.edge_fac);
+  extractor.mesh_buffer_offset = offsetof(MeshBufferList, vbo.edge_fac);
   return extractor;
 }
 

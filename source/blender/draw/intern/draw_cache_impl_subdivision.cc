@@ -257,8 +257,9 @@ static GPUShader *get_patch_evaluation_shader(int shader_type)
     /* Merge OpenSubdiv library code with our own library code. */
     const char *patch_basis_source = openSubdiv_getGLSLPatchBasisSource();
     const char *subdiv_lib_code = datatoc_common_subdiv_lib_glsl;
-    char *library_code = static_cast<char *>(MEM_mallocN(strlen(patch_basis_source) + strlen(subdiv_lib_code) + 1,
-                                     "subdiv patch evaluation library code"));
+    char *library_code = static_cast<char *>(
+        MEM_mallocN(strlen(patch_basis_source) + strlen(subdiv_lib_code) + 1,
+                    "subdiv patch evaluation library code"));
     library_code[0] = '\0';
     strcat(library_code, patch_basis_source);
     strcat(library_code, subdiv_lib_code);
@@ -693,7 +694,8 @@ static DRWSubdivCache *ensure_draw_cache(Subdiv *subdiv)
   DRWSubdivCache *draw_cache = static_cast<DRWSubdivCache *>(subdiv->draw_cache);
   if (draw_cache == nullptr) {
     // fprintf(stderr, "Creating a new cache !\n");
-    draw_cache = static_cast<DRWSubdivCache *>(MEM_callocN(sizeof(DRWSubdivCache), "DRWSubdivCache"));
+    draw_cache = static_cast<DRWSubdivCache *>(
+        MEM_callocN(sizeof(DRWSubdivCache), "DRWSubdivCache"));
   }
   subdiv->draw_cache = draw_cache;
   subdiv->free_draw_cache = free_draw_cache_from_subdiv_cb;
@@ -764,13 +766,14 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
       cache->edges_orig_index, get_origindex_format(), GPU_USAGE_DYNAMIC);
   GPU_vertbuf_data_alloc(cache->edges_orig_index, cache->num_patch_coords);
 
-  cache->subdiv_loop_subdiv_vert_index = static_cast<int *>(MEM_mallocN(cache->num_patch_coords * sizeof(int),
-                                                     "subdiv_loop_subdiv_vert_index"));
+  cache->subdiv_loop_subdiv_vert_index = static_cast<int *>(
+      MEM_mallocN(cache->num_patch_coords * sizeof(int), "subdiv_loop_subdiv_vert_index"));
 
-  cache->subdiv_loop_poly_index = static_cast<int *>(MEM_mallocN(cache->num_patch_coords * sizeof(int),
-                                              "subdiv_loop_poly_index"));
+  cache->subdiv_loop_poly_index = static_cast<int *>(
+      MEM_mallocN(cache->num_patch_coords * sizeof(int), "subdiv_loop_poly_index"));
 
-  cache->point_indices = static_cast<int *>(MEM_mallocN(cache->num_vertices * sizeof(int), "point_indices"));
+  cache->point_indices = static_cast<int *>(
+      MEM_mallocN(cache->num_vertices * sizeof(int), "point_indices"));
   for (int i = 0; i < num_vertices; i++) {
     cache->point_indices[i] = -1;
   }
@@ -783,14 +786,14 @@ static bool patch_coords_topology_info(const SubdivForeachContext *foreach_conte
   ctx->subdiv_loop_poly_index = cache->subdiv_loop_poly_index;
   ctx->point_indices = cache->point_indices;
 
-  ctx->vert_origindex_map = static_cast<int *>(MEM_mallocN(cache->num_vertices * sizeof(int),
-                                        "subdiv_vert_origindex_map"));
+  ctx->vert_origindex_map = static_cast<int *>(
+      MEM_mallocN(cache->num_vertices * sizeof(int), "subdiv_vert_origindex_map"));
   for (int i = 0; i < num_vertices; i++) {
     ctx->vert_origindex_map[i] = -1;
   }
 
-  ctx->edge_origindex_map = static_cast<int *>(MEM_mallocN(cache->num_edges * sizeof(int),
-                                        "subdiv_edge_origindex_map"));
+  ctx->edge_origindex_map = static_cast<int *>(
+      MEM_mallocN(cache->num_edges * sizeof(int), "subdiv_edge_origindex_map"));
   for (int i = 0; i < num_edges; i++) {
     ctx->edge_origindex_map[i] = -1;
   }
@@ -930,7 +933,8 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
   cache->subdiv_vertex_face_adjacency = gpu_vertbuf_create_from_format(get_origindex_format(),
                                                                        cache->num_patch_coords);
   int *adjacent_faces = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency);
-  int *tmp_set_faces = static_cast<int *>(MEM_callocN(sizeof(int) * cache->num_vertices, "tmp subdiv vertex offset"));
+  int *tmp_set_faces = static_cast<int *>(
+      MEM_callocN(sizeof(int) * cache->num_vertices, "tmp subdiv vertex offset"));
 
   for (int i = 0; i < cache->num_patch_coords / 4; i++) {
     for (int j = 0; j < 4; j++) {
@@ -1465,7 +1469,7 @@ void draw_subdiv_build_lnor_buffer(const DRWSubdivCache *cache,
 
 /* -------------------------------------------------------------------- */
 
-static void print_requests(MeshBufferCache *mbc)
+static void print_requests(MeshBufferList *mbc)
 {
   fprintf(stderr, "============== REQUESTS ==============\n");
 
@@ -1516,7 +1520,9 @@ static void print_requests(MeshBufferCache *mbc)
 #undef PRINT_VBO_REQUEST
 }
 
-void draw_subdiv_init_mesh_render_data(Mesh *mesh, MeshRenderData *mr, const ToolSettings *toolsettings)
+void draw_subdiv_init_mesh_render_data(Mesh *mesh,
+                                       MeshRenderData *mr,
+                                       const ToolSettings *toolsettings)
 {
   /* MeshRenderData is only used for generating edit mode data here. */
   if (!mesh->edit_mesh) {
@@ -1611,8 +1617,8 @@ static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache,
 
   /* Compute per polygon offsets. */
   int *mat_end = static_cast<int *>(MEM_dupallocN(mat_start));
-  int *per_polygon_mat_offset = static_cast<int *>(MEM_mallocN(sizeof(int) * mesh_eval->totpoly,
-                                            "per_polygon_mat_offset"));
+  int *per_polygon_mat_offset = static_cast<int *>(
+      MEM_mallocN(sizeof(int) * mesh_eval->totpoly, "per_polygon_mat_offset"));
 
   for (int i = 0; i < mesh_eval->totpoly; i++) {
     const MPoly *mpoly = &mesh_eval->mpoly[i];
@@ -1663,7 +1669,8 @@ static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
   const MEdge *med = medge;
   for (int med_index = 0; med_index < mesh->totedge; med_index++, med++) {
     if (med->flag & ME_LOOSEEDGE) {
-      LooseEdge *loose_edge = static_cast<LooseEdge *>(BLI_memarena_alloc(memarena, sizeof(LooseEdge)));
+      LooseEdge *loose_edge = static_cast<LooseEdge *>(
+          BLI_memarena_alloc(memarena, sizeof(LooseEdge)));
       loose_edge->v1 = med->v1;
       loose_edge->v2 = med->v2;
       loose_edge->coarse_edge_index = med_index;
@@ -1684,7 +1691,8 @@ static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
 
     const MVert *vert = &mvert[vertex_index];
 
-    LooseVertex *loose_vert = static_cast<LooseVertex *>(BLI_memarena_alloc(memarena, sizeof(LooseVertex)));
+    LooseVertex *loose_vert = static_cast<LooseVertex *>(
+        BLI_memarena_alloc(memarena, sizeof(LooseVertex)));
     loose_vert->coarse_vertex_index = vertex_index;
     copy_v3_v3(loose_vert->co, vert->co);
     loose_vert->next = loose_verts;
@@ -1765,7 +1773,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   update_loose_elements(draw_cache, mesh_eval);
 
-  if (DRW_ibo_requested(mbc->ibo.tris)) {
+  if (DRW_ibo_requested(mbc->buff.ibo.tris)) {
     draw_subdiv_cache_ensure_mat_offsets(draw_cache, mesh_eval, batch_cache->mat_len);
   }
 
@@ -1773,7 +1781,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   // print_requests(mbc);
 
-  mesh_buffer_cache_create_requested_subdiv(batch_cache, mbc, draw_cache, toolsettings);
+  mesh_buffer_cache_create_requested_subdiv(batch_cache, &mbc->buff, draw_cache, toolsettings);
 
   // draw_subdiv_cache_print_memory_used(draw_cache);
   return true;
