@@ -191,9 +191,9 @@ static void extract_lines_adjacency_init_subdiv(const DRWSubdivCache *subdiv_cac
   /* For each polygon there is (loop + triangle - 1) edges. Since we only have quads, and a quad
    * is split into 2 triangles, we have (loop + 2 - 1) = (loop + 1) edges for each quad, or in
    * total: (number_of_loops + number_of_quads). */
-  uint tess_less = subdiv_cache->num_subdiv_loops + subdiv_cache->num_subdiv_quads;
+  const uint tess_len = subdiv_cache->num_subdiv_loops + subdiv_cache->num_subdiv_quads;
   line_adjacency_data_init(
-      data, tess_less, subdiv_cache->num_subdiv_vertis, subdiv_cache->num_subdiv_loops);
+      data, tess_len, subdiv_cache->num_subdiv_vertis, subdiv_cache->num_subdiv_loops);
 }
 
 static void extract_lines_adjacency_iter_subdiv(const DRWSubdivCache *subdiv_cache,
