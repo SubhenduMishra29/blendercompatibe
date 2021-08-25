@@ -119,6 +119,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if ((bmd->flag & eBooleanModifierFlag_Object) && bmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, bmd->object, DEG_OB_COMP_TRANSFORM, "Boolean Modifier");
     DEG_add_object_relation(ctx->node, bmd->object, DEG_OB_COMP_GEOMETRY, "Boolean Modifier");
+    DEG_add_object_relation(ctx->node, bmd->object, DEG_OB_COMP_SUBDIVISION, "Boolean Modifier");
   }
 
   Collection *col = bmd->collection;
