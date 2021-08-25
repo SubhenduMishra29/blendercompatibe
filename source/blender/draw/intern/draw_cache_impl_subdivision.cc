@@ -1386,57 +1386,6 @@ void draw_subdiv_build_lnor_buffer(const DRWSubdivCache *cache,
 
 /* -------------------------------------------------------------------- */
 
-static void print_requests(MeshBufferList *mbc)
-{
-  fprintf(stderr, "============== REQUESTS ==============\n");
-
-#define PRINT_VBO_REQUEST(request) \
-  if (DRW_vbo_requested(mbc->request)) \
-  fprintf(stderr, #request " requested\n")
-#define PRINT_IBO_REQUEST(request) \
-  if (DRW_ibo_requested(mbc->request)) \
-  fprintf(stderr, #request " requested\n")
-
-  PRINT_VBO_REQUEST(vbo.lnor);
-  PRINT_VBO_REQUEST(vbo.pos_nor);
-  PRINT_VBO_REQUEST(vbo.uv);
-  PRINT_VBO_REQUEST(vbo.vcol);
-  PRINT_VBO_REQUEST(vbo.sculpt_data);
-  PRINT_VBO_REQUEST(vbo.weights);
-  PRINT_VBO_REQUEST(vbo.edge_fac);
-  PRINT_VBO_REQUEST(vbo.mesh_analysis);
-  PRINT_VBO_REQUEST(vbo.tan);
-  PRINT_VBO_REQUEST(vbo.orco);
-  PRINT_VBO_REQUEST(vbo.edit_data);
-  PRINT_VBO_REQUEST(vbo.fdots_pos);
-  PRINT_VBO_REQUEST(vbo.fdots_nor);
-  PRINT_VBO_REQUEST(vbo.skin_roots);
-  PRINT_VBO_REQUEST(vbo.vert_idx);
-  PRINT_VBO_REQUEST(vbo.edge_idx);
-  PRINT_VBO_REQUEST(vbo.poly_idx);
-  PRINT_VBO_REQUEST(vbo.fdot_idx);
-  PRINT_VBO_REQUEST(vbo.edituv_data);
-  PRINT_VBO_REQUEST(vbo.edituv_stretch_area);
-  PRINT_VBO_REQUEST(vbo.edituv_stretch_angle);
-  PRINT_VBO_REQUEST(vbo.fdots_uv);
-  PRINT_VBO_REQUEST(vbo.fdots_edituv_data);
-
-  PRINT_IBO_REQUEST(ibo.tris);
-  PRINT_IBO_REQUEST(ibo.lines);
-  PRINT_IBO_REQUEST(ibo.lines_loose);
-  PRINT_IBO_REQUEST(ibo.lines_adjacency);
-  PRINT_IBO_REQUEST(ibo.lines_paint_mask);
-  PRINT_IBO_REQUEST(ibo.points);
-  PRINT_IBO_REQUEST(ibo.fdots);
-  PRINT_IBO_REQUEST(ibo.edituv_tris);
-  PRINT_IBO_REQUEST(ibo.edituv_lines);
-  PRINT_IBO_REQUEST(ibo.edituv_points);
-  PRINT_IBO_REQUEST(ibo.edituv_fdots);
-
-#undef PRINT_IBO_REQUEST
-#undef PRINT_VBO_REQUEST
-}
-
 void draw_subdiv_init_mesh_render_data(Mesh *mesh,
                                        MeshRenderData *mr,
                                        const ToolSettings *toolsettings)
