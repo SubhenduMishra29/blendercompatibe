@@ -57,24 +57,6 @@
 #include "draw_cache_inline.h"
 #include "mesh_extractors/extract_mesh.h"
 
-#if 0
-static void print_index_buffer(const char *message, int *index, int len)
-{
-  fprintf(stderr, "%s\n", message);
-  for (int i = 0; i < len; i++) {
-    fprintf(stderr, "index at %d: %d\n", i, index[i]);
-  }
-}
-#endif
-
-/* To-dos:
- * - improve OpenSubdiv_BufferInterface
- * - comments
- * - better structure for this file
- * - add support for vertex colors
- * - holes: deduplicate operator code in edit_mesh_tools.
- */
-
 extern char datatoc_common_subdiv_lib_glsl[];
 extern char datatoc_common_subdiv_buffer_lines_comp_glsl[];
 extern char datatoc_common_subdiv_buffer_lnor_comp_glsl[];
@@ -149,7 +131,7 @@ static const char *get_shader_code(int shader_type)
       return datatoc_common_subdiv_custom_data_interp_comp_glsl;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static const char *get_shader_name(int shader_type)
@@ -208,15 +190,15 @@ static const char *get_shader_name(int shader_type)
       return "subdiv custom data interp 4D";
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 static GPUShader *get_patch_evaluation_shader(int shader_type)
 {
-  if (g_subdiv_shaders[shader_type] == NULL) {
+  if (g_subdiv_shaders[shader_type] == nullptr) {
     const char *compute_code = get_shader_code(shader_type);
 
-    const char *defines = NULL;
+    const char *defines = nullptr;
     if (shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS) {
       defines =
           "#define OSD_PATCH_BASIS_GLSL\n"
@@ -283,7 +265,7 @@ static GPUShader *get_subdiv_shader(int shader_type, const char *defines)
       shader_type == SHADER_PATCH_EVALUATION_FACE_DOTS) {
     return get_patch_evaluation_shader(shader_type);
   }
-  if (g_subdiv_shaders[shader_type] == NULL) {
+  if (g_subdiv_shaders[shader_type] == nullptr) {
     const char *compute_code = get_shader_code(shader_type);
     g_subdiv_shaders[shader_type] = GPU_shader_create_compute(
         compute_code, datatoc_common_subdiv_lib_glsl, defines, get_shader_name(shader_type));
@@ -337,7 +319,7 @@ static GPUVertFormat *get_patch_index_format(void)
 }
 
 /* Vertex format for the OpenSubdiv vertex buffer. */
-static GPUVertFormat *get_work_vertex_format(void)
+static GPUVertFormat *get_subdiv_vertex_format(void)
 {
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
@@ -414,7 +396,9 @@ static uint tris_count_from_number_of_loops(const uint number_of_loops)
   return number_of_quads * 2;
 }
 
-// --------------------------------------------------------
+/* -------------------------------------------------------------------- */
+/** \name Utilities to initialize a OpenSubdiv_BufferInterface for a GPUVertBuf.
+ * \{ */
 
 static uint vertbuf_bind_gpu(OpenSubdiv_BufferInterface *buffer)
 {
@@ -472,8 +456,10 @@ static void opensubdiv_gpu_buffer_init(OpenSubdiv_BufferInterface *buffer_interf
   buffer_interface->update_data = vertbuf_update_data;
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
-/** \name DRWSubdivCache
+/** \name Utilities to build a GPUVertBuf from an origindex buffer).
  * \{ */
 
 void draw_subdiv_init_origindex_buffer(GPUVertBuf *buffer,
@@ -543,9 +529,6 @@ static void gpu_patch_map_free(GPUPatchMap *gpu_patch_map)
   gpu_patch_map->patches_are_triangular = 0;
 }
 
-#include "BLI_bitmap.h"
-#include "BLI_memarena.h"
-
 /* -------------------------------------------------------------------- */
 /** \name DRWSubdivCache
  * \{ */
@@ -591,7 +574,7 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
 
 static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cache, Mesh *mesh)
 {
-  if (cache->extra_coarse_face_data == NULL) {
+  if (cache->extra_coarse_face_data == nullptr) {
     cache->extra_coarse_face_data = GPU_vertbuf_calloc();
     static GPUVertFormat format;
     if (format.attr_len == 0) {
@@ -613,67 +596,6 @@ static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cach
 
   /* Make sure updated data is reuploaded. */
   GPU_vertbuf_tag_dirty(cache->extra_coarse_face_data);
-}
-
-static void draw_subdiv_cache_print_memory_used(DRWSubdivCache *cache)
-{
-  size_t memory_used = 0;
-
-  if (cache->patch_coords) {
-    memory_used += cache->num_patch_coords * 8;
-  }
-
-  if (cache->subdiv_polygon_offset_buffer) {
-    memory_used += cache->coarse_poly_count * sizeof(int);
-  }
-
-  if (cache->extra_coarse_face_data) {
-    memory_used += cache->coarse_poly_count * sizeof(int);
-  }
-
-  if (cache->edges_orig_index) {
-    memory_used += cache->num_patch_coords * sizeof(int);
-  }
-
-  if (cache->subdiv_loop_subdiv_vert_index) {
-    memory_used += cache->num_patch_coords * sizeof(int);
-  }
-
-  if (cache->subdiv_loop_poly_index) {
-    memory_used += cache->num_patch_coords * sizeof(int);
-  }
-
-  if (cache->verts_orig_index) {
-    memory_used += cache->num_patch_coords * sizeof(int);
-  }
-
-  if (cache->point_indices) {
-    memory_used += cache->num_vertices * sizeof(int);
-  }
-
-  if (cache->subdiv_vertex_face_adjacency_offsets) {
-    memory_used += cache->num_vertices * sizeof(int);
-  }
-
-  if (cache->subdiv_vertex_face_adjacency) {
-    memory_used += cache->num_patch_coords * sizeof(int);
-  }
-
-#if 0
-  GPU_VERTBUF_DISCARD_SAFE(cache->polygon_mat_offset);
-  MEM_SAFE_FREE(cache->mat_start);
-  MEM_SAFE_FREE(cache->mat_end);
-  GPU_VERTBUF_DISCARD_SAFE(cache->verts_orig_index);
-  GPU_VERTBUF_DISCARD_SAFE(cache->edges_orig_index);
-  GPU_VERTBUF_DISCARD_SAFE(cache->faces_orig_index);
-  GPU_VERTBUF_DISCARD_SAFE(cache->fdots_patch_coords);
-#endif
-
-  fprintf(stderr, "Memory used by the GPU subdivision cache: %lu bytes\n", memory_used);
-
-  if (cache->patch_coords) {
-    fprintf(stderr, "Memory used for the patch coords: %u bytes\n", cache->num_patch_coords * 8);
-  }
 }
 
 static void free_draw_cache_from_subdiv_cb(void *ptr)
@@ -955,14 +877,16 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
   to_mesh_settings.use_optimal_display = false;
 
   if (cache->resolution != to_mesh_settings.resolution) {
-    // fprintf(stderr, "Resolution changed rebuilding cache !\n");
-    /* Resolution chaged, we need to rebuild. */
+    /* Resolution changed, we need to rebuild, free any existing cached data. */
     draw_subdiv_cache_free(cache);
   }
 
-  if (cache->patch_coords != NULL) {
-    // fprintf(stderr, "Cache does not need to be rebuilt !\n");
-    /* No need to rebuild anything. */
+  /* If the resolution between the cache and the settings match for some reason, check if the patch
+   * coordinates were not already generated. Those coordinates are specific to the resolution, so
+   * they should be null either after initialization, or after freeing if the resolution (or some
+   * other subdivision setting) changed.
+   */
+  if (cache->patch_coords != nullptr) {
     return true;
   }
 
@@ -973,6 +897,9 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
 
   build_cached_data_from_subdiv(&cache_building_context, subdiv);
   if (cache->num_patch_coords == 0) {
+    /* Either the traversal failed, or we have an empty mesh, either way we cannot go any further.
+     * The subdiv_polygon_offset cannot then be reliably stored in the cache, so free it directly.
+     */
     MEM_SAFE_FREE(cache->subdiv_polygon_offset);
     return false;
   }
@@ -996,7 +923,7 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
     else {
       /* For N-gons, since they are split into quads from the center, and since the center is
        * chosen to be the top right corner of each quad, the center coordinate of the coarse face
-       * is anyone of those top right corner with `u = v = 1.0`. */
+       * is any one of those top right corners with `u = v = 1.0`. */
       blender_fdots_patch_coords[i] = make_patch_coord(ptex_face_index, 1.0f, 1.0f);
     }
   }
@@ -1037,7 +964,7 @@ void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
 {
   Subdiv *subdiv = cache->subdiv;
   GPUVertBuf *src_buffer = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(src_buffer, get_work_vertex_format(), GPU_USAGE_DEVICE_ONLY);
+  GPU_vertbuf_init_with_format_ex(src_buffer, get_subdiv_vertex_format(), GPU_USAGE_DEVICE_ONLY);
   OpenSubdiv_BufferInterface src_buffer_interface;
   opensubdiv_gpu_buffer_init(&src_buffer_interface, src_buffer);
   subdiv->evaluator->buildSrcBuffer(subdiv->evaluator, &src_buffer_interface);
@@ -1189,7 +1116,7 @@ void draw_subdiv_interp_custom_data(const DRWSubdivCache *buffers,
                                     int dimensions,
                                     int dst_offset)
 {
-  GPUShader *shader = NULL;
+  GPUShader *shader = nullptr;
 
   if (dimensions == 1) {
     shader = get_subdiv_shader(SHADER_COMP_CUSTOM_DATA_INTERP_1D,
@@ -1231,7 +1158,7 @@ void draw_subdiv_accumulate_normals(const DRWSubdivCache *buffers,
                                     GPUVertBuf *face_adjacency_lists,
                                     GPUVertBuf *vertex_normals)
 {
-  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_NORMALS_ACCUMULATE, NULL);
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_NORMALS_ACCUMULATE, nullptr);
   GPU_shader_bind(shader);
 
   int binding_point = 0;
@@ -1256,7 +1183,7 @@ void draw_subdiv_finalize_normals(const DRWSubdivCache *buffers,
 {
   GPUShader *shader = do_hq_normals ? get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE_HQ,
                                                         "#define HQ_NORMALS\n") :
-                                      get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE, NULL);
+                                      get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE, nullptr);
   GPU_shader_bind(shader);
 
   int binding_point = 0;
@@ -1312,7 +1239,7 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
 {
   Subdiv *subdiv = cache->subdiv;
   GPUVertBuf *src_buffer = GPU_vertbuf_calloc();
-  GPU_vertbuf_init_with_format_ex(src_buffer, get_work_vertex_format(), GPU_USAGE_DEVICE_ONLY);
+  GPU_vertbuf_init_with_format_ex(src_buffer, get_subdiv_vertex_format(), GPU_USAGE_DEVICE_ONLY);
   OpenSubdiv_BufferInterface src_buffer_interface;
   opensubdiv_gpu_buffer_init(&src_buffer_interface, src_buffer);
   subdiv->evaluator->buildSrcBuffer(subdiv->evaluator, &src_buffer_interface);
@@ -1382,7 +1309,7 @@ void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache,
                                     GPUIndexBuf *lines_indices,
                                     const bool optimal_display)
 {
-  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LINES, NULL);
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LINES, nullptr);
   GPU_shader_bind(shader);
 
   GPU_shader_uniform_1b(shader, "optimal_display", optimal_display);
@@ -1411,7 +1338,7 @@ void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
                             (do_hq_normals ?
                                  "#define HQ_NORMALS\n#define GPU_AMD_DRIVER_BYTE_BUG\n" :
                                  "#define GPU_AMD_DRIVER_BYTE_BUG\n") :
-                            (do_hq_normals ? "#define HQ_NORMALS\n" : NULL);
+                            (do_hq_normals ? "#define HQ_NORMALS\n" : nullptr);
   GPUShader *shader = get_subdiv_shader(
       do_hq_normals ? SHADER_BUFFER_EDGE_FAC_HQ : SHADER_BUFFER_EDGE_FAC, defines);
   GPU_shader_bind(shader);
@@ -1680,7 +1607,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   if (!BKE_subdiv_eval_begin_from_mesh(
-          subdiv, mesh_eval, NULL, OPENSUBDIV_EVALUATOR_GLSL_COMPUTE, evaluator_cache)) {
+          subdiv, mesh_eval, nullptr, OPENSUBDIV_EVALUATOR_GLSL_COMPUTE, evaluator_cache)) {
     return false;
   }
 
@@ -1708,15 +1635,12 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   draw_subdiv_cache_update_extra_coarse_face_data(draw_cache, mesh_eval);
 
-  // print_requests(mbc);
-
   mesh_buffer_cache_create_requested_subdiv(batch_cache, mbc, draw_cache, toolsettings);
 
-  // draw_subdiv_cache_print_memory_used(draw_cache);
   return true;
 }
 
-static OpenSubdiv_EvaluatorCache *g_evaluator_cache = NULL;
+static OpenSubdiv_EvaluatorCache *g_evaluator_cache = nullptr;
 
 void DRW_create_subdivision(const Scene *scene,
                             Object *ob,
@@ -1725,7 +1649,7 @@ void DRW_create_subdivision(const Scene *scene,
                             MeshBufferCache *mbc,
                             const ToolSettings *toolsettings)
 {
-  if (g_evaluator_cache == NULL) {
+  if (g_evaluator_cache == nullptr) {
     g_evaluator_cache = openSubdiv_createEvaluatorCache(OPENSUBDIV_EVALUATOR_GLSL_COMPUTE);
   }
 
@@ -1759,11 +1683,11 @@ void DRW_subdiv_free(void)
 
   if (g_evaluator_cache) {
     openSubdiv_deleteEvaluatorCache(g_evaluator_cache);
-    g_evaluator_cache = NULL;
+    g_evaluator_cache = nullptr;
   }
 }
 
-static LinkNode *gpu_subdiv_free_queue = NULL;
+static LinkNode *gpu_subdiv_free_queue = nullptr;
 static ThreadMutex gpu_subdiv_queue_mutex = BLI_MUTEX_INITIALIZER;
 
 void DRW_subdiv_cache_free(Subdiv *subdiv)
@@ -1775,13 +1699,13 @@ void DRW_subdiv_cache_free(Subdiv *subdiv)
 
 void DRW_cache_free_old_subdiv()
 {
-  if (gpu_subdiv_free_queue == NULL) {
+  if (gpu_subdiv_free_queue == nullptr) {
     return;
   }
 
   BLI_mutex_lock(&gpu_subdiv_queue_mutex);
 
-  while (gpu_subdiv_free_queue != NULL) {
+  while (gpu_subdiv_free_queue != nullptr) {
     Subdiv *subdiv = static_cast<Subdiv *>(BLI_linklist_pop(&gpu_subdiv_free_queue));
     BKE_subdiv_free(subdiv);
   }
