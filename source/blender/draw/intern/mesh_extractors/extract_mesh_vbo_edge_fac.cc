@@ -267,30 +267,38 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                     vbo,
                                     subdiv_cache->do_hq_normals);
 
+  if (!has_edge_idx) {
+    GPU_vertbuf_discard(loop_edge_idx);
+  }
+}
+
+static void extract_edge_fac_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
+                                               const MeshRenderData *UNUSED(mr),
+                                               const MeshExtractLooseGeom *loose_geom,
+                                               void *buffer,
+                                               void *UNUSED(data))
+{
+  if (loose_geom->edge_len == 0) {
+    return;
+  }
+
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
+
   /* Make sure buffer is active for sending loose data. */
   GPU_vertbuf_use(vbo);
 
-  LooseEdge *loose_edge = subdiv_cache->loose_edges;
   uint offset = subdiv_cache->num_patch_coords;
-  if (GPU_crappy_amd_driver()) {
-    float loose_edge_fac[2] = {1.0f, 1.0f};
-    while (loose_edge) {
+  for (int i = 0; i < loose_geom->edge_len; i++) {
+    if (GPU_crappy_amd_driver()) {
+      float loose_edge_fac[2] = {1.0f, 1.0f};
       GPU_vertbuf_update_sub(vbo, offset * sizeof(float), sizeof(loose_edge_fac), loose_edge_fac);
-      loose_edge = loose_edge->next;
-      offset += 2;
     }
-  }
-  else {
-    char loose_edge_fac[2] = {255, 255};
-    while (loose_edge) {
+    else {
+      char loose_edge_fac[2] = {255, 255};
       GPU_vertbuf_update_sub(vbo, offset * sizeof(char), sizeof(loose_edge_fac), loose_edge_fac);
-      loose_edge = loose_edge->next;
-      offset += 2;
     }
-  }
 
-  if (!has_edge_idx) {
-    GPU_vertbuf_discard(loop_edge_idx);
+    offset += 2;
   }
 }
 
@@ -303,6 +311,7 @@ constexpr MeshExtract create_extractor_edge_fac()
   extractor.iter_poly_mesh = extract_edge_fac_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_edge_fac_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_edge_fac_iter_ledge_mesh;
+  extractor.iter_loose_geom_subdiv = extract_edge_fac_loose_geom_subdiv;
   extractor.finish = extract_edge_fac_finish;
   extractor.data_type = MR_DATA_POLY_NOR;
   extractor.data_size = sizeof(MeshExtract_EdgeFac_Data);

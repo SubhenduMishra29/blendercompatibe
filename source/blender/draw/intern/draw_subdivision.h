@@ -46,21 +46,6 @@ void DRW_subdiv_cache_free(struct Subdiv *subdiv);
 struct GPUVertBuf;
 struct GPUIndexBuf;
 struct GPUPatchMap;
-struct MemArena;
-
-typedef struct LooseVertex {
-  struct LooseVertex *next;
-  int coarse_vertex_index;
-  int subdiv_vertex_index;
-  float co[3];
-} LooseVertex;
-
-typedef struct LooseEdge {
-  struct LooseEdge *next;
-  uint v1;
-  uint v2;
-  int coarse_edge_index;
-} LooseEdge;
 
 typedef struct GPUPatchMap {
   struct GPUVertBuf *patch_map_handles;
@@ -131,11 +116,6 @@ typedef struct DRWSubdivCache {
   struct GPUVertBuf *polygon_mat_offset;
 
   GPUPatchMap gpu_patch_map;
-
-  /* Loose Vertices and Edges */
-  struct MemArena *loose_memarena;
-  struct LooseVertex *loose_verts;
-  struct LooseEdge *loose_edges;
 
   int vert_loose_len;
   int edge_loose_len;

@@ -215,20 +215,29 @@ static void extract_edit_data_iter_subdiv(const DRWSubdivCache *subdiv_cache,
     /* The -1 parameter is for edit_uvs, which we don't do here. */
     mesh_render_data_face_flag(mr, efa, -1, edit_loop_data);
   }
+}
 
-  LooseEdge *loose_edge = subdiv_cache->loose_edges;
-  int ledge_index = 0;
-  while (loose_edge) {
+static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
+                                                const MeshRenderData *mr,
+                                                const MeshExtractLooseGeom *loose_geom,
+                                                void *UNUSED(buffer),
+                                                void *_data)
+{
+  if (loose_geom->edge_len == 0) {
+    return;
+  }
+
+  EditLoopData *vbo_data = *(EditLoopData **)_data;
+
+  for (int ledge_index = 0; ledge_index < loose_geom->edge_len; ledge_index++) {
     const int offset = subdiv_cache->num_patch_coords + ledge_index * 2;
     EditLoopData *data = &vbo_data[offset];
     memset(data, 0, sizeof(EditLoopData));
-    BMEdge *eed = BM_edge_at_index(mr->bm, loose_edge->coarse_edge_index);
+    BMEdge *eed = BM_edge_at_index(mr->bm, loose_geom->edges[ledge_index]);
     mesh_render_data_edge_flag(mr, eed, &data[0]);
     data[1] = data[0];
     mesh_render_data_vert_flag(mr, eed->v1, &data[0]);
     mesh_render_data_vert_flag(mr, eed->v2, &data[1]);
-    ledge_index += 1;
-    loose_edge = loose_edge->next;
   }
 }
 
@@ -244,6 +253,7 @@ constexpr MeshExtract create_extractor_edit_data()
   extractor.iter_lvert_mesh = extract_edit_data_iter_lvert_mesh;
   extractor.init_subdiv = extract_edit_data_init_subdiv;
   extractor.iter_subdiv = extract_edit_data_iter_subdiv;
+  extractor.iter_loose_geom_subdiv = extract_edit_data_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(EditLoopData *);
   extractor.use_threading = true;

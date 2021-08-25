@@ -587,12 +587,6 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   cache->edge_loose_len = 0;
   cache->vert_loose_len = 0;
   cache->loop_loose_len = 0;
-  cache->loose_verts = NULL;
-  cache->loose_edges = NULL;
-  if (cache->loose_memarena) {
-    BLI_memarena_free(cache->loose_memarena);
-    cache->loose_memarena = NULL;
-  }
 }
 
 static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cache, Mesh *mesh)
@@ -1524,6 +1518,18 @@ void draw_subdiv_init_mesh_render_data(Mesh *mesh,
                                        MeshRenderData *mr,
                                        const ToolSettings *toolsettings)
 {
+  /* Setup required data for loose geometry. */
+  mr->me = mesh;
+  mr->medge = mesh->medge;
+  mr->mvert = mesh->mvert;
+  mr->mpoly = mesh->mpoly;
+  mr->mloop = mesh->mloop;
+  mr->vert_len = mesh->totvert;
+  mr->edge_len = mesh->totedge;
+  mr->poly_len = mesh->totpoly;
+  mr->loop_len = mesh->totloop;
+  mr->extract_type = MR_EXTRACT_MESH;
+
   /* MeshRenderData is only used for generating edit mode data here. */
   if (!mesh->edit_mesh) {
     return;
@@ -1641,81 +1647,6 @@ static void draw_subdiv_cache_ensure_mat_offsets(DRWSubdivCache *cache,
   MEM_freeN(per_polygon_mat_offset);
 }
 
-// Similar to mesh_render_data_loose_geom_mesh but we use a linked list instead of an array.
-static void update_loose_elements(DRWSubdivCache *cache, const Mesh *mesh)
-{
-  const MEdge *medge = mesh->medge;
-  const MVert *mvert = mesh->mvert;
-
-  if (cache->loose_memarena) {
-    /* Topology did not change (otherwise cache would have been freed), so simply update
-     * coordinates. */
-    LooseVertex *loose_vertex = cache->loose_verts;
-    while (loose_vertex) {
-      copy_v3_v3(loose_vertex->co, mvert[loose_vertex->coarse_vertex_index].co);
-      loose_vertex = loose_vertex->next;
-    }
-    return;
-  }
-
-  BLI_bitmap *vertex_used_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
-  BLI_bitmap *edge_used_map = BLI_BITMAP_NEW(mesh->totvert, "edge used map");
-
-  MemArena *memarena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
-  LooseVertex *loose_verts = NULL;
-  LooseEdge *loose_edges = NULL;
-
-  int num_loose_edges = 0;
-  const MEdge *med = medge;
-  for (int med_index = 0; med_index < mesh->totedge; med_index++, med++) {
-    if (med->flag & ME_LOOSEEDGE) {
-      LooseEdge *loose_edge = static_cast<LooseEdge *>(
-          BLI_memarena_alloc(memarena, sizeof(LooseEdge)));
-      loose_edge->v1 = med->v1;
-      loose_edge->v2 = med->v2;
-      loose_edge->coarse_edge_index = med_index;
-      loose_edge->next = loose_edges;
-      loose_edges = loose_edge;
-      num_loose_edges += 1;
-    }
-    /* Tag verts as not loose. */
-    BLI_BITMAP_ENABLE(vertex_used_map, med->v1);
-    BLI_BITMAP_ENABLE(vertex_used_map, med->v2);
-  }
-
-  int num_loose_verts = 0;
-  for (int vertex_index = 0; vertex_index < mesh->totvert; vertex_index++) {
-    if (BLI_BITMAP_TEST_BOOL(vertex_used_map, vertex_index)) {
-      continue;
-    }
-
-    const MVert *vert = &mvert[vertex_index];
-
-    LooseVertex *loose_vert = static_cast<LooseVertex *>(
-        BLI_memarena_alloc(memarena, sizeof(LooseVertex)));
-    loose_vert->coarse_vertex_index = vertex_index;
-    copy_v3_v3(loose_vert->co, vert->co);
-    loose_vert->next = loose_verts;
-    loose_verts = loose_vert;
-    num_loose_verts += 1;
-  }
-
-  if (loose_verts != 0 || loose_edges != 0) {
-    cache->vert_loose_len = num_loose_verts;
-    cache->edge_loose_len = num_loose_edges;
-    cache->loop_loose_len = num_loose_verts + num_loose_edges * 2;
-    cache->loose_edges = loose_edges;
-    cache->loose_verts = loose_verts;
-    cache->loose_memarena = memarena;
-  }
-  else {
-    BLI_memarena_free(memarena);
-  }
-
-  MEM_freeN(edge_used_map);
-  MEM_freeN(vertex_used_map);
-}
-
 static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  Object *ob,
                                                  Mesh *mesh,
@@ -1771,8 +1702,6 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   /* We can only evaluate limit normals if the patches are adaptive. */
   draw_cache->do_limit_normals = settings.is_adaptive;
 
-  update_loose_elements(draw_cache, mesh_eval);
-
   if (DRW_ibo_requested(mbc->buff.ibo.tris)) {
     draw_subdiv_cache_ensure_mat_offsets(draw_cache, mesh_eval, batch_cache->mat_len);
   }
@@ -1781,7 +1710,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   // print_requests(mbc);
 
-  mesh_buffer_cache_create_requested_subdiv(batch_cache, &mbc->buff, draw_cache, toolsettings);
+  mesh_buffer_cache_create_requested_subdiv(batch_cache, mbc, draw_cache, toolsettings);
 
   // draw_subdiv_cache_print_memory_used(draw_cache);
   return true;

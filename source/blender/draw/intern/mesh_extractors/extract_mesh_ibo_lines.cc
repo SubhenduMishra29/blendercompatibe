@@ -167,18 +167,28 @@ static void extract_lines_init_subdiv(const DRWSubdivCache *subdiv_cache,
       ibo, subdiv_cache->num_patch_coords * 2 + subdiv_cache->edge_loose_len * 2);
 
   draw_subdiv_build_lines_buffer(subdiv_cache, ibo, subdiv_cache->optimal_display);
+}
 
+static void extract_lines_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
+                                            const MeshRenderData *UNUSED(mr),
+                                            const MeshExtractLooseGeom *loose_geom,
+                                            void *buffer,
+                                            void *UNUSED(data))
+{
+  if (loose_geom->edge_len == 0) {
+    return;
+  }
+
+  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
   /* Make sure buffer is active for sending loose data. */
   GPU_indexbuf_use(ibo);
 
-  LooseEdge *loose_edge = subdiv_cache->loose_edges;
   uint offset = subdiv_cache->num_patch_coords * 2;
   uint loop_index = subdiv_cache->num_patch_coords;
-  while (loose_edge) {
+  for (int i = 0; i < loose_geom->edge_len; i++) {
     GPU_indexbuf_update_sub(ibo, (offset) * sizeof(uint), sizeof(uint), &loop_index);
     loop_index += 1;
     GPU_indexbuf_update_sub(ibo, (offset + 1) * sizeof(uint), sizeof(uint), &loop_index);
-    loose_edge = loose_edge->next;
     loop_index += 1;
     offset += 2;
   }
@@ -193,6 +203,7 @@ constexpr MeshExtract create_extractor_lines()
   extractor.iter_poly_mesh = extract_lines_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_lines_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_lines_iter_ledge_mesh;
+  extractor.iter_loose_geom_subdiv = extract_lines_loose_geom_subdiv;
   extractor.task_reduce = extract_lines_task_reduce;
   extractor.finish = extract_lines_finish;
   extractor.data_type = MR_DATA_NONE;

@@ -230,7 +230,6 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                         void *UNUSED(data))
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  Mesh *coarse_mesh = subdiv_cache->mesh;
   const bool do_hq_normals = subdiv_cache->do_hq_normals;
   const bool do_limit_normals = subdiv_cache->do_limit_normals;
 
@@ -262,46 +261,52 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
     GPU_vertbuf_discard(vertex_normals);
     GPU_vertbuf_discard(subdiv_loop_subdiv_vert_index);
   }
+}
 
-  /* Manually copy loose vertices at the end of the buffer. */
-
-  /* First loose edges */
-  {
-    uint offset = subdiv_cache->num_patch_coords;
-
-    PosNorLoop vbuf_data[2];
-    LooseEdge *loose_edge = subdiv_cache->loose_edges;
-    while (loose_edge) {
-      copy_v3_v3(vbuf_data[0].pos, coarse_mesh->mvert[loose_edge->v1].co);
-      vbuf_data[0].nor = GPU_normal_convert_i10_s3(coarse_mesh->mvert[loose_edge->v1].no);
-
-      copy_v3_v3(vbuf_data[1].pos, coarse_mesh->mvert[loose_edge->v2].co);
-      vbuf_data[1].nor = GPU_normal_convert_i10_s3(coarse_mesh->mvert[loose_edge->v2].no);
-
-      GPU_vertbuf_update_sub(vbo, offset * sizeof(PosNorLoop), sizeof(PosNorLoop) * 2, &vbuf_data);
-      loose_edge = loose_edge->next;
-      offset += 2;
-    }
+static void extract_pos_nor_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
+                                              const MeshRenderData *UNUSED(mr),
+                                              const MeshExtractLooseGeom *loose_geom,
+                                              void *buffer,
+                                              void *UNUSED(data))
+{
+  const int loop_loose_len = loose_geom->edge_len + loose_geom->vert_len;
+  if (loop_loose_len == 0) {
+    return;
   }
 
-  /* Then loose vertices */
-  {
-    uint offset = subdiv_cache->num_patch_coords + subdiv_cache->edge_loose_len * 2;
-    PosNorLoop vbuf_data;
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
+  const Mesh *coarse_mesh = subdiv_cache->mesh;
+  const MEdge *coarse_edges = coarse_mesh->medge;
+  const MVert *coarse_verts = coarse_mesh->mvert;
+  uint offset = subdiv_cache->num_patch_coords;
 
-    uint subdiv_vertex_index = subdiv_cache->num_vertices;
-    LooseVertex *loose_vertex = subdiv_cache->loose_verts;
-    while (loose_vertex) {
-      copy_v3_v3(vbuf_data.pos, loose_vertex->co);
-      vbuf_data.nor = GPU_normal_convert_i10_s3(
-          coarse_mesh->mvert[loose_vertex->coarse_vertex_index].no);
+  PosNorLoop edge_data[2];
+  for (int i = 0; i < loose_geom->edge_len; i++) {
+    const MEdge *loose_edge = &coarse_edges[loose_geom->edges[i]];
+    const MVert *loose_vert1 = &coarse_verts[loose_edge->v1];
+    const MVert *loose_vert2 = &coarse_verts[loose_edge->v1];
 
-      loose_vertex->subdiv_vertex_index = subdiv_vertex_index++;
+    copy_v3_v3(edge_data[0].pos, loose_vert1->co);
+    edge_data[0].nor = GPU_normal_convert_i10_s3(loose_vert1->no);
 
-      GPU_vertbuf_update_sub(vbo, offset * sizeof(PosNorLoop), sizeof(PosNorLoop), &vbuf_data);
-      loose_vertex = loose_vertex->next;
-      offset += 1;
-    }
+    copy_v3_v3(edge_data[1].pos, loose_vert2->co);
+    edge_data[1].nor = GPU_normal_convert_i10_s3(loose_vert2->no);
+
+    GPU_vertbuf_update_sub(vbo, offset * sizeof(PosNorLoop), sizeof(PosNorLoop) * 2, &edge_data);
+
+    offset += 2;
+  }
+
+  PosNorLoop vert_data;
+  for (int i = 0; i < loose_geom->vert_len; i++) {
+    const MVert *loose_vertex = &coarse_verts[loose_geom->verts[i]];
+
+    copy_v3_v3(vert_data.pos, loose_vertex->co);
+    vert_data.nor = GPU_normal_convert_i10_s3(loose_vertex->no);
+
+    GPU_vertbuf_update_sub(vbo, offset * sizeof(PosNorLoop), sizeof(PosNorLoop), &vert_data);
+
+    offset += 1;
   }
 }
 
@@ -316,6 +321,7 @@ constexpr MeshExtract create_extractor_pos_nor()
   extractor.iter_ledge_mesh = extract_pos_nor_iter_ledge_mesh;
   extractor.iter_lvert_bm = extract_pos_nor_iter_lvert_bm;
   extractor.iter_lvert_mesh = extract_pos_nor_iter_lvert_mesh;
+  extractor.iter_loose_geom_subdiv = extract_pos_nor_loose_geom_subdiv;
   extractor.finish = extract_pos_nor_finish;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_PosNor_Data);

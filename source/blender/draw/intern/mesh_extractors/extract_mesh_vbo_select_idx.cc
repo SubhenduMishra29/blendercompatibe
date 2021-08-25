@@ -208,24 +208,35 @@ static void extract_vert_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                     subdiv_cache->subdiv_loop_subdiv_vert_index,
                                     subdiv_cache->num_patch_coords,
                                     subdiv_cache->loop_loose_len);
+}
 
+static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
+                                               const MeshRenderData *UNUSED(mr),
+                                               const MeshExtractLooseGeom *loose_geom,
+                                               void *buffer,
+                                               void *UNUSED(data))
+{
+  const int loop_loose_len = loose_geom->edge_len + loose_geom->vert_len;
+  if (loop_loose_len == 0) {
+    return;
+  }
+
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   uint *vert_idx_data = (uint *)GPU_vertbuf_get_data(vbo);
-
+  const Mesh *coarse_mesh = subdiv_cache->mesh;
+  const MEdge *coarse_edges = coarse_mesh->medge;
   uint offset = subdiv_cache->num_patch_coords;
-  LooseEdge *loose_edge = subdiv_cache->loose_edges;
-  while (loose_edge) {
+
+  for (int i = 0; i < loose_geom->edge_len; i++) {
+    const MEdge *loose_edge = &coarse_edges[loose_geom->edges[i]];
     vert_idx_data[offset] = loose_edge->v1;
     vert_idx_data[offset + 1] = loose_edge->v2;
-    loose_edge = loose_edge->next;
     offset += 2;
   }
 
-  offset = subdiv_cache->num_patch_coords + subdiv_cache->edge_loose_len * 2;
-  LooseVertex *loose_vertex = subdiv_cache->loose_verts;
-  while (loose_vertex) {
-    vert_idx_data[offset] = loose_vertex->coarse_vertex_index;
+  for (int i = 0; i < loose_geom->vert_len; i++) {
+    vert_idx_data[offset] = loose_geom->verts[i];
     offset += 1;
-    loose_vertex = loose_vertex->next;
   }
 }
 
@@ -240,15 +251,26 @@ static void extract_edge_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
       static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache->edges_orig_index)),
       subdiv_cache->num_patch_coords,
       subdiv_cache->edge_loose_len * 2);
+}
 
-  uint *edge_idx_data = (uint *)GPU_vertbuf_get_data(vbo);
+static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
+                                               const MeshRenderData *UNUSED(mr),
+                                               const MeshExtractLooseGeom *loose_geom,
+                                               void *buffer,
+                                               void *UNUSED(data))
+{
+  const int loop_loose_len = loose_geom->edge_len + loose_geom->vert_len;
+  if (loop_loose_len == 0) {
+    return;
+  }
 
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
+  uint *vert_idx_data = (uint *)GPU_vertbuf_get_data(vbo);
   uint offset = subdiv_cache->num_patch_coords;
-  LooseEdge *loose_edge = subdiv_cache->loose_edges;
-  while (loose_edge) {
-    edge_idx_data[offset] = loose_edge->coarse_edge_index;
-    edge_idx_data[offset + 1] = loose_edge->coarse_edge_index;
-    loose_edge = loose_edge->next;
+
+  for (int i = 0; i < loose_geom->edge_len; i++) {
+    vert_idx_data[offset] = loose_geom->edges[i];
+    vert_idx_data[offset + 1] = loose_geom->edges[i];
     offset += 2;
   }
 }
@@ -286,6 +308,7 @@ constexpr MeshExtract create_extractor_edge_idx()
   extractor.iter_poly_mesh = extract_edge_idx_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_edge_idx_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_edge_idx_iter_ledge_mesh;
+  extractor.iter_loose_geom_subdiv = extract_edge_idx_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(uint32_t *);
   extractor.use_threading = true;
@@ -304,6 +327,7 @@ constexpr MeshExtract create_extractor_vert_idx()
   extractor.iter_ledge_mesh = extract_vert_idx_iter_ledge_mesh;
   extractor.iter_lvert_bm = extract_vert_idx_iter_lvert_bm;
   extractor.iter_lvert_mesh = extract_vert_idx_iter_lvert_mesh;
+  extractor.iter_loose_geom_subdiv = extract_vert_idx_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(uint32_t *);
   extractor.use_threading = true;

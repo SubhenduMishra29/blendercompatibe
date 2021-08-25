@@ -777,16 +777,18 @@ static void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
 }
 
 void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
-                                               MeshBufferList *mbc,
+                                               MeshBufferCache *mbc,
                                                DRWSubdivCache *subdiv_cache,
                                                const ToolSettings *ts)
 {
   /* Create an array containing all the extractors that needs to be executed. */
   ExtractorRunDatas extractors;
 
+  MeshBufferList *mbuflist = &mbc->buff;
+
 #define EXTRACT_ADD_REQUESTED(type, name) \
   do { \
-    if (DRW_##type##_requested(mbc->type.name)) { \
+    if (DRW_##type##_requested(mbuflist->type.name)) { \
       const MeshExtract *extractor = &extract_##name; \
       extractors.append(extractor); \
     } \
@@ -799,8 +801,8 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
   EXTRACT_ADD_REQUESTED(vbo, lnor);
 
   /* We use only one extractor for face dots, as the work is done in a single compute shader. */
-  if (DRW_vbo_requested(mbc->vbo.fdots_nor) || DRW_vbo_requested(mbc->vbo.fdots_pos) ||
-      DRW_ibo_requested(mbc->ibo.fdots)) {
+  if (DRW_vbo_requested(mbuflist->vbo.fdots_nor) || DRW_vbo_requested(mbuflist->vbo.fdots_pos) ||
+      DRW_ibo_requested(mbuflist->ibo.fdots)) {
     extractors.append(&extract_fdots_pos);
   }
 
@@ -824,12 +826,13 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
 
   MeshRenderData mr;
   draw_subdiv_init_mesh_render_data(subdiv_cache->mesh, &mr, ts);
+  mesh_render_data_update_loose_geom(&mr, mbc, MR_ITER_LEDGE | MR_ITER_LVERT, MR_DATA_LOOSE_GEOM);
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);
   uint32_t data_offset = 0;
   for (const ExtractorRunData &run_data : extractors) {
     const MeshExtract *extractor = run_data.extractor;
-    void *buffer = mesh_extract_buffer_get(extractor, mbc);
+    void *buffer = mesh_extract_buffer_get(extractor, mbuflist);
     void *data = POINTER_OFFSET(data_stack, data_offset);
 
     extractor->init_subdiv(subdiv_cache, cache, buffer, data);
@@ -837,6 +840,10 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
     if (extractor->iter_subdiv) {
       extractor->iter_subdiv(subdiv_cache, &mr, data);
     }
+
+    //    if (extractor->iter_loose_geom_subdiv) {
+    //      extractor->iter_loose_geom_subdiv(subdiv_cache, &mr, &mbc->loose_geom, buffer, data);
+    //    }
 
     if (extractor->finish_subdiv) {
       extractor->finish_subdiv(subdiv_cache, buffer, data);
@@ -881,7 +888,7 @@ void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
 }
 
 void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
-                                               MeshBufferList *mbc,
+                                               MeshBufferCache *mbc,
                                                DRWSubdivCache *subdiv_cache,
                                                const ToolSettings *ts)
 {

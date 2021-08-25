@@ -204,6 +204,11 @@ typedef void(ExtractLVertMeshFn)(const MeshRenderData *mr,
                                  const MVert *mv,
                                  const int lvert_index,
                                  void *data);
+typedef void(ExtractLooseGeomSubdivFn)(const struct DRWSubdivCache *subdiv_cache,
+                                       const MeshRenderData *mr,
+                                       const MeshExtractLooseGeom *loose_geom,
+                                       void *buffer,
+                                       void *data);
 typedef void(ExtractInitFn)(const MeshRenderData *mr,
                             struct MeshBatchCache *cache,
                             void *buffer,
@@ -237,6 +242,7 @@ typedef struct MeshExtract {
   ExtractLEdgeMeshFn *iter_ledge_mesh;
   ExtractLVertBMeshFn *iter_lvert_bm;
   ExtractLVertMeshFn *iter_lvert_mesh;
+  ExtractLooseGeomSubdivFn *iter_loose_geom_subdiv;
   /** Executed on one worker thread after all elements iterations. */
   ExtractTaskReduceFn *task_reduce;
   ExtractFinishFn *finish;
