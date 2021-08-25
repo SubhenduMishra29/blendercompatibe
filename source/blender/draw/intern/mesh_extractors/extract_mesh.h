@@ -220,6 +220,7 @@ typedef void(ExtractFinishFn)(const MeshRenderData *mr,
 typedef void(ExtractTaskReduceFn)(void *userdata, void *task_userdata);
 
 typedef void(ExtractInitSubdivFn)(const struct DRWSubdivCache *subdiv_cache,
+                                  const MeshRenderData *mr,
                                   struct MeshBatchCache *cache,
                                   void *buf,
                                   void *data);

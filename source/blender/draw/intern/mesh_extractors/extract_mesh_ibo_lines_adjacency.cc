@@ -181,6 +181,7 @@ static void extract_lines_adjacency_finish(const MeshRenderData *UNUSED(mr),
 }
 
 static void extract_lines_adjacency_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                                const MeshRenderData *UNUSED(mr),
                                                 struct MeshBatchCache *UNUSED(cache),
                                                 void *UNUSED(buf),
                                                 void *_data)

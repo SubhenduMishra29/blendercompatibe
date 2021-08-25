@@ -116,10 +116,6 @@ typedef struct DRWSubdivCache {
   struct GPUVertBuf *polygon_mat_offset;
 
   GPUPatchMap gpu_patch_map;
-
-  int vert_loose_len;
-  int edge_loose_len;
-  int loop_loose_len;
 } DRWSubdivCache;
 
 void draw_subdiv_init_mesh_render_data(struct Mesh *mesh,

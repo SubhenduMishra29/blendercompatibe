@@ -566,10 +566,6 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   draw_free_edit_mode_cache(cache);
   draw_subdiv_cache_free_material_data(cache);
   gpu_patch_map_free(&cache->gpu_patch_map);
-
-  cache->edge_loose_len = 0;
-  cache->vert_loose_len = 0;
-  cache->loop_loose_len = 0;
 }
 
 static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cache, Mesh *mesh)

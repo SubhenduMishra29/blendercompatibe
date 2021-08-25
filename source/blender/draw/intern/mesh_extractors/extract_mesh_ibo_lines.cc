@@ -158,13 +158,14 @@ static void extract_lines_finish(const MeshRenderData *UNUSED(mr),
 }
 
 static void extract_lines_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                      const MeshRenderData *mr,
                                       struct MeshBatchCache *UNUSED(cache),
                                       void *buffer,
                                       void *UNUSED(data))
 {
   GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
-  GPU_indexbuf_init_build_on_device(
-      ibo, subdiv_cache->num_patch_coords * 2 + subdiv_cache->edge_loose_len * 2);
+  GPU_indexbuf_init_build_on_device(ibo,
+                                    subdiv_cache->num_patch_coords * 2 + mr->edge_loose_len * 2);
 
   draw_subdiv_build_lines_buffer(subdiv_cache, ibo, subdiv_cache->optimal_display);
 }

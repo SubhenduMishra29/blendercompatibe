@@ -198,6 +198,7 @@ static void extract_vert_idx_iter_lvert_mesh(const MeshRenderData *mr,
 }
 
 static void extract_vert_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                         const MeshRenderData *mr,
                                          MeshBatchCache *UNUSED(cache),
                                          void *buf,
                                          void *UNUSED(data))
@@ -207,7 +208,7 @@ static void extract_vert_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
   draw_subdiv_init_origindex_buffer(vbo,
                                     subdiv_cache->subdiv_loop_subdiv_vert_index,
                                     subdiv_cache->num_patch_coords,
-                                    subdiv_cache->loop_loose_len);
+                                    mr->loop_loose_len);
 }
 
 static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
@@ -241,6 +242,7 @@ static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cach
 }
 
 static void extract_edge_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                         const MeshRenderData *mr,
                                          MeshBatchCache *UNUSED(cache),
                                          void *buf,
                                          void *UNUSED(data))
@@ -250,7 +252,7 @@ static void extract_edge_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
       vbo,
       static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache->edges_orig_index)),
       subdiv_cache->num_patch_coords,
-      subdiv_cache->edge_loose_len * 2);
+      mr->edge_loose_len * 2);
 }
 
 static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
@@ -276,6 +278,7 @@ static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cach
 }
 
 static void extract_poly_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                         const MeshRenderData *UNUSED(mr),
                                          MeshBatchCache *UNUSED(cache),
                                          void *buf,
                                          void *UNUSED(data))

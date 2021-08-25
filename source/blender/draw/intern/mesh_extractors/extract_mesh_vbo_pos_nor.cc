@@ -225,6 +225,7 @@ static GPUVertFormat *get_normals_format()
 }
 
 static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                        const MeshRenderData *mr,
                                         struct MeshBatchCache *UNUSED(cache),
                                         void *buffer,
                                         void *UNUSED(data))
@@ -236,7 +237,7 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
   /* Initialise the vertex buffer, it was already allocated. */
   GPU_vertbuf_init_build_on_device(vbo,
                                    do_hq_normals ? get_pos_nor_format_hq() : get_pos_nor_format(),
-                                   subdiv_cache->num_patch_coords + subdiv_cache->loop_loose_len);
+                                   subdiv_cache->num_patch_coords + mr->loop_loose_len);
 
   draw_subdiv_extract_pos_nor(subdiv_cache, vbo, do_limit_normals, do_hq_normals);
 

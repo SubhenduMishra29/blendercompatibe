@@ -234,6 +234,7 @@ static GPUVertFormat *get_subdiv_edge_fac_format()
 }
 
 static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                         const MeshRenderData *mr,
                                          struct MeshBatchCache *cache,
                                          void *buffer,
                                          void *UNUSED(data))
@@ -241,9 +242,8 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *edge_idx = cache->final.buff.vbo.edge_idx;
   GPUVertBuf *pos_nor = cache->final.buff.vbo.pos_nor;
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  GPU_vertbuf_init_build_on_device(vbo,
-                                   get_subdiv_edge_fac_format(),
-                                   subdiv_cache->num_patch_coords + subdiv_cache->loop_loose_len);
+  GPU_vertbuf_init_build_on_device(
+      vbo, get_subdiv_edge_fac_format(), subdiv_cache->num_patch_coords + mr->loop_loose_len);
 
   /* Create a temporary buffer for the edge original indices if it was not requested. */
   const bool has_edge_idx = edge_idx != nullptr;

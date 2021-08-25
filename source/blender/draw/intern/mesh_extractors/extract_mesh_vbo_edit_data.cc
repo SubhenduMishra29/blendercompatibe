@@ -173,13 +173,14 @@ static void extract_edit_data_iter_lvert_mesh(const MeshRenderData *mr,
 }
 
 static void extract_edit_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                          const MeshRenderData *mr,
                                           MeshBatchCache *UNUSED(cache),
                                           void *buf,
                                           void *data)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPU_vertbuf_init_with_format(vbo, get_edit_data_format());
-  GPU_vertbuf_data_alloc(vbo, subdiv_cache->num_patch_coords + subdiv_cache->loop_loose_len);
+  GPU_vertbuf_data_alloc(vbo, subdiv_cache->num_patch_coords + mr->loop_loose_len);
   EditLoopData *vbo_data = (EditLoopData *)GPU_vertbuf_get_data(vbo);
   *(EditLoopData **)data = vbo_data;
 }

@@ -120,6 +120,7 @@ static GPUVertFormat *get_lnor_format()
 }
 
 static void extract_lnor_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                     const MeshRenderData *UNUSED(mr),
                                      struct MeshBatchCache *cache,
                                      void *buffer,
                                      void *UNUSED(data))

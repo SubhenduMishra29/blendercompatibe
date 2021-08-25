@@ -126,6 +126,7 @@ static void extract_tris_finish(const MeshRenderData *mr,
 }
 
 static void extract_tris_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                     const MeshRenderData *UNUSED(mr),
                                      struct MeshBatchCache *cache,
                                      void *buffer,
                                      void *UNUSED(data))

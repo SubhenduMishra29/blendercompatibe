@@ -156,6 +156,7 @@ static void extract_points_finish(const MeshRenderData *UNUSED(mr),
 }
 
 static void extract_points_init_subdiv(const DRWSubdivCache *subdiv_cache,
+                                       const MeshRenderData *UNUSED(mr),
                                        struct MeshBatchCache *UNUSED(cache),
                                        void *UNUSED(buffer),
                                        void *data)
