@@ -97,9 +97,6 @@ class MeshTopology {
   void setNumFaceVertices(int face_index, int num_face_vertices);
   int getNumFaceVertices(int face_index) const;
 
-  void setFaceIsHole(int face_index, bool is_hole);
-  bool getFaceIsHole(int face_index) const;
-
   void setFaceVertexIndices(int face_index,
                             int num_face_vertex_indices,
                             const int *face_vertex_indices);
@@ -138,7 +135,6 @@ class MeshTopology {
   // corresponds to the given size.
   void ensureVertexTagsSize(int num_vertices);
   void ensureEdgeTagsSize(int num_edges);
-  void ensureFaceTagsSize(int num_faces);
 
   // Get pointer to the memory where face vertex indices are stored.
   int *getFaceVertexIndicesStorage(int face_index);
@@ -157,10 +153,6 @@ class MeshTopology {
     float sharpness = 0.0f;
   };
 
-  struct FaceTag {
-    bool is_hole = false;
-  };
-
   int num_vertices_;
   vector<VertexTag> vertex_tags_;
 
@@ -169,7 +161,6 @@ class MeshTopology {
   vector<EdgeTag> edge_tags_;
 
   int num_faces_;
-  vector<FaceTag> face_tags_;
 
   // Continuous array of all verticies of all faces:
   //  [vertex indices of face 0][vertex indices of face 1] .. [vertex indices of face n].

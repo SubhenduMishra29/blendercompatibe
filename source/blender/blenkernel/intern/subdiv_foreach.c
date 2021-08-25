@@ -181,9 +181,6 @@ static void subdiv_foreach_ctx_count(SubdivForeachTaskContext *ctx)
   /* Calculate extra vertices and edges created by non-loose geometry. */
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
     const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-    if (coarse_poly->flag & ME_HOLE) {
-      continue;
-    }
     const int num_ptex_faces_per_poly = num_ptex_faces_per_poly_get(coarse_poly);
     for (int corner = 0; corner < coarse_poly->totloop; corner++) {
       const MLoop *loop = &coarse_mloop[coarse_poly->loopstart + corner];
@@ -250,9 +247,6 @@ static void subdiv_foreach_ctx_init_offsets(SubdivForeachTaskContext *ctx)
   int polygon_offset = 0;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
     const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-    if (coarse_poly->flag & ME_HOLE) {
-      continue;
-    }
     const int num_ptex_faces_per_poly = num_ptex_faces_per_poly_get(coarse_poly);
     ctx->subdiv_vertex_offset[poly_index] = vertex_offset;
     ctx->subdiv_edge_offset[poly_index] = edge_offset;
@@ -432,11 +426,6 @@ static void subdiv_foreach_every_corner_vertices(SubdivForeachTaskContext *ctx, 
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
     const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-
-    if (coarse_poly->flag & ME_HOLE) {
-      continue;
-    }
-
     if (coarse_poly->totloop == 4) {
       subdiv_foreach_every_corner_vertices_regular(ctx, tls, coarse_poly);
     }
@@ -625,11 +614,6 @@ static void subdiv_foreach_every_edge_vertices(SubdivForeachTaskContext *ctx, vo
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
     const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-
-    if (coarse_poly->flag & ME_HOLE) {
-      continue;
-    }
-
     if (coarse_poly->totloop == 4) {
       subdiv_foreach_every_edge_vertices_regular(ctx, tls, coarse_poly);
     }
@@ -1018,9 +1002,6 @@ static void subdiv_foreach_edges(SubdivForeachTaskContext *ctx, void *tls, int p
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-  if (coarse_poly->flag & ME_HOLE) {
-    return;
-  }
   subdiv_foreach_edges_all_patches(ctx, tls, coarse_poly);
 }
 
@@ -1689,9 +1670,6 @@ static void subdiv_foreach_loops(SubdivForeachTaskContext *ctx, void *tls, int p
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-  if (coarse_poly->flag & ME_HOLE) {
-    return;
-  }
   if (coarse_poly->totloop == 4) {
     subdiv_foreach_loops_regular(ctx, tls, coarse_poly);
   }
@@ -1714,11 +1692,6 @@ static void subdiv_foreach_polys(SubdivForeachTaskContext *ctx, void *tls, int p
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-
-  if (coarse_poly->flag & ME_HOLE) {
-    return;
-  }
-
   const int num_ptex_faces_per_poly = num_ptex_faces_per_poly_get(coarse_poly);
   const int ptex_resolution = ptex_face_resolution_get(coarse_poly, resolution);
   const int num_polys_per_ptex = num_polys_per_ptex_get(ptex_resolution);
@@ -1812,9 +1785,6 @@ static void subdiv_foreach_single_geometry_vertices(SubdivForeachTaskContext *ct
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
     const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-    if (coarse_poly->flag & ME_HOLE) {
-      continue;
-    }
     subdiv_foreach_corner_vertices(ctx, tls, coarse_poly);
     subdiv_foreach_edge_vertices(ctx, tls, coarse_poly);
   }
@@ -1827,9 +1797,6 @@ static void subdiv_foreach_mark_non_loose_geometry(SubdivForeachTaskContext *ctx
   const MLoop *coarse_mloop = coarse_mesh->mloop;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
     const MPoly *coarse_poly = &coarse_mpoly[poly_index];
-    if (coarse_poly->flag & ME_HOLE) {
-      continue;
-    }
     for (int corner = 0; corner < coarse_poly->totloop; corner++) {
       const MLoop *loop = &coarse_mloop[coarse_poly->loopstart + corner];
       BLI_BITMAP_ENABLE(ctx->coarse_edges_used_map, loop->e);

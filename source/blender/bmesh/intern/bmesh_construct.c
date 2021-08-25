@@ -781,8 +781,7 @@ char BM_edge_flag_from_mflag(const short mflag)
 char BM_face_flag_from_mflag(const char mflag)
 {
   return (((mflag & ME_FACE_SEL) ? BM_ELEM_SELECT : 0) |
-          ((mflag & ME_SMOOTH) ? BM_ELEM_SMOOTH : 0) | ((mflag & ME_HIDE) ? BM_ELEM_HIDDEN : 0) |
-          ((mflag & ME_HOLE) ? BM_ELEM_HOLE : 0));
+          ((mflag & ME_SMOOTH) ? BM_ELEM_SMOOTH : 0) | ((mflag & ME_HIDE) ? BM_ELEM_HIDDEN : 0));
 }
 
 /* BM -> ME */
@@ -809,6 +808,5 @@ char BM_face_flag_to_mflag(BMFace *f)
   const char hflag = f->head.hflag;
 
   return (((hflag & BM_ELEM_SELECT) ? ME_FACE_SEL : 0) |
-          ((hflag & BM_ELEM_SMOOTH) ? ME_SMOOTH : 0) | ((hflag & BM_ELEM_HIDDEN) ? ME_HIDE : 0) |
-          ((hflag & BM_ELEM_HOLE) ? ME_HOLE : 0));
+          ((hflag & BM_ELEM_SMOOTH) ? ME_SMOOTH : 0) | ((hflag & BM_ELEM_HIDDEN) ? ME_HIDE : 0));
 }

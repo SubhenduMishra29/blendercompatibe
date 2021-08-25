@@ -110,8 +110,6 @@ void ED_operatortypes_mesh(void)
   WM_operatortype_append(MESH_OT_delete_edgeloop);
   WM_operatortype_append(MESH_OT_faces_shade_smooth);
   WM_operatortype_append(MESH_OT_faces_shade_flat);
-  WM_operatortype_append(MESH_OT_faces_mark_hole);
-  WM_operatortype_append(MESH_OT_faces_unmark_hole);
   WM_operatortype_append(MESH_OT_sort_elements);
 #ifdef WITH_FREESTYLE
   WM_operatortype_append(MESH_OT_mark_freestyle_face);

@@ -100,7 +100,6 @@ class Mesh : public Geometry {
     int num_corners;
     int shader;
     bool smooth;
-    bool hole;
     int ptex_offset;
 
     bool is_quad()
@@ -153,7 +152,6 @@ class Mesh : public Geometry {
   NODE_SOCKET_API_ARRAY(array<int>, subd_num_corners)
   NODE_SOCKET_API_ARRAY(array<int>, subd_shader)
   NODE_SOCKET_API_ARRAY(array<bool>, subd_smooth)
-  NODE_SOCKET_API_ARRAY(array<bool>, subd_hole)
   NODE_SOCKET_API_ARRAY(array<int>, subd_ptex_offset)
 
   NODE_SOCKET_API_ARRAY(array<int>, subd_face_corners)
@@ -214,7 +212,7 @@ class Mesh : public Geometry {
   void add_vertex(float3 P);
   void add_vertex_slow(float3 P);
   void add_triangle(int v0, int v1, int v2, int shader, bool smooth);
-  void add_subd_face(int *corners, int num_corners, int shader_, bool smooth_, bool hole);
+  void add_subd_face(int *corners, int num_corners, int shader_, bool smooth_);
   void add_edge_crease(int v0, int v1, float weight);
   void add_vertex_crease(int v, float weight);
 

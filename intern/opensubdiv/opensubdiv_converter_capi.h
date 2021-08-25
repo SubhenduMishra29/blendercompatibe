@@ -69,8 +69,6 @@ typedef struct OpenSubdiv_Converter {
   void (*getFaceEdges)(const struct OpenSubdiv_Converter *converter,
                        const int face_index,
                        int *face_edges);
-  // Check whether face is a hole, i.e. deleted from the final subdivision result.
-  bool (*getFaceIsHole)(const struct OpenSubdiv_Converter *converter, const int face_index);
 
   //////////////////////////////////////////////////////////////////////////////
   // Edge relationships.

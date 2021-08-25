@@ -225,8 +225,6 @@ void MESH_OT_delete_loose(struct wmOperatorType *ot);
 void MESH_OT_edge_collapse(struct wmOperatorType *ot);
 void MESH_OT_faces_shade_smooth(struct wmOperatorType *ot);
 void MESH_OT_faces_shade_flat(struct wmOperatorType *ot);
-void MESH_OT_faces_mark_hole(struct wmOperatorType *ot);
-void MESH_OT_faces_unmark_hole(struct wmOperatorType *ot);
 void MESH_OT_split(struct wmOperatorType *ot);
 void MESH_OT_edge_rotate(struct wmOperatorType *ot);
 void MESH_OT_hide(struct wmOperatorType *ot);

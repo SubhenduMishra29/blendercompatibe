@@ -197,23 +197,6 @@ bool isEqualEdgeTags(const MeshTopology &mesh_topology, const OpenSubdiv_Convert
   return true;
 }
 
-// Faces.
-
-bool isEqualFaceTags(const MeshTopology &mesh_topology, const OpenSubdiv_Converter *converter)
-{
-  const int num_faces = mesh_topology.getNumFaces();
-  for (int face_index = 0; face_index < num_faces; ++face_index) {
-    const bool current_is_hole = mesh_topology.getFaceIsHole(face_index);
-    const bool requested_is_hole = converter->getFaceIsHole(converter, face_index);
-
-    if (current_is_hole != requested_is_hole) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 // Tags comparison entry point.
 
 bool isEqualTags(const MeshTopology &mesh_topology, const OpenSubdiv_Converter *converter)
@@ -222,9 +205,6 @@ bool isEqualTags(const MeshTopology &mesh_topology, const OpenSubdiv_Converter *
     return false;
   }
   if (!isEqualEdgeTags(mesh_topology, converter)) {
-    return false;
-  }
-  if (!isEqualFaceTags(mesh_topology, converter)) {
     return false;
   }
 

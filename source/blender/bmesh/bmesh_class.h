@@ -491,12 +491,6 @@ enum {
   BM_ELEM_TAG_ALT = (1 << 6),
 
   /**
-   * used for faces that are subdivision "holes",
-   * i.e. deleted after the subdivision was performed
-   */
-  BM_ELEM_HOLE = (1 << 7),
-
-  /**
    * For low level internal API tagging,
    * since tools may want to tag verts and not have functions clobber them.
    * Leave cleared!

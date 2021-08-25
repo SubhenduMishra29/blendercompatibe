@@ -262,13 +262,6 @@ static int get_face_corner_uv_index(const OpenSubdiv_Converter *converter,
   return storage->loop_uv_indices[mp->loopstart + corner];
 }
 
-static bool get_face_is_hole(const OpenSubdiv_Converter *converter, const int face_index)
-{
-  ConverterStorage *storage = converter->user_data;
-  const MPoly *mp = &storage->mesh->mpoly[face_index];
-  return mp->flag & ME_HOLE;
-}
-
 static void free_user_data(const OpenSubdiv_Converter *converter)
 {
   ConverterStorage *user_data = converter->user_data;
@@ -294,7 +287,6 @@ static void init_functions(OpenSubdiv_Converter *converter)
   converter->getNumFaceVertices = get_num_face_vertices;
   converter->getFaceVertices = get_face_vertices;
   converter->getFaceEdges = NULL;
-  converter->getFaceIsHole = get_face_is_hole;
 
   converter->getEdgeVertices = get_edge_vertices;
   converter->getNumEdgeFaces = NULL;

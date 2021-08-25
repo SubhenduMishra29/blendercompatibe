@@ -82,11 +82,6 @@ template<>
 bool TopologyRefinerFactory<ccl::Mesh>::assignComponentTags(TopologyRefiner &refiner,
                                                             ccl::Mesh const &mesh)
 {
-  const ccl::array<bool> &subd_hole = mesh.get_subd_hole();
-  for (size_t i = 0; i < subd_hole.size(); ++i) {
-    setBaseFaceHole(refiner, i, subd_hole[i]);
-  }
-
   /* Historical maximum crease weight used at Pixar, influencing the maximum in OpenSubDiv. */
   static constexpr float CREASE_SCALE = 10.0f;
 
@@ -443,10 +438,6 @@ void Mesh::tessellate(DiagSplit *split)
   for (int f = 0; f < num_faces; f++) {
     SubdFace face = get_subd_face(f);
 
-    if (face.hole) {
-      continue;
-    }
-
     if (face.is_quad()) {
       num_patches++;
     }
@@ -463,10 +454,6 @@ void Mesh::tessellate(DiagSplit *split)
 
     for (int f = 0; f < num_faces; f++) {
       SubdFace face = get_subd_face(f);
-
-      if (face.hole) {
-        continue;
-      }
 
       if (face.is_quad()) {
         patch->patch_index = face.ptex_offset;

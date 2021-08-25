@@ -497,7 +497,7 @@ static void xml_read_mesh(const XMLReadState &state, xml_node node)
     int index_offset = 0;
 
     for (size_t i = 0; i < nverts.size(); i++) {
-      mesh->add_subd_face(&verts[index_offset], nverts[i], shader, smooth, false);
+      mesh->add_subd_face(&verts[index_offset], nverts[i], shader, smooth);
       index_offset += nverts[i];
     }
 

@@ -790,9 +790,6 @@ static void subdiv_mesh_vertex_inner(const SubdivForeachContext *foreach_context
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   const MPoly *coarse_poly = &coarse_mpoly[coarse_poly_index];
-  if (coarse_poly->flag & ME_HOLE) {
-    return;
-  }
   Mesh *subdiv_mesh = ctx->subdiv_mesh;
   MVert *subdiv_mvert = subdiv_mesh->mvert;
   MVert *subdiv_vert = &subdiv_mvert[subdiv_vertex_index];
@@ -940,9 +937,6 @@ static void subdiv_mesh_loop(const SubdivForeachContext *foreach_context,
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   const MPoly *coarse_mpoly = coarse_mesh->mpoly;
   const MPoly *coarse_poly = &coarse_mpoly[coarse_poly_index];
-  if (coarse_poly->flag & ME_HOLE) {
-    return;
-  }
   Mesh *subdiv_mesh = ctx->subdiv_mesh;
   MLoop *subdiv_mloop = subdiv_mesh->mloop;
   MLoop *subdiv_loop = &subdiv_mloop[subdiv_loop_index];

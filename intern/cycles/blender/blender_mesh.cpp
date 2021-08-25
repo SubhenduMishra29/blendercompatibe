@@ -963,7 +963,7 @@ static void create_mesh(Scene *scene,
       }
 
       /* create subd faces */
-      mesh->add_subd_face(&vi[0], n, shader, smooth, p.is_hole());
+      mesh->add_subd_face(&vi[0], n, shader, smooth);
     }
   }
 

@@ -1181,13 +1181,6 @@ static bool rna_MeshLoopTriangle_use_smooth_get(PointerRNA *ptr)
   return me->mpoly[ltri->poly].flag & ME_SMOOTH;
 }
 
-static bool rna_MeshLoopTriangle_is_hole_get(PointerRNA *ptr)
-{
-  Mesh *me = rna_mesh(ptr);
-  MLoopTri *ltri = (MLoopTri *)ptr->data;
-  return me->mpoly[ltri->poly].flag & ME_HOLE;
-}
-
 static int rna_MeshPolygon_index_get(PointerRNA *ptr)
 {
   Mesh *me = rna_mesh(ptr);
@@ -1905,11 +1898,6 @@ static void rna_def_mlooptri(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_MeshLoopTriangle_use_smooth_get", NULL);
   RNA_def_property_ui_text(prop, "Smooth", "");
-
-  prop = RNA_def_property(srna, "is_hole", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_boolean_funcs(prop, "rna_MeshLoopTriangle_is_hole_get", NULL);
-  RNA_def_property_ui_text(prop, "Hole", "");
 }
 
 static void rna_def_mloop(BlenderRNA *brna)
@@ -2032,11 +2020,6 @@ static void rna_def_mpolygon(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_smooth", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_SMOOTH);
-  RNA_def_property_ui_text(prop, "Smooth", "");
-  RNA_def_property_update(prop, 0, "rna_Mesh_update_data_legacy_deg_tag_all");
-
-  prop = RNA_def_property(srna, "is_hole", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", ME_HOLE);
   RNA_def_property_ui_text(prop, "Smooth", "");
   RNA_def_property_update(prop, 0, "rna_Mesh_update_data_legacy_deg_tag_all");
 

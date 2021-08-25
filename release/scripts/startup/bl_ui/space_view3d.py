@@ -4156,11 +4156,6 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
 
         layout.separator()
 
-        layout.operator("mesh.faces_mark_hole")
-        layout.operator("mesh.faces_unmark_hole")
-
-        layout.separator()
-
         layout.menu("VIEW3D_MT_edit_mesh_faces_data")
 
 

@@ -209,32 +209,6 @@ int MeshTopology::getNumFaceVertices(int face_index) const
   return faces_first_vertex_index_[face_index + 1] - faces_first_vertex_index_[face_index];
 }
 
-void MeshTopology::ensureFaceTagsSize(int num_faces)
-{
-  if (face_tags_.size() < num_faces) {
-    face_tags_.resize(num_faces);
-  }
-}
-
-void MeshTopology::setFaceIsHole(int face_index, bool is_hole)
-{
-  assert(face_index >= 0);
-  assert(face_index < getNumFaces());
-  ensureFaceTagsSize(face_index + 1);
-  face_tags_[face_index].is_hole = is_hole;
-}
-
-bool MeshTopology::getFaceIsHole(int face_index) const
-{
-  assert(face_index >= 0);
-
-  if (face_index >= face_tags_.size()) {
-    return false;
-  }
-
-  return face_tags_[face_index].is_hole;
-}
-
 void MeshTopology::setFaceVertexIndices(int face_index,
                                         int num_face_vertex_indices,
                                         const int *face_vertex_indices)

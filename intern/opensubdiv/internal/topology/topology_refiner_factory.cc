@@ -200,17 +200,6 @@ inline bool TopologyRefinerFactory<TopologyRefinerData>::assignComponentTags(
   const OpenSubdiv_Converter *converter = cb_data.converter;
   MeshTopology *base_mesh_topology = cb_data.base_mesh_topology;
 
-  const int num_faces = converter->getNumFaces(converter);
-  for (int face_index = 0; face_index < num_faces; ++face_index) {
-    const bool is_hole = converter->getFaceIsHole(converter, face_index);
-    if (!is_hole) {
-      continue;
-    }
-
-    base_mesh_topology->setFaceIsHole(face_index, is_hole);
-    setBaseFaceHole(refiner, face_index, is_hole);
-  }
-
   const bool full_topology_specified = converter->specifiesFullTopology(converter);
   if (full_topology_specified || converter->getEdgeVertices != NULL) {
     const int num_edges = converter->getNumEdges(converter);
