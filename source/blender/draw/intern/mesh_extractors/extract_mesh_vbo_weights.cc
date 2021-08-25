@@ -181,7 +181,7 @@ static void extract_weights_init_subdiv(const DRWSubdivCache *subdiv_cache,
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
-  GPU_vertbuf_init_build_on_device(vbo, &format, subdiv_cache->num_patch_coords);
+  GPU_vertbuf_init_build_on_device(vbo, &format, subdiv_cache->num_subdiv_loops);
 
   GPUVertBuf *coarse_weights = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format(coarse_weights, &format);

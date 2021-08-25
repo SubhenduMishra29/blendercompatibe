@@ -125,10 +125,10 @@ static void extract_fdots_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUIndexBuf *fdots_pos_ibo = cache->final.buff.ibo.fdots;
 
   GPU_vertbuf_init_build_on_device(
-      fdots_nor_vbo, get_fdots_nor_format_subdiv(), subdiv_cache->coarse_poly_count);
+      fdots_nor_vbo, get_fdots_nor_format_subdiv(), subdiv_cache->num_coarse_poly);
   GPU_vertbuf_init_build_on_device(
-      fdots_pos_vbo, get_fdots_pos_format(), subdiv_cache->coarse_poly_count);
-  GPU_indexbuf_init_build_on_device(fdots_pos_ibo, subdiv_cache->coarse_poly_count);
+      fdots_pos_vbo, get_fdots_pos_format(), subdiv_cache->num_coarse_poly);
+  GPU_indexbuf_init_build_on_device(fdots_pos_ibo, subdiv_cache->num_coarse_poly);
   draw_subdiv_build_fdots_buffers(subdiv_cache, fdots_pos_vbo, fdots_nor_vbo, fdots_pos_ibo);
 }
 

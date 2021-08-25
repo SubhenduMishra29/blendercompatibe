@@ -208,7 +208,7 @@ static void extract_vcol_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertFormat format = {0};
   init_vcol_format(&format, cache, &coarse_mesh->ldata, &coarse_mesh->vdata);
 
-  GPU_vertbuf_init_build_on_device(dst_buffer, &format, subdiv_cache->num_patch_coords);
+  GPU_vertbuf_init_build_on_device(dst_buffer, &format, subdiv_cache->num_subdiv_loops);
 
   GPUVertBuf *src_data = GPU_vertbuf_calloc();
   /* Dynamic as we upload and interpolate layers one at a time. */
@@ -228,7 +228,7 @@ static void extract_vcol_init_subdiv(const DRWSubdivCache *subdiv_cache,
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (vcol_layers & (1 << i)) {
       /* Include stride in offset, we use a stride of 2 since colors are packed into 2 uints. */
-      const int dst_offset = (int)subdiv_cache->num_patch_coords * 2 * pack_layer_index++;
+      const int dst_offset = (int)subdiv_cache->num_subdiv_loops * 2 * pack_layer_index++;
       const MLoopCol *mloopcol = (MLoopCol *)CustomData_get_layer_n(cd_ldata, CD_MLOOPCOL, i);
 
       gpuMeshVcol *vcol = mesh_vcol;

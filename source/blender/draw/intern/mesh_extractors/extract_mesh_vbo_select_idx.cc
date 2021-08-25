@@ -207,7 +207,7 @@ static void extract_vert_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
   /* Each element points to an element in the ibo.points. */
   draw_subdiv_init_origindex_buffer(vbo,
                                     subdiv_cache->subdiv_loop_subdiv_vert_index,
-                                    subdiv_cache->num_patch_coords,
+                                    subdiv_cache->num_subdiv_loops,
                                     mr->loop_loose_len);
 }
 
@@ -226,7 +226,7 @@ static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cach
   uint *vert_idx_data = (uint *)GPU_vertbuf_get_data(vbo);
   const Mesh *coarse_mesh = subdiv_cache->mesh;
   const MEdge *coarse_edges = coarse_mesh->medge;
-  uint offset = subdiv_cache->num_patch_coords;
+  uint offset = subdiv_cache->num_subdiv_loops;
 
   for (int i = 0; i < loose_geom->edge_len; i++) {
     const MEdge *loose_edge = &coarse_edges[loose_geom->edges[i]];
@@ -251,7 +251,7 @@ static void extract_edge_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
   draw_subdiv_init_origindex_buffer(
       vbo,
       static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache->edges_orig_index)),
-      subdiv_cache->num_patch_coords,
+      subdiv_cache->num_subdiv_loops,
       mr->edge_loose_len * 2);
 }
 
@@ -268,7 +268,7 @@ static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache *subdiv_cach
 
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   uint *vert_idx_data = (uint *)GPU_vertbuf_get_data(vbo);
-  uint offset = subdiv_cache->num_patch_coords;
+  uint offset = subdiv_cache->num_subdiv_loops;
 
   for (int i = 0; i < loose_geom->edge_len; i++) {
     vert_idx_data[offset] = loose_geom->edges[i];
@@ -285,7 +285,7 @@ static void extract_poly_idx_init_subdiv(const DRWSubdivCache *subdiv_cache,
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   draw_subdiv_init_origindex_buffer(
-      vbo, subdiv_cache->subdiv_loop_poly_index, subdiv_cache->num_patch_coords, 0);
+      vbo, subdiv_cache->subdiv_loop_poly_index, subdiv_cache->num_subdiv_loops, 0);
 }
 
 constexpr MeshExtract create_extractor_poly_idx()

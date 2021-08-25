@@ -22,30 +22,24 @@
 extern "C" {
 #endif
 
+#include "BLI_sys_types.h"
+
+struct GPUIndexBuf;
+struct GPUVertBuf;
 struct Mesh;
-struct Object;
-struct Scene;
 struct MeshBatchCache;
 struct MeshBufferCache;
 struct MeshRenderData;
+struct Object;
+struct Scene;
 struct Subdiv;
 struct ToolSettings;
 
-void DRW_create_subdivision(const struct Scene *scene,
-                            struct Object *ob,
-                            struct Mesh *mesh,
-                            struct MeshBatchCache *batch_cache,
-                            struct MeshBufferCache *mbc,
-                            const struct ToolSettings *toolsettings);
-
-void DRW_subdiv_free(void);
-
-void DRW_subdiv_cache_free(struct Subdiv *subdiv);
-#include "BLI_sys_types.h"
-
-struct GPUVertBuf;
-struct GPUIndexBuf;
-struct GPUPatchMap;
+/* -------------------------------------------------------------------- */
+/** \name GPUPatchMap is a GPU version of the OpenSubDiv PatchMap. The quad tree and the patch
+ * handles are copied to GPU buffers in order to lookup the right patch for a given set of patch
+ * coordinates.
+ * \{ */
 
 typedef struct GPUPatchMap {
   struct GPUVertBuf *patch_map_handles;
@@ -56,6 +50,13 @@ typedef struct GPUPatchMap {
   int patches_are_triangular;
 } GPUPatchMap;
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name DRWSubdivCache holds the various buffers used to evaluate and render subdivision through
+ * OpenGL.
+ * \{ */
+
 typedef struct DRWSubdivCache {
   struct Mesh *mesh;
   struct Subdiv *subdiv;
@@ -63,23 +64,25 @@ typedef struct DRWSubdivCache {
   bool do_hq_normals;
   bool do_limit_normals;
 
-  /* Coordinates used to evaluate patches, for UVs, positions, and normals. */
+  /* Coordinates used to evaluate patches for UVs, positions, and normals. */
   struct GPUVertBuf *patch_coords;
+  /* Coordinates used to evaluate patches for the face centers (or face dots) in edit-mode. */
   struct GPUVertBuf *fdots_patch_coords;
 
   /* Resolution used to generate the patch coordinates. */
   int resolution;
 
-  /* Number of coordinantes. */
-  uint num_patch_coords;
+  /* Number of subdivided loops, also the number of patch coordinates since we have one coordinate
+   * but quad corner/vertex. */
+  uint num_subdiv_loops;
+  uint num_subdiv_edges;
+  uint num_subdiv_triangles;
+  uint num_subdiv_vertis;
+  uint num_subdiv_quads;
 
-  uint number_of_triangles;
-
-  int coarse_poly_count;
-  uint num_vertices;  // subdiv_vertex_count;
-
-  uint num_edges;
-  uint number_of_quads;
+  /* Number of polygons in the coarse mesh, notably used to compute a coarse polygon index given a
+   * subdivision loop index. */
+  int num_coarse_poly;
 
   /* Maps subdivision loop to subdivided vertex index. */
   int *subdiv_loop_subdiv_vert_index;
@@ -93,21 +96,25 @@ typedef struct DRWSubdivCache {
    */
   struct GPUVertBuf *subdiv_vertex_face_adjacency_offsets;
 
-  /* Maps to original element in the coarse mesh, only for edit mode. */
-  /* Maps subdivision loop to original coarse vertex index. */
+  /* Maps subdivision loop to original coarse vertex index, only really useful for edit mode. */
   struct GPUVertBuf *verts_orig_index;
-  /* Maps subdivision loop to original coarse edge index. */
+  /* Maps subdivision loop to original coarse edge index, only really useful for edit mode. */
   struct GPUVertBuf *edges_orig_index;
 
-  struct GPUVertBuf *face_ptex_offset_buffer;
+  /* Owned by #Subdiv. Indexed by coarse polygon index, difference between value (i + 1) and (i)
+   * gives the number of ptex faces for coarse polygon (i).  */
   int *face_ptex_offset;
-  struct GPUVertBuf *subdiv_polygon_offset_buffer;
+  /* Vertex buffer for face_ptex_offset. */
+  struct GPUVertBuf *face_ptex_offset_buffer;
+
   int *subdiv_polygon_offset;
+  struct GPUVertBuf *subdiv_polygon_offset_buffer;
 
   /* Contains the start loop index and the smooth flag for each coarse polygon. */
   struct GPUVertBuf *extra_coarse_face_data;
 
-  /* ibo.points, one value per subdivided vertex, mapping coarse vertices -> subdivided loop */
+  /* Computed for ibo.points, one value per subdivided vertex, mapping coarse vertices ->
+   * subdivided loop */
   int *point_indices;
 
   /* Material offsets. */
@@ -117,6 +124,19 @@ typedef struct DRWSubdivCache {
 
   GPUPatchMap gpu_patch_map;
 } DRWSubdivCache;
+
+/** \} */
+
+void DRW_create_subdivision(const struct Scene *scene,
+                            struct Object *ob,
+                            struct Mesh *mesh,
+                            struct MeshBatchCache *batch_cache,
+                            struct MeshBufferCache *mbc,
+                            const struct ToolSettings *toolsettings);
+
+void DRW_subdiv_free(void);
+
+void DRW_subdiv_cache_free(struct Subdiv *subdiv);
 
 void draw_subdiv_init_mesh_render_data(struct Mesh *mesh,
                                        struct MeshRenderData *mr,

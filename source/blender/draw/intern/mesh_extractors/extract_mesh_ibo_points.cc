@@ -164,9 +164,9 @@ static void extract_points_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(data);
   /* Copy the points as the data upload will free them. */
   elb->data = (uint *)MEM_dupallocN(subdiv_cache->point_indices);
-  elb->index_len = subdiv_cache->num_vertices;
+  elb->index_len = subdiv_cache->num_subdiv_vertis;
   elb->index_min = 0;
-  elb->index_max = subdiv_cache->num_patch_coords - 1;
+  elb->index_max = subdiv_cache->num_subdiv_loops - 1;
   elb->prim_type = GPU_PRIM_POINTS;
 }
 
@@ -184,12 +184,12 @@ static void extract_points_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(data);
 
   elb->data = static_cast<uint32_t *>(
-      MEM_reallocN(elb->data, sizeof(uint) * (subdiv_cache->num_patch_coords + loop_loose_len)));
+      MEM_reallocN(elb->data, sizeof(uint) * (subdiv_cache->num_subdiv_loops + loop_loose_len)));
 
   const Mesh *coarse_mesh = subdiv_cache->mesh;
   const MEdge *coarse_edges = coarse_mesh->medge;
 
-  uint offset = subdiv_cache->num_patch_coords;
+  uint offset = subdiv_cache->num_subdiv_loops;
 
   for (int i = 0; i < loose_geom->edge_len; i++) {
     const MEdge *loose_edge = &coarse_edges[loose_geom->edges[i]];

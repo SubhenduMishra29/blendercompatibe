@@ -165,7 +165,7 @@ static void extract_lines_init_subdiv(const DRWSubdivCache *subdiv_cache,
 {
   GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
   GPU_indexbuf_init_build_on_device(ibo,
-                                    subdiv_cache->num_patch_coords * 2 + mr->edge_loose_len * 2);
+                                    subdiv_cache->num_subdiv_loops * 2 + mr->edge_loose_len * 2);
 
   draw_subdiv_build_lines_buffer(subdiv_cache, ibo, subdiv_cache->optimal_display);
 }
@@ -184,8 +184,8 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
   /* Make sure buffer is active for sending loose data. */
   GPU_indexbuf_use(ibo);
 
-  uint offset = subdiv_cache->num_patch_coords * 2;
-  uint loop_index = subdiv_cache->num_patch_coords;
+  uint offset = subdiv_cache->num_subdiv_loops * 2;
+  uint loop_index = subdiv_cache->num_subdiv_loops;
   for (int i = 0; i < loose_geom->edge_len; i++) {
     GPU_indexbuf_update_sub(ibo, (offset) * sizeof(uint), sizeof(uint), &loop_index);
     loop_index += 1;

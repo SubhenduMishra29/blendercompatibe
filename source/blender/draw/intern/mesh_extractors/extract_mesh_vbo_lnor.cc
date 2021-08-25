@@ -128,7 +128,7 @@ static void extract_lnor_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   GPUVertBuf *pos_nor = cache->final.buff.vbo.pos_nor;
   BLI_assert(pos_nor);
-  GPU_vertbuf_init_build_on_device(vbo, get_lnor_format(), subdiv_cache->num_patch_coords);
+  GPU_vertbuf_init_build_on_device(vbo, get_lnor_format(), subdiv_cache->num_subdiv_loops);
   draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo, subdiv_cache->do_hq_normals);
 }
 

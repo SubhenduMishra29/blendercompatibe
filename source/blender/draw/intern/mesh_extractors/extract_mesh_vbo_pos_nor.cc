@@ -237,18 +237,18 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
   /* Initialise the vertex buffer, it was already allocated. */
   GPU_vertbuf_init_build_on_device(vbo,
                                    do_hq_normals ? get_pos_nor_format_hq() : get_pos_nor_format(),
-                                   subdiv_cache->num_patch_coords + mr->loop_loose_len);
+                                   subdiv_cache->num_subdiv_loops + mr->loop_loose_len);
 
   draw_subdiv_extract_pos_nor(subdiv_cache, vbo, do_limit_normals, do_hq_normals);
 
   if (!do_limit_normals) {
     /* We cannot evaluate vertex normals using the limit surface, so compute them manually. */
     GPUVertBuf *subdiv_loop_subdiv_vert_index = draw_subdiv_build_origindex_buffer(
-        subdiv_cache->subdiv_loop_subdiv_vert_index, subdiv_cache->num_patch_coords);
+        subdiv_cache->subdiv_loop_subdiv_vert_index, subdiv_cache->num_subdiv_loops);
 
     GPUVertBuf *vertex_normals = GPU_vertbuf_calloc();
     GPU_vertbuf_init_build_on_device(
-        vertex_normals, get_normals_format(), subdiv_cache->num_vertices);
+        vertex_normals, get_normals_format(), subdiv_cache->num_subdiv_vertis);
 
     draw_subdiv_accumulate_normals(subdiv_cache,
                                    vbo,
@@ -279,7 +279,7 @@ static void extract_pos_nor_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache
   const Mesh *coarse_mesh = subdiv_cache->mesh;
   const MEdge *coarse_edges = coarse_mesh->medge;
   const MVert *coarse_verts = coarse_mesh->mvert;
-  uint offset = subdiv_cache->num_patch_coords;
+  uint offset = subdiv_cache->num_subdiv_loops;
 
   PosNorLoop edge_data[2];
   for (int i = 0; i < loose_geom->edge_len; i++) {

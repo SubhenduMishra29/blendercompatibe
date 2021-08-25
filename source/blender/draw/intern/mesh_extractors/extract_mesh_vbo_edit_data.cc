@@ -180,7 +180,7 @@ static void extract_edit_data_init_subdiv(const DRWSubdivCache *subdiv_cache,
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPU_vertbuf_init_with_format(vbo, get_edit_data_format());
-  GPU_vertbuf_data_alloc(vbo, subdiv_cache->num_patch_coords + mr->loop_loose_len);
+  GPU_vertbuf_data_alloc(vbo, subdiv_cache->num_subdiv_loops + mr->loop_loose_len);
   EditLoopData *vbo_data = (EditLoopData *)GPU_vertbuf_get_data(vbo);
   *(EditLoopData **)data = vbo_data;
 }
@@ -194,7 +194,7 @@ static void extract_edit_data_iter_subdiv(const DRWSubdivCache *subdiv_cache,
   int *subdiv_loop_edge_index = (int *)GPU_vertbuf_get_data(subdiv_cache->edges_orig_index);
   int *subdiv_loop_poly_index = subdiv_cache->subdiv_loop_poly_index;
 
-  for (uint i = 0; i < subdiv_cache->num_patch_coords; i++) {
+  for (uint i = 0; i < subdiv_cache->num_subdiv_loops; i++) {
     const int vert_origindex = subdiv_loop_vert_index[i];
     const int edge_origindex = subdiv_loop_edge_index[i];
     const int poly_origindex = subdiv_loop_poly_index[i];
@@ -231,7 +231,7 @@ static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache *subdiv_cac
   EditLoopData *vbo_data = *(EditLoopData **)_data;
 
   for (int ledge_index = 0; ledge_index < loose_geom->edge_len; ledge_index++) {
-    const int offset = subdiv_cache->num_patch_coords + ledge_index * 2;
+    const int offset = subdiv_cache->num_subdiv_loops + ledge_index * 2;
     EditLoopData *data = &vbo_data[offset];
     memset(data, 0, sizeof(EditLoopData));
     BMEdge *eed = BM_edge_at_index(mr->bm, loose_geom->edges[ledge_index]);

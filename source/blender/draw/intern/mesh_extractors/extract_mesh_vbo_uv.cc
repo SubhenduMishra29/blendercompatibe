@@ -146,7 +146,7 @@ static void extract_uv_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   GPUVertFormat format = {0};
 
-  uint v_len = subdiv_cache->num_patch_coords;
+  uint v_len = subdiv_cache->num_subdiv_loops;
   uint uv_layers;
   if (!mesh_extract_uv_format_init(
           &format, cache, &coarse_mesh->ldata, MR_EXTRACT_MESH, uv_layers)) {
@@ -164,7 +164,7 @@ static void extract_uv_init_subdiv(const DRWSubdivCache *subdiv_cache,
   int pack_layer_index = 0;
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (uv_layers & (1 << i)) {
-      const int offset = (int)subdiv_cache->num_patch_coords * pack_layer_index++;
+      const int offset = (int)subdiv_cache->num_subdiv_loops * pack_layer_index++;
       draw_subdiv_extract_uvs(subdiv_cache, vbo, i, offset);
     }
   }

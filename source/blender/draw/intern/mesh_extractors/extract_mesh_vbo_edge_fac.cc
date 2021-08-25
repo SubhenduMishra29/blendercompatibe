@@ -243,7 +243,7 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *pos_nor = cache->final.buff.vbo.pos_nor;
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   GPU_vertbuf_init_build_on_device(
-      vbo, get_subdiv_edge_fac_format(), subdiv_cache->num_patch_coords + mr->loop_loose_len);
+      vbo, get_subdiv_edge_fac_format(), subdiv_cache->num_subdiv_loops + mr->loop_loose_len);
 
   /* Create a temporary buffer for the edge original indices if it was not requested. */
   const bool has_edge_idx = edge_idx != nullptr;
@@ -256,7 +256,7 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
     draw_subdiv_init_origindex_buffer(
         loop_edge_idx,
         static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache->edges_orig_index)),
-        subdiv_cache->num_patch_coords,
+        subdiv_cache->num_subdiv_loops,
         0);
   }
 
@@ -287,7 +287,7 @@ static void extract_edge_fac_loose_geom_subdiv(const DRWSubdivCache *subdiv_cach
   /* Make sure buffer is active for sending loose data. */
   GPU_vertbuf_use(vbo);
 
-  uint offset = subdiv_cache->num_patch_coords;
+  uint offset = subdiv_cache->num_subdiv_loops;
   for (int i = 0; i < loose_geom->edge_len; i++) {
     if (GPU_crappy_amd_driver()) {
       float loose_edge_fac[2] = {1.0f, 1.0f};
