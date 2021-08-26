@@ -32,7 +32,8 @@ void main()
 {
   /* We execute for each quad, so the start index of the loop is quad_index * 4. */
   uint start_loop_index = gl_GlobalInvocationID.x * 4;
-  /* We execute for each quad, so the start index of the line (2 vertex per line) is quad_index * 8. */
+  /* We execute for each quad, so the start index of the line is quad_index * 8 (with 2 vertices
+   * per line). */
   uint start_line_index = gl_GlobalInvocationID.x * 8;
 
   for (int i = 0; i < 4; i++) {
