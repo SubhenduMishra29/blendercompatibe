@@ -57,16 +57,16 @@
 #include "draw_cache_inline.h"
 #include "mesh_extractors/extract_mesh.h"
 
+extern char datatoc_common_subdiv_custom_data_interp_comp_glsl[];
+extern char datatoc_common_subdiv_ibo_lines_comp_glsl[];
+extern char datatoc_common_subdiv_ibo_points_comp_glsl[];
+extern char datatoc_common_subdiv_ibo_tris_comp_glsl[];
 extern char datatoc_common_subdiv_lib_glsl[];
-extern char datatoc_common_subdiv_buffer_lines_comp_glsl[];
-extern char datatoc_common_subdiv_buffer_lnor_comp_glsl[];
-extern char datatoc_common_subdiv_buffer_edge_fac_comp_glsl[];
-extern char datatoc_common_subdiv_buffer_points_comp_glsl[];
-extern char datatoc_common_subdiv_tris_comp_glsl[];
 extern char datatoc_common_subdiv_normals_accumulate_comp_glsl[];
 extern char datatoc_common_subdiv_normals_finalize_comp_glsl[];
 extern char datatoc_common_subdiv_patch_evaluation_comp_glsl[];
-extern char datatoc_common_subdiv_custom_data_interp_comp_glsl[];
+extern char datatoc_common_subdiv_vbo_edge_fac_comp_glsl[];
+extern char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
 
 enum {
   SHADER_BUFFER_LINES,
@@ -97,19 +97,19 @@ static const char *get_shader_code(int shader_type)
 {
   switch (shader_type) {
     case SHADER_BUFFER_LINES: {
-      return datatoc_common_subdiv_buffer_lines_comp_glsl;
+      return datatoc_common_subdiv_ibo_lines_comp_glsl;
     }
     case SHADER_BUFFER_EDGE_FAC:
     case SHADER_BUFFER_EDGE_FAC_HQ: {
-      return datatoc_common_subdiv_buffer_edge_fac_comp_glsl;
+      return datatoc_common_subdiv_vbo_edge_fac_comp_glsl;
     }
     case SHADER_BUFFER_LNOR:
     case SHADER_BUFFER_LNOR_HQ: {
-      return datatoc_common_subdiv_buffer_lnor_comp_glsl;
+      return datatoc_common_subdiv_vbo_lnor_comp_glsl;
     }
     case SHADER_BUFFER_TRIS:
     case SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS: {
-      return datatoc_common_subdiv_tris_comp_glsl;
+      return datatoc_common_subdiv_ibo_tris_comp_glsl;
     }
     case SHADER_BUFFER_NORMALS_ACCUMULATE: {
       return datatoc_common_subdiv_normals_accumulate_comp_glsl;
