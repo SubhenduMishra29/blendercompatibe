@@ -30,7 +30,6 @@ extern "C" {
 #endif
 
 struct Mesh;
-struct OpenSubdiv_PatchCoord;
 struct Subdiv;
 
 typedef struct SubdivToMeshSettings {

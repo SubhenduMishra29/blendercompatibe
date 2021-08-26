@@ -34,7 +34,6 @@ struct Mesh;
 struct MultiresModifierData;
 struct OpenSubdiv_Converter;
 struct OpenSubdiv_Evaluator;
-struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 struct Subdiv;
 struct SubsurfModifierData;

@@ -38,7 +38,6 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_shrinkwrap.h"
-#include "BKE_subdiv.h"
 #include "BKE_subdiv_ccg.h"
 
 /* -------------------------------------------------------------------- */
