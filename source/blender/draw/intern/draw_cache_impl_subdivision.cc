@@ -1340,7 +1340,8 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
   /* Cleanup. */
   GPU_shader_unbind();
 
-  /* Free the memory used for allocating a GPUVertBuf, but not the underlying buffers. */
+  /* Free the memory used for allocating a GPUVertBuf, but not the underlying buffers as they are
+   * owned by the OpenSubDiv evaluator. */
   GPU_vertbuf_wrap_device_ptr(patch_index_buffer, 0);
   GPU_vertbuf_wrap_device_ptr(patch_param_buffer, 0);
   GPU_vertbuf_wrap_device_ptr(src_buffer, 0);
