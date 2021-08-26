@@ -1,3 +1,22 @@
+/* Uniform block for #DRWSubivUboStorage. */
+layout(std140) uniform shader_data
+{
+  /* Offsets in the buffers data where the source and destination data start. */
+  int src_offset;
+  int dst_offset;
+
+  /* Parameters for the GPUPatchMap. */
+  int min_patch_face;
+  int max_patch_face;
+  int max_depth;
+  int patches_are_triangular;
+
+  /* Coarse topology information. */
+  int coarse_poly_count;
+
+  /* Subdivision settings. */
+  bool optimal_display;
+};
 
 /* This structure is a carbon copy of OpenSubDiv's PatchCoord. */
 struct BlenderPatchCoord {

@@ -35,9 +35,6 @@ layout(binding = 5) writeonly restrict buffer destBuffer
 #endif
 };
 
-uniform int dst_offset = 0;
-uniform int coarse_poly_count = 0;
-
 struct Vertex {
   float vertex_data[DIMENSIONS];
 };

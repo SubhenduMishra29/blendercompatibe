@@ -21,8 +21,6 @@ layout(std430, binding = 2) writeonly buffer outputEdgeFactors
 #endif
 };
 
-uniform bool optimal_display;
-
 void write_vec4(uint index, vec4 edge_facs)
 {
 #ifdef GPU_AMD_DRIVER_BYTE_BUG

@@ -104,11 +104,6 @@ OsdPatchParam GetPatchParam(int patchIndex)
 // Patch Coordinate lookup. Return an OsdPatchCoord for the given patch_index and uvs.
 // This code is a port of the OpenSubdiv PatchMap lookup code.
 
-uniform int min_patch_face;
-uniform int max_patch_face;
-uniform int max_depth;
-uniform int patches_are_triangular;
-
 PatchHandle bogus_patch_handle()
 {
   PatchHandle ret;
@@ -282,7 +277,6 @@ void evaluate_patches_limits(
 // Entry point.
 
 #if defined(FVAR_EVALUATION)
-uniform int dst_offset = 0;
 void main()
 {
   uint quad_index = gl_GlobalInvocationID.x;

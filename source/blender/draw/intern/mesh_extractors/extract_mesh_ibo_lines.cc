@@ -167,7 +167,7 @@ static void extract_lines_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPU_indexbuf_init_build_on_device(ibo,
                                     subdiv_cache->num_subdiv_loops * 2 + mr->edge_loose_len * 2);
 
-  draw_subdiv_build_lines_buffer(subdiv_cache, ibo, subdiv_cache->optimal_display);
+  draw_subdiv_build_lines_buffer(subdiv_cache, ibo);
 }
 
 static void extract_lines_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,

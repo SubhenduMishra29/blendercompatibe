@@ -12,8 +12,6 @@ layout(std430, binding = 2) readonly buffer inputPolygonMatOffset
 {
   int polygon_mat_offset[];
 };
-
-uniform int coarse_poly_count;
 #endif
 
 void main()

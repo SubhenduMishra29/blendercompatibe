@@ -17,8 +17,6 @@ layout(std430, binding = 3) writeonly buffer outputLoopNormals
   vec3 output_lnor[];
 };
 
-uniform int coarse_poly_count;
-
 void main()
 {
   /* We execute for each quad, so the start index of the loop is quad_index * 4. */

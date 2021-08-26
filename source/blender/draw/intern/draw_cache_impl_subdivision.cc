@@ -581,6 +581,9 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   draw_subdiv_free_edit_mode_cache(cache);
   draw_subdiv_cache_free_material_data(cache);
   gpu_patch_map_free(&cache->gpu_patch_map);
+  if (cache->ubo) {
+    GPU_uniformbuf_free(cache->ubo);
+  }
 }
 
 static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cache, Mesh *mesh)
@@ -959,6 +962,65 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name DRWSubdivUboStorage, common uniforms for the various shaders.
+ * \{ */
+
+typedef struct DRWSubdivUboStorage {
+  /* Offsets in the buffers data where the source and destination data start. */
+  int src_offset;
+  int dst_offset;
+
+  /* Parameters for the GPUPatchMap. */
+  int min_patch_face;
+  int max_patch_face;
+  int max_depth;
+  int patches_are_triangular;
+
+  /* Coarse topology information. */
+  int coarse_poly_count;
+
+  /* Subdivision settings. */
+  bool optimal_dispaly;
+} DRWSubdivUboStorage;
+
+static void draw_subdiv_init_ubo_storage(const DRWSubdivCache *cache,
+                                         DRWSubdivUboStorage *ubo,
+                                         const int src_offset,
+                                         const int dst_offset)
+{
+  ubo->src_offset = src_offset;
+  ubo->dst_offset = dst_offset;
+  ubo->min_patch_face = cache->gpu_patch_map.min_patch_face;
+  ubo->max_patch_face = cache->gpu_patch_map.max_patch_face;
+  ubo->max_depth = cache->gpu_patch_map.max_depth;
+  ubo->patches_are_triangular = cache->gpu_patch_map.patches_are_triangular;
+  ubo->coarse_poly_count = cache->num_coarse_poly;
+  ubo->optimal_dispaly = cache->optimal_display;
+}
+
+static void draw_subdiv_ubo_update_and_bind(const DRWSubdivCache *cache,
+                                            GPUShader *shader,
+                                            const int src_offset,
+                                            const int dst_offset)
+{
+
+  DRWSubdivUboStorage storage;
+  draw_subdiv_init_ubo_storage(cache, &storage, src_offset, dst_offset);
+
+  if (!cache->ubo) {
+    const_cast<DRWSubdivCache *>(cache)->ubo = GPU_uniformbuf_create_ex(
+        sizeof(DRWSubdivUboStorage), &storage, "DRWSubdivUboStorage");
+  }
+
+  GPU_uniformbuf_update(cache->ubo, &storage);
+
+  int location = GPU_shader_get_uniform(shader, "shader_data");
+  GPU_uniformbuf_bind(cache->ubo, location);
+}
+
+/** \} */
+
 // --------------------------------------------------------
 
 #define PATCH_EVALUATION_WORK_GROUP_SIZE 64
@@ -999,12 +1061,6 @@ void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
                          (do_hq_normals ? SHADER_PATCH_EVALUATION_HQ : SHADER_PATCH_EVALUATION));
   GPU_shader_bind(shader);
 
-  GPU_shader_uniform_1i(shader, "min_patch_face", cache->gpu_patch_map.min_patch_face);
-  GPU_shader_uniform_1i(shader, "max_patch_face", cache->gpu_patch_map.max_patch_face);
-  GPU_shader_uniform_1i(shader, "max_depth", cache->gpu_patch_map.max_depth);
-  GPU_shader_uniform_1i(
-      shader, "patches_are_triangular", cache->gpu_patch_map.patches_are_triangular);
-
   GPU_vertbuf_bind_as_ssbo(src_buffer, 0);
   GPU_vertbuf_bind_as_ssbo(cache->gpu_patch_map.patch_map_handles, 1);
   GPU_vertbuf_bind_as_ssbo(cache->gpu_patch_map.patch_map_quadtree, 2);
@@ -1014,6 +1070,8 @@ void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
   GPU_vertbuf_bind_as_ssbo(patch_index_buffer, 6);
   GPU_vertbuf_bind_as_ssbo(patch_param_buffer, 7);
   GPU_vertbuf_bind_as_ssbo(pos_nor, 8);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
 
   GPU_compute_dispatch(
       shader, get_patch_evaluation_work_group_size(cache->num_subdiv_quads), 1, 1);
@@ -1067,16 +1125,6 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *buffers,
   GPUShader *shader = get_patch_evaluation_shader(SHADER_PATCH_EVALUATION_FVAR);
   GPU_shader_bind(shader);
 
-  /* The buffer offset has the stride baked in (which is 2 as we have UVs) so remove the stride by
-   * dividing by 2 */
-  GPU_shader_uniform_1i(shader, "src_offset", src_buffer_interface.buffer_offset / 2);
-  GPU_shader_uniform_1i(shader, "dst_offset", dst_offset);
-  GPU_shader_uniform_1i(shader, "min_patch_face", buffers->gpu_patch_map.min_patch_face);
-  GPU_shader_uniform_1i(shader, "max_patch_face", buffers->gpu_patch_map.max_patch_face);
-  GPU_shader_uniform_1i(shader, "max_depth", buffers->gpu_patch_map.max_depth);
-  GPU_shader_uniform_1i(
-      shader, "patches_are_triangular", buffers->gpu_patch_map.patches_are_triangular);
-
   GPU_vertbuf_bind_as_ssbo(src_buffer, 0);
   GPU_vertbuf_bind_as_ssbo(buffers->gpu_patch_map.patch_map_handles, 1);
   GPU_vertbuf_bind_as_ssbo(buffers->gpu_patch_map.patch_map_quadtree, 2);
@@ -1086,6 +1134,11 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *buffers,
   GPU_vertbuf_bind_as_ssbo(patch_index_buffer, 6);
   GPU_vertbuf_bind_as_ssbo(patch_param_buffer, 7);
   GPU_vertbuf_bind_as_ssbo(uvs, 8);
+
+  /* The buffer offset has the stride baked in (which is 2 as we have UVs) so remove the stride by
+   * dividing by 2 */
+  const int src_offset = src_buffer_interface.buffer_offset / 2;
+  draw_subdiv_ubo_update_and_bind(buffers, shader, src_offset, dst_offset);
 
   GPU_compute_dispatch(
       shader, get_patch_evaluation_work_group_size(buffers->num_subdiv_quads), 1, 1);
@@ -1129,9 +1182,6 @@ void draw_subdiv_interp_custom_data(const DRWSubdivCache *buffers,
 
   GPU_shader_bind(shader);
 
-  GPU_shader_uniform_1i(shader, "dst_offset", dst_offset);
-  GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->num_coarse_poly);
-
   /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
   GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset_buffer, 0);
   GPU_vertbuf_bind_as_ssbo(src_data, 1);
@@ -1139,6 +1189,8 @@ void draw_subdiv_interp_custom_data(const DRWSubdivCache *buffers,
   GPU_vertbuf_bind_as_ssbo(buffers->patch_coords, 3);
   GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, 4);
   GPU_vertbuf_bind_as_ssbo(dst_data, 5);
+
+  draw_subdiv_ubo_update_and_bind(buffers, shader, 0, dst_offset);
 
   GPU_compute_dispatch(shader, buffers->num_subdiv_quads, 1, 1);
 
@@ -1214,10 +1266,12 @@ void draw_subdiv_build_tris_buffer(const DRWSubdivCache *buffers,
   GPU_indexbuf_bind_as_ssbo(subdiv_tris, 1);
 
   if (!do_single_material) {
-    GPU_shader_uniform_1i(shader, "coarse_poly_count", buffers->num_coarse_poly);
     GPU_vertbuf_bind_as_ssbo(buffers->polygon_mat_offset, 2);
     /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
     GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset_buffer, 0);
+
+    /* Only needed for accessing the coarse_poly_count. */
+    draw_subdiv_ubo_update_and_bind(buffers, shader, 0, 0);
   }
 
   GPU_compute_dispatch(shader, buffers->num_subdiv_quads, 1, 1);
@@ -1259,12 +1313,6 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
   GPUShader *shader = get_patch_evaluation_shader(SHADER_PATCH_EVALUATION_FACE_DOTS);
   GPU_shader_bind(shader);
 
-  GPU_shader_uniform_1i(shader, "min_patch_face", cache->gpu_patch_map.min_patch_face);
-  GPU_shader_uniform_1i(shader, "max_patch_face", cache->gpu_patch_map.max_patch_face);
-  GPU_shader_uniform_1i(shader, "max_depth", cache->gpu_patch_map.max_depth);
-  GPU_shader_uniform_1i(
-      shader, "patches_are_triangular", cache->gpu_patch_map.patches_are_triangular);
-
   GPU_vertbuf_bind_as_ssbo(src_buffer, 0);
   GPU_vertbuf_bind_as_ssbo(cache->gpu_patch_map.patch_map_handles, 1);
   GPU_vertbuf_bind_as_ssbo(cache->gpu_patch_map.patch_map_quadtree, 2);
@@ -1276,6 +1324,8 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
   GPU_vertbuf_bind_as_ssbo(fdots_pos, 8);
   GPU_vertbuf_bind_as_ssbo(fdots_nor, 9);
   GPU_indexbuf_bind_as_ssbo(fdots_indices, 10);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
 
   GPU_compute_dispatch(shader, get_patch_evaluation_work_group_size(cache->num_coarse_poly), 1, 1);
 
@@ -1295,17 +1345,15 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
   GPU_vertbuf_discard(src_buffer);
 }
 
-void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache,
-                                    GPUIndexBuf *lines_indices,
-                                    const bool optimal_display)
+void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache, GPUIndexBuf *lines_indices)
 {
   GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LINES, nullptr);
   GPU_shader_bind(shader);
 
-  GPU_shader_uniform_1b(shader, "optimal_display", optimal_display);
-
   GPU_vertbuf_bind_as_ssbo(cache->edges_orig_index, 0);
   GPU_indexbuf_bind_as_ssbo(lines_indices, 1);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
 
   GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
 
@@ -1318,7 +1366,6 @@ void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache,
 void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
                                        GPUVertBuf *pos_nor,
                                        GPUVertBuf *edge_idx,
-                                       bool optimal_display,
                                        GPUVertBuf *edge_fac,
                                        const bool do_hq_normals)
 {
@@ -1333,11 +1380,11 @@ void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
       do_hq_normals ? SHADER_BUFFER_EDGE_FAC_HQ : SHADER_BUFFER_EDGE_FAC, defines);
   GPU_shader_bind(shader);
 
-  GPU_shader_uniform_1b(shader, "optimal_display", optimal_display);
-
   GPU_vertbuf_bind_as_ssbo(pos_nor, 0);
   GPU_vertbuf_bind_as_ssbo(edge_idx, 1);
   GPU_vertbuf_bind_as_ssbo(edge_fac, 2);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
 
   GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
 
@@ -1359,13 +1406,13 @@ void draw_subdiv_build_lnor_buffer(const DRWSubdivCache *cache,
                           get_subdiv_shader(SHADER_BUFFER_LNOR, "#define SUBDIV_POLYGON_OFFSET\n");
   GPU_shader_bind(shader);
 
-  GPU_shader_uniform_1i(shader, "coarse_poly_count", cache->num_coarse_poly);
-
   /* Inputs */
   GPU_vertbuf_bind_as_ssbo(pos_nor, 1);
   GPU_vertbuf_bind_as_ssbo(cache->extra_coarse_face_data, 2);
   /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
   GPU_vertbuf_bind_as_ssbo(cache->subdiv_polygon_offset_buffer, 0);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
 
   /* Outputs */
   GPU_vertbuf_bind_as_ssbo(lnor, 3);

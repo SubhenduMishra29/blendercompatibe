@@ -25,6 +25,7 @@ extern "C" {
 #include "BLI_sys_types.h"
 
 struct GPUIndexBuf;
+struct GPUUniformBuf;
 struct GPUVertBuf;
 struct Mesh;
 struct MeshBatchCache;
@@ -123,6 +124,9 @@ typedef struct DRWSubdivCache {
   struct GPUVertBuf *polygon_mat_offset;
 
   GPUPatchMap gpu_patch_map;
+
+  /* UBO to store settings for the various compute shaders. */
+  struct GPUUniformBuf *ubo;
 } DRWSubdivCache;
 
 /** \} */
@@ -182,7 +186,6 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *cache,
 void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
                                        struct GPUVertBuf *pos_nor,
                                        struct GPUVertBuf *edge_idx,
-                                       bool optimal_display,
                                        struct GPUVertBuf *edge_fac,
                                        const bool do_hq_normals);
 
@@ -191,8 +194,7 @@ void draw_subdiv_build_tris_buffer(const DRWSubdivCache *cache,
                                    const int material_count);
 
 void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache,
-                                    struct GPUIndexBuf *lines_indices,
-                                    const bool optimal_display);
+                                    struct GPUIndexBuf *lines_indices);
 
 void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
                                      struct GPUVertBuf *fdots_pos,
