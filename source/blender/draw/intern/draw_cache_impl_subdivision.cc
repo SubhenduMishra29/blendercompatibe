@@ -634,7 +634,12 @@ static DRWSubdivCache *ensure_draw_cache(Subdiv *subdiv)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name DRWCacheBuildingContext
+/** \name Traverse the uniform subdivision grid over coarse faces and gather useful information for
+ * building the draw buffers on the GPU. We primarily gather the patch coordinates for all
+ * subdivision faces, as well as the original coarse indices for each subdivision element (vertex,
+ * face, or edge) which directly maps to its coarse counterpart (note that all subdivision faces
+ * map to a coarse face). This information will then be cached in #DRWSubdivCache for subsequent
+ * reevaluations, as long as the topology does not change.
  * \{ */
 
 typedef struct DRWCacheBuildingContext {
@@ -656,12 +661,12 @@ typedef struct DRWCacheBuildingContext {
   int *edge_origindex_map;
 } DRWCacheBuildingContext;
 
-static bool patch_coords_topology_info(const SubdivForeachContext *foreach_context,
-                                       const int num_vertices,
-                                       const int num_edges,
-                                       const int num_loops,
-                                       const int num_polygons,
-                                       const int *subdiv_polygon_offset)
+static bool draw_subdiv_topology_info_cb(const SubdivForeachContext *foreach_context,
+                                         const int num_vertices,
+                                         const int num_edges,
+                                         const int num_loops,
+                                         const int num_polygons,
+                                         const int *subdiv_polygon_offset)
 {
   if (num_loops == 0) {
     return false;
@@ -801,15 +806,14 @@ static void draw_subdiv_loop_cb(const SubdivForeachContext *foreach_context,
 static void draw_subdiv_foreach_callbacks(SubdivForeachContext *foreach_context)
 {
   memset(foreach_context, 0, sizeof(*foreach_context));
-  foreach_context->topology_info = patch_coords_topology_info;
+  foreach_context->topology_info = draw_subdiv_topology_info_cb;
   foreach_context->loop = draw_subdiv_loop_cb;
   foreach_context->edge = draw_subdiv_edge_cb;
   foreach_context->vertex_corner = draw_subdiv_vertex_corner_cb;
   foreach_context->vertex_edge = draw_subdiv_vertex_edge_cb;
 }
 
-static void build_cached_data_from_subdiv(DRWCacheBuildingContext *cache_building_context,
-                                          Subdiv *subdiv)
+static void do_subdiv_traversal(DRWCacheBuildingContext *cache_building_context, Subdiv *subdiv)
 {
   SubdivForeachContext foreach_context;
   draw_subdiv_foreach_callbacks(&foreach_context);
@@ -820,7 +824,7 @@ static void build_cached_data_from_subdiv(DRWCacheBuildingContext *cache_buildin
                                      cache_building_context->settings,
                                      cache_building_context->coarse_mesh);
 
-  /* Now that traversal is done, we can set up the right original indices for the loop to edge map.
+  /* Now that traversal is done, we can set up the right original indices for the loop-to-edge map.
    */
   for (int i = 0; i < cache_building_context->cache->num_subdiv_loops; i++) {
     cache_building_context->subdiv_loop_edge_index[i] =
@@ -837,10 +841,12 @@ static GPUVertBuf *gpu_vertbuf_create_from_format(GPUVertFormat *format, uint le
   return verts;
 }
 
+/* Build maps to hold enough information to tell which face is adjacent to which vertex; those will
+ * be used for computing normals if limit surfaces are unavailable. */
 static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
 {
-  /* +1 so that we do not require a special for the last vertex, this extra offset will contain the
-   * total number of adjacent faces. */
+  /* +1 so that we do not require a special case for the last vertex, this extra offset will
+   * contain the total number of adjacent faces. */
   cache->subdiv_vertex_face_adjacency_offsets = gpu_vertbuf_create_from_format(
       get_origindex_format(), cache->num_subdiv_vertis + 1);
 
@@ -877,12 +883,12 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
   MEM_freeN(tmp_set_faces);
 }
 
-static bool generate_required_cached_data(DRWSubdivCache *cache,
-                                          Subdiv *subdiv,
-                                          Mesh *mesh_eval,
-                                          const Scene *scene,
-                                          const SubsurfModifierData *smd,
-                                          const bool is_final_render)
+static bool draw_subdiv_build_cache(DRWSubdivCache *cache,
+                                    Subdiv *subdiv,
+                                    Mesh *mesh_eval,
+                                    const Scene *scene,
+                                    const SubsurfModifierData *smd,
+                                    const bool is_final_render)
 {
   const int level = get_render_subsurf_level(&scene->r, smd->levels, is_final_render);
   SubdivToMeshSettings to_mesh_settings;
@@ -908,7 +914,7 @@ static bool generate_required_cached_data(DRWSubdivCache *cache,
   cache_building_context.settings = &to_mesh_settings;
   cache_building_context.cache = cache;
 
-  build_cached_data_from_subdiv(&cache_building_context, subdiv);
+  do_subdiv_traversal(&cache_building_context, subdiv);
   if (cache->num_subdiv_loops == 0) {
     /* Either the traversal failed, or we have an empty mesh, either way we cannot go any further.
      * The subdiv_polygon_offset cannot then be reliably stored in the cache, so free it directly.
@@ -1092,12 +1098,12 @@ void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
   GPU_vertbuf_discard(src_buffer);
 }
 
-void draw_subdiv_extract_uvs(const DRWSubdivCache *buffers,
+void draw_subdiv_extract_uvs(const DRWSubdivCache *cache,
                              GPUVertBuf *uvs,
                              const int face_varying_channel,
                              const int dst_offset)
 {
-  Subdiv *subdiv = buffers->subdiv;
+  Subdiv *subdiv = cache->subdiv;
 
   OpenSubdiv_BufferInterface src_buffer_interface;
   GPUVertBuf *src_buffer = create_buffer_and_interface(&src_buffer_interface, get_uvs_format());
@@ -1126,10 +1132,10 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *buffers,
   GPU_shader_bind(shader);
 
   GPU_vertbuf_bind_as_ssbo(src_buffer, 0);
-  GPU_vertbuf_bind_as_ssbo(buffers->gpu_patch_map.patch_map_handles, 1);
-  GPU_vertbuf_bind_as_ssbo(buffers->gpu_patch_map.patch_map_quadtree, 2);
-  GPU_vertbuf_bind_as_ssbo(buffers->patch_coords, 3);
-  GPU_vertbuf_bind_as_ssbo(buffers->verts_orig_index, 4);
+  GPU_vertbuf_bind_as_ssbo(cache->gpu_patch_map.patch_map_handles, 1);
+  GPU_vertbuf_bind_as_ssbo(cache->gpu_patch_map.patch_map_quadtree, 2);
+  GPU_vertbuf_bind_as_ssbo(cache->patch_coords, 3);
+  GPU_vertbuf_bind_as_ssbo(cache->verts_orig_index, 4);
   GPU_vertbuf_bind_as_ssbo(patch_arrays_buffer, 5);
   GPU_vertbuf_bind_as_ssbo(patch_index_buffer, 6);
   GPU_vertbuf_bind_as_ssbo(patch_param_buffer, 7);
@@ -1138,10 +1144,10 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *buffers,
   /* The buffer offset has the stride baked in (which is 2 as we have UVs) so remove the stride by
    * dividing by 2 */
   const int src_offset = src_buffer_interface.buffer_offset / 2;
-  draw_subdiv_ubo_update_and_bind(buffers, shader, src_offset, dst_offset);
+  draw_subdiv_ubo_update_and_bind(cache, shader, src_offset, dst_offset);
 
   GPU_compute_dispatch(
-      shader, get_patch_evaluation_work_group_size(buffers->num_subdiv_quads), 1, 1);
+      shader, get_patch_evaluation_work_group_size(cache->num_subdiv_quads), 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
@@ -1159,7 +1165,7 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *buffers,
   GPU_vertbuf_discard(src_buffer);
 }
 
-void draw_subdiv_interp_custom_data(const DRWSubdivCache *buffers,
+void draw_subdiv_interp_custom_data(const DRWSubdivCache *cache,
                                     GPUVertBuf *src_data,
                                     GPUVertBuf *dst_data,
                                     int dimensions,
@@ -1183,16 +1189,16 @@ void draw_subdiv_interp_custom_data(const DRWSubdivCache *buffers,
   GPU_shader_bind(shader);
 
   /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
-  GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset_buffer, 0);
+  GPU_vertbuf_bind_as_ssbo(cache->subdiv_polygon_offset_buffer, 0);
   GPU_vertbuf_bind_as_ssbo(src_data, 1);
-  GPU_vertbuf_bind_as_ssbo(buffers->face_ptex_offset_buffer, 2);
-  GPU_vertbuf_bind_as_ssbo(buffers->patch_coords, 3);
-  GPU_vertbuf_bind_as_ssbo(buffers->extra_coarse_face_data, 4);
+  GPU_vertbuf_bind_as_ssbo(cache->face_ptex_offset_buffer, 2);
+  GPU_vertbuf_bind_as_ssbo(cache->patch_coords, 3);
+  GPU_vertbuf_bind_as_ssbo(cache->extra_coarse_face_data, 4);
   GPU_vertbuf_bind_as_ssbo(dst_data, 5);
 
-  draw_subdiv_ubo_update_and_bind(buffers, shader, 0, dst_offset);
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, dst_offset);
 
-  GPU_compute_dispatch(shader, buffers->num_subdiv_quads, 1, 1);
+  GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
@@ -1200,7 +1206,7 @@ void draw_subdiv_interp_custom_data(const DRWSubdivCache *buffers,
   GPU_shader_unbind();
 }
 
-void draw_subdiv_accumulate_normals(const DRWSubdivCache *buffers,
+void draw_subdiv_accumulate_normals(const DRWSubdivCache *cache,
                                     GPUVertBuf *pos_nor,
                                     GPUVertBuf *face_adjacency_offsets,
                                     GPUVertBuf *face_adjacency_lists,
@@ -1216,14 +1222,14 @@ void draw_subdiv_accumulate_normals(const DRWSubdivCache *buffers,
   GPU_vertbuf_bind_as_ssbo(face_adjacency_lists, binding_point++);
   GPU_vertbuf_bind_as_ssbo(vertex_normals, binding_point++);
 
-  GPU_compute_dispatch(shader, buffers->num_subdiv_vertis, 1, 1);
+  GPU_compute_dispatch(shader, cache->num_subdiv_vertis, 1, 1);
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
   /* Cleanup. */
   GPU_shader_unbind();
 }
 
-void draw_subdiv_finalize_normals(const DRWSubdivCache *buffers,
+void draw_subdiv_finalize_normals(const DRWSubdivCache *cache,
                                   GPUVertBuf *vertex_normals,
                                   GPUVertBuf *subdiv_loop_subdiv_vert_index,
                                   GPUVertBuf *pos_nor,
@@ -1239,7 +1245,7 @@ void draw_subdiv_finalize_normals(const DRWSubdivCache *buffers,
   GPU_vertbuf_bind_as_ssbo(subdiv_loop_subdiv_vert_index, binding_point++);
   GPU_vertbuf_bind_as_ssbo(pos_nor, binding_point++);
 
-  GPU_compute_dispatch(shader, buffers->num_subdiv_quads, 1, 1);
+  GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
@@ -1247,7 +1253,7 @@ void draw_subdiv_finalize_normals(const DRWSubdivCache *buffers,
   GPU_shader_unbind();
 }
 
-void draw_subdiv_build_tris_buffer(const DRWSubdivCache *buffers,
+void draw_subdiv_build_tris_buffer(const DRWSubdivCache *cache,
                                    GPUIndexBuf *subdiv_tris,
                                    const int material_count)
 {
@@ -1266,15 +1272,15 @@ void draw_subdiv_build_tris_buffer(const DRWSubdivCache *buffers,
   GPU_indexbuf_bind_as_ssbo(subdiv_tris, 1);
 
   if (!do_single_material) {
-    GPU_vertbuf_bind_as_ssbo(buffers->polygon_mat_offset, 2);
+    GPU_vertbuf_bind_as_ssbo(cache->polygon_mat_offset, 2);
     /* subdiv_polygon_offset is always at binding point 0 for each shader using it. */
-    GPU_vertbuf_bind_as_ssbo(buffers->subdiv_polygon_offset_buffer, 0);
+    GPU_vertbuf_bind_as_ssbo(cache->subdiv_polygon_offset_buffer, 0);
 
     /* Only needed for accessing the coarse_poly_count. */
-    draw_subdiv_ubo_update_and_bind(buffers, shader, 0, 0);
+    draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
   }
 
-  GPU_compute_dispatch(shader, buffers->num_subdiv_quads, 1, 1);
+  GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
@@ -1598,7 +1604,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   DRWSubdivCache *draw_cache = ensure_draw_cache(subdiv);
-  if (!generate_required_cached_data(draw_cache, subdiv, mesh_eval, scene, smd, is_final_render)) {
+  if (!draw_subdiv_build_cache(draw_cache, subdiv, mesh_eval, scene, smd, is_final_render)) {
     return false;
   }
 

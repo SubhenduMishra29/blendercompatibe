@@ -18,7 +18,7 @@ layout(std140) uniform shader_data
   bool optimal_display;
 };
 
-/* This structure is a carbon copy of OpenSubDiv's PatchCoord. */
+/* Structure for #CompressedPatchCoord. */
 struct BlenderPatchCoord {
   int patch_index;
   uint encoded_uv;
