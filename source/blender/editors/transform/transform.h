@@ -94,9 +94,9 @@ typedef enum {
   /** When transforming object's, adjust the object data so it stays in the same place. */
   CTX_OBMODE_XFORM_OBDATA = (1 << 13),
   /** Transform object parents without moving their children. */
-  /** Enable edge scrolling in 2D views */
-  CTX_VIEW2D_EDGE_PAN = (1 << 14),
   CTX_OBMODE_XFORM_SKIP_CHILDREN = (1 << 14),
+  /** Enable edge scrolling in 2D views */
+  CTX_VIEW2D_EDGE_PAN = (1 << 15),
 } eTContext;
 
 /** #TransInfo.flag */
