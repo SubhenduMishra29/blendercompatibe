@@ -15,21 +15,19 @@
  */
 
 /** \file
- * \ingroup edasset
+ * \ingroup pygen
  */
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+struct ID;
+struct IDProperty;
 
-struct AssetFilterSettings;
-struct AssetHandle;
+extern PyTypeObject BPy_IDPropertyUIManager_Type;
 
-bool ED_asset_filter_matches_asset(const struct AssetFilterSettings *filter,
-                                   const struct AssetHandle *asset);
+typedef struct BPy_IDPropertyUIManager {
+  PyObject_VAR_HEAD
+  struct IDProperty *property;
+} BPy_IDPropertyUIManager;
 
-#ifdef __cplusplus
-}
-#endif
+void IDPropertyUIData_Init_Types(void);

@@ -309,14 +309,12 @@ BLI_INLINE GlyphBLF *blf_utf8_next_fast(
     }
     (*i_p)++;
   }
-  else if ((*r_c = BLI_str_utf8_as_unicode_step(str, str_len, i_p)) != BLI_UTF8_ERR) {
+  else {
+    *r_c = BLI_str_utf8_as_unicode_step(str, str_len, i_p);
     g = blf_glyph_search(gc, *r_c);
     if (UNLIKELY(g == NULL)) {
       g = blf_glyph_add(font, gc, FT_Get_Char_Index(font->face, *r_c), *r_c);
     }
-  }
-  else {
-    g = NULL;
   }
   return g;
 }
@@ -412,56 +410,6 @@ void blf_font_draw(FontBLF *font, const char *str, const size_t str_len, struct 
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
   blf_font_draw_ex(font, gc, str, str_len, r_info, 0);
   blf_glyph_cache_release(font);
-}
-
-/* faster version of blf_font_draw, ascii only for view dimensions */
-static void blf_font_draw_ascii_ex(
-    FontBLF *font, const char *str, size_t str_len, struct ResultBLF *r_info, int pen_y)
-{
-  unsigned int c, c_prev = BLI_UTF8_ERR;
-  GlyphBLF *g, *g_prev = NULL;
-  int pen_x = 0;
-
-  GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
-
-  blf_batch_draw_begin(font);
-
-  while ((c = *(str++)) && str_len--) {
-    BLI_assert(c < GLYPH_ASCII_TABLE_SIZE);
-    g = gc->glyph_ascii_table[c];
-    if (UNLIKELY(g == NULL)) {
-      g = blf_glyph_add(font, gc, FT_Get_Char_Index((font)->face, c), c);
-      gc->glyph_ascii_table[c] = g;
-      if (UNLIKELY(g == NULL)) {
-        continue;
-      }
-    }
-    blf_kerning_step_fast(font, g_prev, g, c_prev, c, &pen_x);
-
-    /* do not return this loop if clipped, we want every character tested */
-    blf_glyph_render(font, gc, g, (float)pen_x, (float)pen_y);
-
-    pen_x += g->advance_i;
-    g_prev = g;
-    c_prev = c;
-  }
-
-  blf_batch_draw_end();
-
-  if (r_info) {
-    r_info->lines = 1;
-    r_info->width = pen_x;
-  }
-
-  blf_glyph_cache_release(font);
-}
-
-void blf_font_draw_ascii(FontBLF *font,
-                         const char *str,
-                         const size_t str_len,
-                         struct ResultBLF *r_info)
-{
-  blf_font_draw_ascii_ex(font, str, str_len, r_info, 0);
 }
 
 /* use fixed column width, but an utf8 character may occupy multiple columns */
@@ -725,23 +673,23 @@ size_t blf_font_width_to_rstrlen(
   GlyphBLF *g, *g_prev;
   int pen_x, width_new;
   size_t i, i_prev, i_tmp;
-  char *s, *s_prev;
+  const char *s, *s_prev;
 
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
   const int width_i = (int)width;
 
   i = BLI_strnlen(str, str_len);
-  s = BLI_str_find_prev_char_utf8(str, &str[i]);
-  i = (size_t)((s != NULL) ? s - str : 0);
-  s_prev = BLI_str_find_prev_char_utf8(str, s);
-  i_prev = (size_t)((s_prev != NULL) ? s_prev - str : 0);
+  s = BLI_str_find_prev_char_utf8(&str[i], str);
+  i = (size_t)(s - str);
+  s_prev = BLI_str_find_prev_char_utf8(s, str);
+  i_prev = (size_t)(s_prev - str);
 
   i_tmp = i;
   g = blf_utf8_next_fast(font, gc, str, str_len, &i_tmp, &c);
   for (width_new = pen_x = 0; (s != NULL);
        i = i_prev, s = s_prev, c = c_prev, g = g_prev, g_prev = NULL, width_new = pen_x) {
-    s_prev = BLI_str_find_prev_char_utf8(str, s);
-    i_prev = (size_t)((s_prev != NULL) ? s_prev - str : 0);
+    s_prev = BLI_str_find_prev_char_utf8(s, str);
+    i_prev = (size_t)(s_prev - str);
 
     if (s_prev != NULL) {
       i_tmp = i_prev;
@@ -1202,7 +1150,8 @@ int blf_font_count_missing_chars(FontBLF *font,
     if ((c = str[i]) < GLYPH_ASCII_TABLE_SIZE) {
       i++;
     }
-    else if ((c = BLI_str_utf8_as_unicode_step(str, str_len, &i)) != BLI_UTF8_ERR) {
+    else {
+      c = BLI_str_utf8_as_unicode_step(str, str_len, &i);
       if (FT_Get_Char_Index((font)->face, c) == 0) {
         missing++;
       }
