@@ -100,6 +100,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   LatticeModifierData *lmd = (LatticeModifierData *)md;
   if (lmd->object != NULL) {
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_GEOMETRY, "Lattice Modifier");
+    DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_SUBDIVISION, "Lattice Modifier");
     DEG_add_object_relation(ctx->node, lmd->object, DEG_OB_COMP_TRANSFORM, "Lattice Modifier");
   }
   DEG_add_modifier_to_transform_relation(ctx->node, "Lattice Modifier");

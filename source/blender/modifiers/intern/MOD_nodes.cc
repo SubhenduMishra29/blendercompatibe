@@ -198,6 +198,7 @@ static void add_object_relation(const ModifierUpdateDepsgraphContext *ctx, Objec
     }
     else if (DEG_object_has_geometry_component(&object)) {
       DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_GEOMETRY, "Nodes Modifier");
+      DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_SUBDIVISION, "Nodes Modifier");
       DEG_add_customdata_mask(ctx->node, &object, &dependency_data_mask);
     }
   }

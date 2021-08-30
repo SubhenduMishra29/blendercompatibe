@@ -173,6 +173,8 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if (mmd->object != NULL) {
     DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Mesh Deform Modifier");
     DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_GEOMETRY, "Mesh Deform Modifier");
+    DEG_add_object_relation(
+        ctx->node, mmd->object, DEG_OB_COMP_SUBDIVISION, "Mesh Deform Modifier");
   }
   /* We need own transformation as well. */
   DEG_add_modifier_to_transform_relation(ctx->node, "Mesh Deform Modifier");
