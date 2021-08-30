@@ -986,8 +986,10 @@ typedef struct DRWSubdivUboStorage {
   /* Coarse topology information. */
   int coarse_poly_count;
 
-  /* Subdivision settings. */
-  bool optimal_dispaly;
+  /* Subdivision settings, is int in C but bool in the GLSL code, as there, bools have the same
+   * size as ints, so we should use int in C to ensure that the size of the structure is what GLSL
+   * expects. */
+  int optimal_dispaly;
 } DRWSubdivUboStorage;
 
 static void draw_subdiv_init_ubo_storage(const DRWSubdivCache *cache,
@@ -1010,7 +1012,6 @@ static void draw_subdiv_ubo_update_and_bind(const DRWSubdivCache *cache,
                                             const int src_offset,
                                             const int dst_offset)
 {
-
   DRWSubdivUboStorage storage;
   draw_subdiv_init_ubo_storage(cache, &storage, src_offset, dst_offset);
 
@@ -1021,7 +1022,7 @@ static void draw_subdiv_ubo_update_and_bind(const DRWSubdivCache *cache,
 
   GPU_uniformbuf_update(cache->ubo, &storage);
 
-  int location = GPU_shader_get_uniform(shader, "shader_data");
+  const int location = GPU_shader_get_uniform_block(shader, "shader_data");
   GPU_uniformbuf_bind(cache->ubo, location);
 }
 
