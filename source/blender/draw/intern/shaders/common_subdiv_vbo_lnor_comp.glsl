@@ -14,7 +14,7 @@ layout(std430, binding = 2) readonly buffer extraCoarseFaceData
 
 layout(std430, binding = 3) writeonly buffer outputLoopNormals
 {
-  vec3 output_lnor[];
+  uint output_lnor[];
 };
 
 void main()
@@ -29,7 +29,13 @@ void main()
   if (((extra_coarse_face_data[coarse_quad_index] >> 31) & 0x1) != 0) {
     /* Face is smooth, use vertex normals. */
     for (int i = 0; i < 4; i++) {
-      output_lnor[start_loop_index + i] = get_vertex_nor(pos_nor[start_loop_index + i]);
+      PosNorLoop pos_nor_loop = pos_nor[start_loop_index + i];
+#ifdef HQ_NORMALS
+      output_lnor[(start_loop_index + i) * 2] = pos_nor_loop.nor_xy;
+      output_lnor[(start_loop_index + i) * 2 + 1] = pos_nor_loop.nor_zw;
+#else
+      output_lnor[start_loop_index + i] = pos_nor_loop.nor;
+#endif
     }
   }
   else {
@@ -41,7 +47,14 @@ void main()
 
     vec3 face_normal = normalize(cross(verts[1] - verts[0], verts[2] - verts[0]));
     for (int i = 0; i < 4; i++) {
-      output_lnor[start_loop_index + i] = face_normal;
+#ifdef HQ_NORMALS
+      uint nor_xy, nor_zw;
+      compress_normal(face_normal, 0, nor_xy, nor_zw);
+      output_lnor[(start_loop_index + i) * 2] = nor_zw;
+      output_lnor[(start_loop_index + i) * 2 + 1] = nor_xy;
+#else
+      output_lnor[start_loop_index + i] = compress_normal(face_normal, 0);
+#endif
     }
   }
 }

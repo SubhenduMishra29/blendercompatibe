@@ -98,7 +98,7 @@ float gpu_unpack_float_from_uint(uint x)
 
 uint gpu_pack_uint_from_float(float x)
 {
-  return uint(clamp(x * 32767.0 + 32768.0, 0.0, 65535.0));
+  return uint(clamp(x * 32767.0 + 32768.0, 0.0, 65535.0)) & 0xffff;
 }
 
 vec3 get_vertex_nor(PosNorLoop vertex_data)

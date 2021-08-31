@@ -61,7 +61,7 @@ static GPUVertFormat *get_pos_nor_format_hq()
   if (format.attr_len == 0) {
     /* WARNING Adjust #PosNorHQLoop struct accordingly. */
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_U16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
     GPU_vertformat_alias_add(&format, "vnor");
   }
   return &format;
