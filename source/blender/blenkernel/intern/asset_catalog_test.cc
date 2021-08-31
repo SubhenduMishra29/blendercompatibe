@@ -26,7 +26,7 @@
 
 #include <filesystem>
 
-namespace fs = std::filesystem;
+namespace fs = blender::filesystem;
 
 namespace blender::bke::tests {
 

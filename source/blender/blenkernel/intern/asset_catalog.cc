@@ -20,12 +20,13 @@
 
 #include "BKE_asset_catalog.hh"
 
+#include "BLI_filesystem.hh"
 #include "BLI_string_ref.hh"
 
 #include <filesystem>
 #include <fstream>
 
-namespace fs = std::filesystem;
+namespace fs = blender::filesystem;
 
 namespace blender::bke {
 

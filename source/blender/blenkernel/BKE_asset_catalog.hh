@@ -24,6 +24,7 @@
 #  error This is a C++ header. The C interface is yet to be implemented/designed.
 #endif
 
+#include "BLI_filesystem.hh"
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
@@ -37,7 +38,7 @@ namespace blender::bke {
 
 using CatalogID = std::string;
 using CatalogPath = std::string;
-using CatalogFilePath = std::filesystem::path;
+using CatalogFilePath = filesystem::path;
 
 class AssetCatalog;
 class AssetCatalogDefinitionFile;
