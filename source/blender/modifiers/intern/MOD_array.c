@@ -91,14 +91,12 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if (amd->start_cap != NULL) {
     DEG_add_object_relation(
         ctx->node, amd->start_cap, DEG_OB_COMP_GEOMETRY, "Array Modifier Start Cap");
-    DEG_add_object_relation(
-        ctx->node, amd->start_cap, DEG_OB_COMP_SUBDIVISION, "Array Modifier Start Cap");
+    DEG_add_special_eval_flag(ctx->node, &amd->start_cap->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
   }
   if (amd->end_cap != NULL) {
     DEG_add_object_relation(
         ctx->node, amd->end_cap, DEG_OB_COMP_GEOMETRY, "Array Modifier End Cap");
-    DEG_add_object_relation(
-        ctx->node, amd->end_cap, DEG_OB_COMP_SUBDIVISION, "Array Modifier End Cap");
+    DEG_add_special_eval_flag(ctx->node, &amd->end_cap->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
   }
   if (amd->curve_ob) {
     DEG_add_object_relation(

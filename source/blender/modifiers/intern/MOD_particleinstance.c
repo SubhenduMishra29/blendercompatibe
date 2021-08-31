@@ -134,8 +134,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
         ctx->node, pimd->ob, DEG_OB_COMP_TRANSFORM, "Particle Instance Modifier");
     DEG_add_object_relation(
         ctx->node, pimd->ob, DEG_OB_COMP_GEOMETRY, "Particle Instance Modifier");
-    DEG_add_object_relation(
-        ctx->node, pimd->ob, DEG_OB_COMP_SUBDIVISION, "Particle Instance Modifier");
+    DEG_add_special_eval_flag(ctx->node, &pimd->ob->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
   }
 }
 

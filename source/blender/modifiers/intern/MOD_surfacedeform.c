@@ -280,8 +280,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if (smd->target != NULL) {
     DEG_add_object_relation(
         ctx->node, smd->target, DEG_OB_COMP_GEOMETRY, "Surface Deform Modifier");
-    DEG_add_object_relation(
-        ctx->node, smd->target, DEG_OB_COMP_SUBDIVISION, "Surface Deform Modifier");
+    DEG_add_special_eval_flag(ctx->node, &smd->target->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
   }
 }
 

@@ -127,8 +127,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
         ctx->node, mvmd->object, DEG_OB_COMP_GEOMETRY, "Mesh to Volume Modifier");
     DEG_add_object_relation(
         ctx->node, mvmd->object, DEG_OB_COMP_TRANSFORM, "Mesh to Volume Modifier");
-    DEG_add_object_relation(
-        ctx->node, mvmd->object, DEG_OB_COMP_SUBDIVISION, "Mesh to Volume Modifier");
+    DEG_add_special_eval_flag(ctx->node, &mvmd->object->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
   }
 }
 

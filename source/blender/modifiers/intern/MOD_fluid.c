@@ -180,8 +180,8 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
           ctx->node, fmd->domain->guide_parent, DEG_OB_COMP_TRANSFORM, "Fluid Guiding Object");
       DEG_add_object_relation(
           ctx->node, fmd->domain->guide_parent, DEG_OB_COMP_GEOMETRY, "Fluid Guiding Object");
-      DEG_add_object_relation(
-          ctx->node, fmd->domain->guide_parent, DEG_OB_COMP_SUBDIVISION, "Fluid Guiding Object");
+      DEG_add_special_eval_flag(
+          ctx->node, &fmd->domain->guide_parent->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
     }
   }
 }

@@ -709,12 +709,6 @@ static void rna_Modifier_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Point
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->owner_id);
 }
 
-static void rna_Modifier_subsurf_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
-{
-  DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY | ID_RECALC_SUBDIVISION);
-  WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->owner_id);
-}
-
 static void rna_Modifier_dependency_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Modifier_update(bmain, scene, ptr);
@@ -1725,7 +1719,7 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, NULL, "subdivType");
   RNA_def_property_enum_items(prop, prop_subdivision_type_items);
   RNA_def_property_ui_text(prop, "Subdivision Type", "Select type of subdivision algorithm");
-  RNA_def_property_update(prop, 0, "rna_Modifier_subsurf_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   /* see CCGSUBSURF_LEVEL_MAX for max limit */
   prop = RNA_def_property(srna, "levels", PROP_INT, PROP_UNSIGNED);
@@ -1733,7 +1727,7 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 11);
   RNA_def_property_ui_range(prop, 0, 6, 1, -1);
   RNA_def_property_ui_text(prop, "Levels", "Number of subdivisions to perform");
-  RNA_def_property_update(prop, 0, "rna_Modifier_subsurf_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "render_levels", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "renderLevels");
@@ -1745,19 +1739,19 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_only_control_edges", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_ControlEdges);
   RNA_def_property_ui_text(prop, "Optimal Display", "Skip displaying interior subdivided edges");
-  RNA_def_property_update(prop, 0, "rna_Modifier_subsurf_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_creases", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_UseCrease);
   RNA_def_property_ui_text(
       prop, "Use Creases", "Use mesh crease information to sharpen edges or corners");
-  RNA_def_property_update(prop, 0, "rna_Modifier_subsurf_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_custom_normals", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flags", eSubsurfModifierFlag_UseCustomNormals);
   RNA_def_property_ui_text(
       prop, "Use Custom Normals", "Interpolates existing custom normals to resulting mesh");
-  RNA_def_property_update(prop, 0, "rna_Modifier_subsurf_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_limit_surface", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(
@@ -1766,7 +1760,7 @@ static void rna_def_modifier_subsurf(BlenderRNA *brna)
                            "Use Limit Surface",
                            "Place vertices at the surface that would be produced with infinite "
                            "levels of subdivision (smoothest possible shape)");
-  RNA_def_property_update(prop, 0, "rna_Modifier_subsurf_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
 }

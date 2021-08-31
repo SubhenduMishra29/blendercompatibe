@@ -116,8 +116,6 @@ typedef enum eDepsObjectComponentType {
   DEG_OB_COMP_TRANSFORM,
   /* Geometry Component (Mesh/Displist) */
   DEG_OB_COMP_GEOMETRY,
-  /* Subdivision Component */
-  DEG_OB_COMP_SUBDIVISION,
 
   /* Evaluation-Related Outer Types (with Sub-data) */
 

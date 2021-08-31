@@ -343,7 +343,6 @@ DEG_COMPONENT_NODE_DEFINE(Audio, AUDIO, 0);
 DEG_COMPONENT_NODE_DEFINE(Armature, ARMATURE, 0);
 DEG_COMPONENT_NODE_DEFINE(GenericDatablock, GENERIC_DATABLOCK, 0);
 DEG_COMPONENT_NODE_DEFINE(Simulation, SIMULATION, 0);
-DEG_COMPONENT_NODE_DEFINE(Subdivision, SUBDIVISION, ID_RECALC_SUBDIVISION);
 
 /* Node Types Register =================================== */
 
@@ -374,7 +373,6 @@ void deg_register_component_depsnodes()
   register_node_typeinfo(&DNTI_ARMATURE);
   register_node_typeinfo(&DNTI_GENERIC_DATABLOCK);
   register_node_typeinfo(&DNTI_SIMULATION);
-  register_node_typeinfo(&DNTI_SUBDIVISION);
 }
 
 }  // namespace blender::deg

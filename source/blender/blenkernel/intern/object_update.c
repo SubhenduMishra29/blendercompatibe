@@ -161,10 +161,7 @@ void BKE_object_eval_transform_final(Depsgraph *depsgraph, Object *ob)
   }
 }
 
-void BKE_object_handle_data_update(Depsgraph *depsgraph,
-                                   Scene *scene,
-                                   Object *ob,
-                                   const bool eval_subdiv_on_cpu)
+void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   DEG_debug_print_eval(depsgraph, __func__, ob->id.name, ob);
 
@@ -199,10 +196,10 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph,
         cddata_masks.vmask |= CD_MASK_ORCO | CD_MASK_PROP_COLOR;
       }
       if (em) {
-        makeDerivedMesh(depsgraph, scene, ob, em, &cddata_masks, false); /* was CD_MASK_BAREMESH */
+        makeDerivedMesh(depsgraph, scene, ob, em, &cddata_masks); /* was CD_MASK_BAREMESH */
       }
       else {
-        makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks, eval_subdiv_on_cpu);
+        makeDerivedMesh(depsgraph, scene, ob, NULL, &cddata_masks);
       }
       break;
     }
@@ -391,14 +388,11 @@ void BKE_object_batch_cache_dirty_tag(Object *ob)
   BKE_object_data_batch_cache_dirty_tag(ob->data);
 }
 
-void BKE_object_eval_uber_data(Depsgraph *depsgraph,
-                               Scene *scene,
-                               Object *ob,
-                               const bool eval_subdiv_on_cpu)
+void BKE_object_eval_uber_data(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   DEG_debug_print_eval(depsgraph, __func__, ob->id.name, ob);
   BLI_assert(ob->type != OB_ARMATURE);
-  BKE_object_handle_data_update(depsgraph, scene, ob, eval_subdiv_on_cpu);
+  BKE_object_handle_data_update(depsgraph, scene, ob);
   BKE_object_batch_cache_dirty_tag(ob);
 }
 

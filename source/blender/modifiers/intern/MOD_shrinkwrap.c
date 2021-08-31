@@ -185,8 +185,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if (smd->target != NULL) {
     DEG_add_object_relation(ctx->node, smd->target, DEG_OB_COMP_TRANSFORM, "Shrinkwrap Modifier");
     DEG_add_object_relation(ctx->node, smd->target, DEG_OB_COMP_GEOMETRY, "Shrinkwrap Modifier");
-    DEG_add_object_relation(
-        ctx->node, smd->target, DEG_OB_COMP_SUBDIVISION, "Shrinkwrap Modifier");
+    DEG_add_special_eval_flag(ctx->node, &smd->target->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
     DEG_add_customdata_mask(ctx->node, smd->target, &mask);
     if (smd->shrinkType == MOD_SHRINKWRAP_TARGET_PROJECT) {
       DEG_add_special_eval_flag(ctx->node, &smd->target->id, DAG_EVAL_NEED_SHRINKWRAP_BOUNDARY);
@@ -195,8 +194,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if (smd->auxTarget != NULL) {
     DEG_add_object_relation(
         ctx->node, smd->auxTarget, DEG_OB_COMP_TRANSFORM, "Shrinkwrap Modifier");
-    DEG_add_object_relation(
-        ctx->node, smd->target, DEG_OB_COMP_SUBDIVISION, "Shrinkwrap Modifier");
+    DEG_add_special_eval_flag(ctx->node, &smd->auxTarget->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
     DEG_add_object_relation(
         ctx->node, smd->auxTarget, DEG_OB_COMP_GEOMETRY, "Shrinkwrap Modifier");
     DEG_add_customdata_mask(ctx->node, smd->auxTarget, &mask);

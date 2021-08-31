@@ -977,7 +977,6 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
                                 const int index,
                                 const bool use_cache,
                                 const bool allow_shared_mesh,
-                                const bool eval_subdiv_on_cpu,
                                 /* return args */
                                 Mesh **r_deform,
                                 Mesh **r_final,
@@ -1021,8 +1020,10 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
   /* Modifier evaluation contexts for different types of modifiers. */
   ModifierApplyFlag apply_render = use_render ? MOD_APPLY_RENDER : (ModifierApplyFlag)0;
   ModifierApplyFlag apply_cache = use_cache ? MOD_APPLY_USECACHE : (ModifierApplyFlag)0;
-  ModifierApplyFlag apply_subdiv_on_cpu = eval_subdiv_on_cpu ? MOD_APPLY_CPU_SUBDIVISION :
-                                                               (ModifierApplyFlag)0;
+  const uint32_t eval_flags = DEG_get_eval_flags_for_id(depsgraph, &ob->id);
+  ModifierApplyFlag apply_subdiv_on_cpu = (eval_flags & DAG_EVAL_NEED_SUBDIVISION_MESH) ?
+                                              MOD_APPLY_CPU_SUBDIVISION :
+                                              (ModifierApplyFlag)0;
   const ModifierEvalContext mectx = {
       depsgraph, ob, (ModifierApplyFlag)(apply_render | apply_cache | apply_subdiv_on_cpu)};
   const ModifierEvalContext mectx_orco = {
@@ -1061,6 +1062,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
 
   /* Clear errors before evaluation. */
   BKE_modifiers_clear_errors(ob);
+  SubsurfModifierData *last_subsurf = BKE_object_get_last_modifier_if_subsurf(ob);
 
   /* Apply all leading deform modifiers. */
   if (use_deform) {
@@ -1890,8 +1892,7 @@ static void mesh_build_data(struct Depsgraph *depsgraph,
                             Scene *scene,
                             Object *ob,
                             const CustomData_MeshMasks *dataMask,
-                            const bool need_mapping,
-                            const bool eval_subdiv_on_cpu)
+                            const bool need_mapping)
 {
   BLI_assert(ob->type == OB_MESH);
 
@@ -1924,7 +1925,6 @@ static void mesh_build_data(struct Depsgraph *depsgraph,
                       -1,
                       true,
                       true,
-                      eval_subdiv_on_cpu,
                       &mesh_deform_eval,
                       &mesh_eval,
                       &geometry_set_eval);
@@ -2053,8 +2053,7 @@ void makeDerivedMesh(struct Depsgraph *depsgraph,
                      Scene *scene,
                      Object *ob,
                      BMEditMesh *em,
-                     const CustomData_MeshMasks *dataMask,
-                     const bool eval_subdiv_on_cpu)
+                     const CustomData_MeshMasks *dataMask)
 {
   bool need_mapping;
   CustomData_MeshMasks cddata_masks = *dataMask;
@@ -2064,7 +2063,7 @@ void makeDerivedMesh(struct Depsgraph *depsgraph,
     editbmesh_build_data(depsgraph, scene, ob, em, &cddata_masks);
   }
   else {
-    mesh_build_data(depsgraph, scene, ob, &cddata_masks, need_mapping, eval_subdiv_on_cpu);
+    mesh_build_data(depsgraph, scene, ob, &cddata_masks, need_mapping);
   }
 }
 
@@ -2095,7 +2094,7 @@ Mesh *mesh_get_eval_final(struct Depsgraph *depsgraph,
       (need_mapping && !ob->runtime.last_need_mapping)) {
     CustomData_MeshMasks_update(&cddata_masks, &ob->runtime.last_data_mask);
     mesh_build_data(
-        depsgraph, scene, ob, &cddata_masks, need_mapping || ob->runtime.last_need_mapping, false);
+        depsgraph, scene, ob, &cddata_masks, need_mapping || ob->runtime.last_need_mapping);
     mesh_eval = BKE_object_get_evaluated_mesh(ob);
   }
 
@@ -2130,7 +2129,7 @@ Mesh *mesh_get_eval_deform(struct Depsgraph *depsgraph,
       (need_mapping && !ob->runtime.last_need_mapping)) {
     CustomData_MeshMasks_update(&cddata_masks, &ob->runtime.last_data_mask);
     mesh_build_data(
-        depsgraph, scene, ob, &cddata_masks, need_mapping || ob->runtime.last_need_mapping, false);
+        depsgraph, scene, ob, &cddata_masks, need_mapping || ob->runtime.last_need_mapping);
   }
 
   return ob->runtime.mesh_deform_eval;
@@ -2143,19 +2142,8 @@ Mesh *mesh_create_eval_final(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(depsgraph,
-                      scene,
-                      ob,
-                      true,
-                      false,
-                      dataMask,
-                      -1,
-                      false,
-                      false,
-                      false,
-                      nullptr,
-                      &final,
-                      nullptr);
+  mesh_calc_modifiers(
+      depsgraph, scene, ob, true, false, dataMask, -1, false, false, nullptr, &final, nullptr);
 
   return final;
 }
@@ -2168,19 +2156,8 @@ Mesh *mesh_create_eval_final_index_render(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(depsgraph,
-                      scene,
-                      ob,
-                      true,
-                      false,
-                      dataMask,
-                      index,
-                      false,
-                      false,
-                      false,
-                      nullptr,
-                      &final,
-                      nullptr);
+  mesh_calc_modifiers(
+      depsgraph, scene, ob, true, false, dataMask, index, false, false, nullptr, &final, nullptr);
 
   return final;
 }
@@ -2192,19 +2169,8 @@ Mesh *mesh_create_eval_no_deform(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(depsgraph,
-                      scene,
-                      ob,
-                      false,
-                      false,
-                      dataMask,
-                      -1,
-                      false,
-                      false,
-                      false,
-                      nullptr,
-                      &final,
-                      nullptr);
+  mesh_calc_modifiers(
+      depsgraph, scene, ob, false, false, dataMask, -1, false, false, nullptr, &final, nullptr);
 
   return final;
 }
@@ -2216,19 +2182,8 @@ Mesh *mesh_create_eval_no_deform_render(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(depsgraph,
-                      scene,
-                      ob,
-                      false,
-                      false,
-                      dataMask,
-                      -1,
-                      false,
-                      false,
-                      false,
-                      nullptr,
-                      &final,
-                      nullptr);
+  mesh_calc_modifiers(
+      depsgraph, scene, ob, false, false, dataMask, -1, false, false, nullptr, &final, nullptr);
 
   return final;
 }

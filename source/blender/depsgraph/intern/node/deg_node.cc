@@ -116,8 +116,6 @@ const char *nodeTypeAsString(NodeType type)
       return "GENERIC_DATABLOCK";
     case NodeType::SIMULATION:
       return "SIMULATION";
-    case NodeType::SUBDIVISION:
-      return "SUBDIVISION";
 
     /* Total number of meaningful node types. */
     case NodeType::NUM_TYPES:
@@ -177,7 +175,6 @@ eDepsSceneComponentType nodeTypeToSceneComponent(NodeType type)
     case NodeType::CACHE:
     case NodeType::PROXY:
     case NodeType::SIMULATION:
-    case NodeType::SUBDIVISION:
       return DEG_SCENE_COMP_PARAMETERS;
   }
   BLI_assert_msg(0, "Unhandled node type, not suppsed to happen.");
@@ -199,8 +196,6 @@ NodeType nodeTypeFromObjectComponent(eDepsObjectComponentType component_type)
       return NodeType::TRANSFORM;
     case DEG_OB_COMP_GEOMETRY:
       return NodeType::GEOMETRY;
-    case DEG_OB_COMP_SUBDIVISION:
-      return NodeType::SUBDIVISION;
     case DEG_OB_COMP_EVAL_POSE:
       return NodeType::EVAL_POSE;
     case DEG_OB_COMP_BONE:
@@ -234,8 +229,6 @@ eDepsObjectComponentType nodeTypeToObjectComponent(NodeType type)
       return DEG_OB_COMP_SHADING;
     case NodeType::CACHE:
       return DEG_OB_COMP_CACHE;
-    case NodeType::SUBDIVISION:
-      return DEG_OB_COMP_SUBDIVISION;
 
     case NodeType::OPERATION:
     case NodeType::TIMESOURCE:

@@ -1483,17 +1483,9 @@ void DepsgraphNodeBuilder::build_object_data_geometry(Object *object, bool is_ob
                                NodeType::GEOMETRY,
                                OperationCode::GEOMETRY_EVAL,
                                [scene_cow, object_cow](::Depsgraph *depsgraph) {
-                                 BKE_object_eval_uber_data(
-                                     depsgraph, scene_cow, object_cow, false);
+                                 BKE_object_eval_uber_data(depsgraph, scene_cow, object_cow);
                                });
   op_node->set_as_exit();
-  /* Subdivision evaluation. */
-  add_operation_node(&object->id,
-                     NodeType::SUBDIVISION,
-                     OperationCode::GEOMETRY_EVAL,
-                     [scene_cow, object_cow](::Depsgraph *depsgraph) {
-                       BKE_object_eval_uber_data(depsgraph, scene_cow, object_cow, true);
-                     });
   /* Materials. */
   build_materials(object->mat, object->totcol);
   /* Point caches. */

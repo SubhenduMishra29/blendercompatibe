@@ -141,14 +141,6 @@ void depsgraph_base_flags_tag_to_component_opcode(const ID *id,
   }
 }
 
-void depsgraph_subdivision_tag_to_component_type(const ID *id, NodeType *component_type)
-{
-  const ID_Type id_type = GS(id->name);
-  if (id_type == ID_OB) {
-    *component_type = NodeType::SUBDIVISION;
-  }
-}
-
 OperationCode psysTagToOperationCode(IDRecalcFlag tag)
 {
   if (tag == ID_RECALC_PSYS_RESET) {
@@ -238,9 +230,6 @@ void depsgraph_tag_to_component_opcode(const ID *id,
       break;
     case ID_RECALC_SOURCE:
       *component_type = NodeType::PARAMETERS;
-      break;
-    case ID_RECALC_SUBDIVISION:
-      depsgraph_subdivision_tag_to_component_type(id, component_type);
       break;
     case ID_RECALC_GEOMETRY_ALL_MODES:
     case ID_RECALC_ALL:
@@ -614,7 +603,9 @@ void graph_tag_ids_for_subdivision_update(Depsgraph *graph)
 
       if (BKE_object_get_last_modifier_if_subsurf(object_orig)) {
         std::cerr << "Tagging an object with a subsurf modifier for an update.\n";
-        int flag = ID_RECALC_SUBDIVISION;
+
+        id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
+        int flag = ID_RECALC_GEOMETRY;
         graph_id_tag_update(
             bmain, graph, id_node->id_orig, flag, DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION);
       }
@@ -798,8 +789,6 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
       return "ALL";
     case ID_RECALC_TAG_FOR_UNDO:
       return "TAG_FOR_UNDO";
-    case ID_RECALC_SUBDIVISION:
-      return "SUBDIVISION";
   }
   return nullptr;
 }

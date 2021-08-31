@@ -71,6 +71,9 @@ enum {
   /* A shrinkwrap modifier or constraint targeting this mesh needs information
    * about non-manifold boundary edges for the Target Normal Project mode. */
   DAG_EVAL_NEED_SHRINKWRAP_BOUNDARY = (1 << 1),
+  /* Evaluate last subsurf modifier on the stack on the CPU as well so that
+   * tools and modifier can access the final geometry as well. */
+  DAG_EVAL_NEED_SUBDIVISION_MESH = (1 << 2),
 };
 
 #ifdef __cplusplus
