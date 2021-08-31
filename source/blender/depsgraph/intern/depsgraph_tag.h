@@ -46,7 +46,7 @@ void graph_id_tag_update(
 void graph_tag_ids_for_visible_update(Depsgraph *graph);
 
 /* Tag IDs of the graph for recomputing subdivision on the CPU side. */
-void graph_tag_ids_for_subdivision_update(Depsgraph *graph);
+void graph_tag_ids_for_subdivision_evaluation(Depsgraph *graph);
 
 }  // namespace deg
 }  // namespace blender

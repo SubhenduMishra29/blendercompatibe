@@ -510,7 +510,7 @@ void graph_tag_on_visible_update(Depsgraph *graph, const bool do_time)
   graph->need_visibility_time_update |= do_time;
 }
 
-void graph_tag_on_subdivision_update(Depsgraph *graph)
+void graph_tag_for_subdivision_evaluation(Depsgraph *graph)
 {
   graph->need_subdivision_update = true;
 }
@@ -588,7 +588,7 @@ void graph_tag_ids_for_visible_update(Depsgraph *graph)
   graph->need_visibility_time_update = false;
 }
 
-void graph_tag_ids_for_subdivision_update(Depsgraph *graph)
+void graph_tag_ids_for_subdivision_evaluation(Depsgraph *graph)
 {
   if (!graph->need_subdivision_update) {
     return;
@@ -871,10 +871,10 @@ void DEG_tag_on_visible_update(Main *bmain, const bool do_time)
   }
 }
 
-void DEG_graph_tag_on_subdivision_update(Depsgraph *depsgraph)
+void DEG_graph_tag_for_subdivision_evaluation(Depsgraph *depsgraph)
 {
   deg::Depsgraph *graph = (deg::Depsgraph *)depsgraph;
-  deg::graph_tag_on_subdivision_update(graph);
+  deg::graph_tag_for_subdivision_evaluation(graph);
 }
 
 void DEG_enable_editors_update(Depsgraph *depsgraph)

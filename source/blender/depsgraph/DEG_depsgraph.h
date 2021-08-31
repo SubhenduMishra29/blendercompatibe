@@ -119,7 +119,7 @@ void DEG_graph_tag_on_visible_update(Depsgraph *depsgraph, const bool do_time);
 void DEG_tag_on_visible_update(struct Main *bmain, const bool do_time);
 
 /* Tag dependency graph for updates to compute subdivision on the CPU. */
-void DEG_graph_tag_on_subdivision_update(Depsgraph *depsgraph);
+void DEG_graph_tag_for_subdivision_evaluation(Depsgraph *depsgraph);
 
 /* NOTE: Will return NULL if the flag is not known, allowing to gracefully handle situations
  * when recalc flag has been removed. */

@@ -1693,7 +1693,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   initTransInfo(C, t, op, event);
 
-  DEG_graph_tag_on_subdivision_update(t->depsgraph);
+  DEG_graph_tag_for_subdivision_evaluation(t->depsgraph);
 
   if (t->spacetype == SPACE_VIEW3D) {
     t->draw_handle_apply = ED_region_draw_cb_activate(
