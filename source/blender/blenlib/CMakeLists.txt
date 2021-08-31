@@ -26,6 +26,7 @@ set(INC
   ../../../intern/eigen
   ../../../intern/guardedalloc
   ../../../intern/numaapi/include
+  ../../../extern/ghc_filesystem
   ../../../extern/wcwidth
 )
 
