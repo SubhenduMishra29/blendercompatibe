@@ -71,18 +71,13 @@ extern char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
 enum {
   SHADER_BUFFER_LINES,
   SHADER_BUFFER_EDGE_FAC,
-  SHADER_BUFFER_EDGE_FAC_HQ,  // for high quality normals
   SHADER_BUFFER_LNOR,
-  SHADER_BUFFER_LNOR_HQ,  // for high quality normals
   SHADER_BUFFER_TRIS,
   SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS,
   SHADER_BUFFER_NORMALS_ACCUMULATE,
   SHADER_BUFFER_NORMALS_FINALIZE,
-  SHADER_BUFFER_NORMALS_FINALIZE_HQ,  // for high quality normals
   SHADER_PATCH_EVALUATION,
   SHADER_PATCH_EVALUATION_LIMIT_NORMALS,
-  SHADER_PATCH_EVALUATION_HQ,                // for high quality normals
-  SHADER_PATCH_EVALUATION_LIMIT_NORMALS_HQ,  // for high quality normals
   SHADER_PATCH_EVALUATION_FVAR,
   SHADER_PATCH_EVALUATION_FACE_DOTS,
   SHADER_COMP_CUSTOM_DATA_INTERP_1D,
@@ -99,12 +94,10 @@ static const char *get_shader_code(int shader_type)
     case SHADER_BUFFER_LINES: {
       return datatoc_common_subdiv_ibo_lines_comp_glsl;
     }
-    case SHADER_BUFFER_EDGE_FAC:
-    case SHADER_BUFFER_EDGE_FAC_HQ: {
+    case SHADER_BUFFER_EDGE_FAC: {
       return datatoc_common_subdiv_vbo_edge_fac_comp_glsl;
     }
-    case SHADER_BUFFER_LNOR:
-    case SHADER_BUFFER_LNOR_HQ: {
+    case SHADER_BUFFER_LNOR: {
       return datatoc_common_subdiv_vbo_lnor_comp_glsl;
     }
     case SHADER_BUFFER_TRIS:
@@ -114,14 +107,11 @@ static const char *get_shader_code(int shader_type)
     case SHADER_BUFFER_NORMALS_ACCUMULATE: {
       return datatoc_common_subdiv_normals_accumulate_comp_glsl;
     }
-    case SHADER_BUFFER_NORMALS_FINALIZE:
-    case SHADER_BUFFER_NORMALS_FINALIZE_HQ: {
+    case SHADER_BUFFER_NORMALS_FINALIZE: {
       return datatoc_common_subdiv_normals_finalize_comp_glsl;
     }
     case SHADER_PATCH_EVALUATION:
     case SHADER_PATCH_EVALUATION_LIMIT_NORMALS:
-    case SHADER_PATCH_EVALUATION_HQ:
-    case SHADER_PATCH_EVALUATION_LIMIT_NORMALS_HQ:
     case SHADER_PATCH_EVALUATION_FVAR:
     case SHADER_PATCH_EVALUATION_FACE_DOTS: {
       return datatoc_common_subdiv_patch_evaluation_comp_glsl;
@@ -143,14 +133,8 @@ static const char *get_shader_name(int shader_type)
     case SHADER_BUFFER_LNOR: {
       return "subdiv lnor build";
     }
-    case SHADER_BUFFER_LNOR_HQ: {
-      return "subdiv lnor build hq";
-    }
     case SHADER_BUFFER_EDGE_FAC: {
       return "subdiv edge fac build";
-    }
-    case SHADER_BUFFER_EDGE_FAC_HQ: {
-      return "subdiv edge fac build hq";
     }
     case SHADER_BUFFER_TRIS:
     case SHADER_BUFFER_TRIS_MULTIPLE_MATERIALS: {
@@ -162,20 +146,11 @@ static const char *get_shader_name(int shader_type)
     case SHADER_BUFFER_NORMALS_FINALIZE: {
       return "subdiv normals finalize";
     }
-    case SHADER_BUFFER_NORMALS_FINALIZE_HQ: {
-      return "subdiv normals finalize";
-    }
     case SHADER_PATCH_EVALUATION: {
       return "subdiv patch evaluation";
     }
-    case SHADER_PATCH_EVALUATION_HQ: {
-      return "subdiv patch evaluation hq";
-    }
     case SHADER_PATCH_EVALUATION_LIMIT_NORMALS: {
       return "subdiv patch evaluation limit normals";
-    }
-    case SHADER_PATCH_EVALUATION_LIMIT_NORMALS_HQ: {
-      return "subdiv patch evaluation limit normals hq";
     }
     case SHADER_PATCH_EVALUATION_FVAR: {
       return "subdiv patch evaluation face-varying";
@@ -205,13 +180,6 @@ static GPUShader *get_patch_evaluation_shader(int shader_type)
           "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
           "#define LIMIT_NORMALS\n";
     }
-    else if (shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS_HQ) {
-      defines =
-          "#define OSD_PATCH_BASIS_GLSL\n"
-          "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
-          "#define LIMIT_NORMALS\n"
-          "#define HQ_NORMALS\n";
-    }
     else if (shader_type == SHADER_PATCH_EVALUATION_FVAR) {
       defines =
           "#define OSD_PATCH_BASIS_GLSL\n"
@@ -223,12 +191,6 @@ static GPUShader *get_patch_evaluation_shader(int shader_type)
           "#define OSD_PATCH_BASIS_GLSL\n"
           "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
           "#define FDOTS_EVALUATION\n";
-    }
-    else if (shader_type == SHADER_PATCH_EVALUATION_HQ) {
-      defines =
-          "#define OSD_PATCH_BASIS_GLSL\n"
-          "#define OPENSUBDIV_GLSL_COMPUTE_USE_1ST_DERIVATIVES\n"
-          "#define HQ_NORMALS\n";
     }
     else {
       defines =
@@ -259,8 +221,6 @@ static GPUShader *get_subdiv_shader(int shader_type, const char *defines)
 {
   if (shader_type == SHADER_PATCH_EVALUATION ||
       shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS ||
-      shader_type == SHADER_PATCH_EVALUATION_HQ ||
-      shader_type == SHADER_PATCH_EVALUATION_LIMIT_NORMALS_HQ ||
       shader_type == SHADER_PATCH_EVALUATION_FVAR ||
       shader_type == SHADER_PATCH_EVALUATION_FACE_DOTS) {
     return get_patch_evaluation_shader(shader_type);
@@ -1038,8 +998,7 @@ static uint get_patch_evaluation_work_group_size(uint elements)
 
 void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
                                  GPUVertBuf *pos_nor,
-                                 const bool do_limit_normals,
-                                 const bool do_hq_normals)
+                                 const bool do_limit_normals)
 {
   Subdiv *subdiv = cache->subdiv;
   OpenSubdiv_BufferInterface src_buffer_interface;
@@ -1063,9 +1022,7 @@ void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
   subdiv->evaluator->buildPatchParamBuffer(subdiv->evaluator, &patch_param_buffer_interface);
 
   GPUShader *shader = get_patch_evaluation_shader(
-      do_limit_normals ? (do_hq_normals ? SHADER_PATCH_EVALUATION_LIMIT_NORMALS_HQ :
-                                          SHADER_PATCH_EVALUATION_LIMIT_NORMALS) :
-                         (do_hq_normals ? SHADER_PATCH_EVALUATION_HQ : SHADER_PATCH_EVALUATION));
+      do_limit_normals ? SHADER_PATCH_EVALUATION_LIMIT_NORMALS : SHADER_PATCH_EVALUATION);
   GPU_shader_bind(shader);
 
   GPU_vertbuf_bind_as_ssbo(src_buffer, 0);
@@ -1233,12 +1190,9 @@ void draw_subdiv_accumulate_normals(const DRWSubdivCache *cache,
 void draw_subdiv_finalize_normals(const DRWSubdivCache *cache,
                                   GPUVertBuf *vertex_normals,
                                   GPUVertBuf *subdiv_loop_subdiv_vert_index,
-                                  GPUVertBuf *pos_nor,
-                                  const bool do_hq_normals)
+                                  GPUVertBuf *pos_nor)
 {
-  GPUShader *shader = do_hq_normals ? get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE_HQ,
-                                                        "#define HQ_NORMALS\n") :
-                                      get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE, nullptr);
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_NORMALS_FINALIZE, nullptr);
   GPU_shader_bind(shader);
 
   int binding_point = 0;
@@ -1374,18 +1328,12 @@ void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache, GPUIndexBuf *li
 void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
                                        GPUVertBuf *pos_nor,
                                        GPUVertBuf *edge_idx,
-                                       GPUVertBuf *edge_fac,
-                                       const bool do_hq_normals)
+                                       GPUVertBuf *edge_fac)
 {
   /* No separate shader for the AMD driver case as we assume that the GPU will not change during
    * the execution of the program. */
-  const char *defines = GPU_crappy_amd_driver() ?
-                            (do_hq_normals ?
-                                 "#define HQ_NORMALS\n#define GPU_AMD_DRIVER_BYTE_BUG\n" :
-                                 "#define GPU_AMD_DRIVER_BYTE_BUG\n") :
-                            (do_hq_normals ? "#define HQ_NORMALS\n" : nullptr);
-  GPUShader *shader = get_subdiv_shader(
-      do_hq_normals ? SHADER_BUFFER_EDGE_FAC_HQ : SHADER_BUFFER_EDGE_FAC, defines);
+  const char *defines = GPU_crappy_amd_driver() ? "#define GPU_AMD_DRIVER_BYTE_BUG\n" : nullptr;
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_EDGE_FAC, defines);
   GPU_shader_bind(shader);
 
   GPU_vertbuf_bind_as_ssbo(pos_nor, 0);
@@ -1404,14 +1352,9 @@ void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
 
 void draw_subdiv_build_lnor_buffer(const DRWSubdivCache *cache,
                                    GPUVertBuf *pos_nor,
-                                   GPUVertBuf *lnor,
-                                   const bool do_hq_normals)
+                                   GPUVertBuf *lnor)
 {
-  GPUShader *shader = do_hq_normals ?
-                          get_subdiv_shader(
-                              SHADER_BUFFER_LNOR_HQ,
-                              "#define HQ_NORMALS\n#define SUBDIV_POLYGON_OFFSET\n") :
-                          get_subdiv_shader(SHADER_BUFFER_LNOR, "#define SUBDIV_POLYGON_OFFSET\n");
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LNOR, "#define SUBDIV_POLYGON_OFFSET\n");
   GPU_shader_bind(shader);
 
   /* Inputs */
@@ -1610,14 +1553,10 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     return false;
   }
 
-  const bool do_hq_normals = (scene->r.perf_flag & SCE_PERF_HQ_NORMALS) != 0 ||
-                             GPU_use_hq_normals_workaround();
-
   const bool optimal_display = (smd->flags & eSubsurfModifierFlag_ControlEdges);
 
   draw_cache->mesh = mesh_eval;
   draw_cache->subdiv = subdiv;
-  draw_cache->do_hq_normals = do_hq_normals;
   draw_cache->optimal_display = optimal_display;
   draw_cache->num_subdiv_triangles = tris_count_from_number_of_loops(draw_cache->num_subdiv_loops);
   /* We can only evaluate limit normals if the patches are adaptive. */

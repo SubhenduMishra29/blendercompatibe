@@ -76,13 +76,10 @@ uint get_index(uint i)
  * the format.  */
 struct PosNorLoop {
   float x, y, z;
-#ifdef HQ_NORMALS
-  /* High quality normals are stored in 16-bits, so store 2 per uint. */
-  uint nor_xy;
-  uint nor_zw;
-#else
-  uint nor;
-#endif
+  /* TODO(kevindietrich) : figure how to compress properly as GLSL does not have char/short types,
+   * bit operations get tricky. */
+  float nx, ny, nz;
+  float flag;
 };
 
 vec3 get_vertex_pos(PosNorLoop vertex_data)
@@ -90,63 +87,10 @@ vec3 get_vertex_pos(PosNorLoop vertex_data)
   return vec3(vertex_data.x, vertex_data.y, vertex_data.z);
 }
 
-#ifdef HQ_NORMALS
-float gpu_unpack_float_from_uint(uint x)
-{
-  return (float(x) - 32768.0) / 32767.0;
-}
-
-uint gpu_pack_uint_from_float(float x)
-{
-  return uint(clamp(x * 32767.0 + 32768.0, 0.0, 65535.0)) & 0xffff;
-}
-
 vec3 get_vertex_nor(PosNorLoop vertex_data)
 {
-  uint inor_xy = vertex_data.nor_xy;
-  uint inor_zw = vertex_data.nor_zw;
-  float x = gpu_unpack_float_from_uint((inor_xy >> 16) & 0xffff);
-  float y = gpu_unpack_float_from_uint(inor_xy & 0xffff);
-  float z = gpu_unpack_float_from_uint((inor_zw >> 16) & 0xffff);
-  return vec3(x, y, z);
+  return vec3(vertex_data.nx, vertex_data.ny, vertex_data.nz);
 }
-
-void compress_normal(vec3 nor, uint flag, out uint nor_xy, out uint nor_zw)
-{
-  uint x = gpu_pack_uint_from_float(nor.x);
-  uint y = gpu_pack_uint_from_float(nor.y);
-  uint z = gpu_pack_uint_from_float(nor.z);
-  nor_xy = x << 16 | y;
-  nor_zw = z << 16 | (flag & 0xffff);
-}
-#else
-float gpu_unpack_float_from_uint(uint x)
-{
-  return (float(x) - 512.0) / 511.0;
-}
-
-uint gpu_pack_uint_from_float(float x)
-{
-  return uint(clamp(x * 511.0 + 512.0, 0.0, 1023.0));
-}
-
-vec3 get_vertex_nor(PosNorLoop vertex_data)
-{
-  uint inor = vertex_data.nor;
-  float x = gpu_unpack_float_from_uint(inor & 0x3ff);
-  float y = gpu_unpack_float_from_uint((inor >> 10) & 0x3ff);
-  float z = gpu_unpack_float_from_uint((inor >> 20) & 0x3ff);
-  return vec3(x, y, z);
-}
-
-uint compress_normal(vec3 nor, uint flag)
-{
-  uint x = gpu_pack_uint_from_float(nor.x);
-  uint y = gpu_pack_uint_from_float(nor.y);
-  uint z = gpu_pack_uint_from_float(nor.z);
-  return x | y << 10 | z << 20 | flag << 30;
-}
-#endif
 
 void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
 {
@@ -155,27 +99,20 @@ void set_vertex_pos(inout PosNorLoop vertex_data, vec3 pos)
   vertex_data.z = pos.z;
 }
 
+void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor, uint flag)
+{
+  vertex_data.nx = nor.x;
+  vertex_data.ny = nor.y;
+  vertex_data.nz = nor.z;
+  vertex_data.flag = float(flag);
+}
+
 /* Set the vertex normal but preserve the existing flag. This is for when we compute manually the
  * vertex normals when we cannot use the limit surface, in which case the flag and the normal are
  * set by two separate compute pass. */
 void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor)
 {
-#ifdef HQ_NORMALS
-  uint flag = vertex_data.nor_zw & 0xffff;
-  compress_normal(nor, flag, vertex_data.nor_xy, vertex_data.nor_zw);
-#else
-  uint flag = (vertex_data.nor >> 30) & 0x3;
-  vertex_data.nor = compress_normal(nor, flag);
-#endif
-}
-
-void set_vertex_nor(inout PosNorLoop vertex_data, vec3 nor, uint flag)
-{
-#ifdef HQ_NORMALS
-  compress_normal(nor, flag, vertex_data.nor_xy, vertex_data.nor_zw);
-#else
-  vertex_data.nor = compress_normal(nor, flag);
-#endif
+  set_vertex_nor(vertex_data, nor, 0);
 }
 
 #define ORIGINDEX_NONE -1

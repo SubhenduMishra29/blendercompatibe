@@ -260,8 +260,7 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache *subdiv_cache,
         0);
   }
 
-  draw_subdiv_build_edge_fac_buffer(
-      subdiv_cache, pos_nor, loop_edge_idx, vbo, subdiv_cache->do_hq_normals);
+  draw_subdiv_build_edge_fac_buffer(subdiv_cache, pos_nor, loop_edge_idx, vbo);
 
   if (!has_edge_idx) {
     GPU_vertbuf_discard(loop_edge_idx);

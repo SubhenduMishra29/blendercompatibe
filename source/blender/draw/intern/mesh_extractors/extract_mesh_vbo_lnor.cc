@@ -33,34 +33,18 @@ namespace blender::draw {
 /** \name Extract Loop Normal
  * \{ */
 
-static GPUVertFormat *get_lnor_format()
-{
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
-    GPU_vertformat_alias_add(&format, "lnor");
-  }
-  return &format;
-}
-
-static GPUVertFormat *get_lnor_format_hq()
-{
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_U16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
-    GPU_vertformat_alias_add(&format, "lnor");
-  }
-  return &format;
-}
-
 static void extract_lnor_init(const MeshRenderData *mr,
                               struct MeshBatchCache *UNUSED(cache),
                               void *buf,
                               void *tls_data)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
-  GPUVertFormat *format = get_lnor_format();
-  GPU_vertbuf_init_with_format(vbo, format);
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    GPU_vertformat_alias_add(&format, "lnor");
+  }
+  GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr->loop_len);
 
   *(GPUPackedNormal **)tls_data = static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo));
@@ -127,6 +111,16 @@ static void extract_lnor_iter_poly_mesh(const MeshRenderData *mr,
   }
 }
 
+static GPUVertFormat *get_subdiv_lnor_format()
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_alias_add(&format, "lnor");
+  }
+  return &format;
+}
+
 static void extract_lnor_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                      const MeshRenderData *UNUSED(mr),
                                      struct MeshBatchCache *cache,
@@ -136,11 +130,8 @@ static void extract_lnor_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
   GPUVertBuf *pos_nor = cache->final.buff.vbo.pos_nor;
   BLI_assert(pos_nor);
-  GPU_vertbuf_init_build_on_device(vbo,
-                                   subdiv_cache->do_hq_normals ? get_lnor_format_hq() :
-                                                                 get_lnor_format(),
-                                   subdiv_cache->num_subdiv_loops);
-  draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo, subdiv_cache->do_hq_normals);
+  GPU_vertbuf_init_build_on_device(vbo, get_subdiv_lnor_format(), subdiv_cache->num_subdiv_loops);
+  draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo);
 }
 
 constexpr MeshExtract create_extractor_lnor()
@@ -172,8 +163,12 @@ static void extract_lnor_hq_init(const MeshRenderData *mr,
                                  void *tls_data)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
-  GPUVertFormat *format = get_lnor_format_hq();
-  GPU_vertbuf_init_with_format(vbo, format);
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    GPU_vertformat_alias_add(&format, "lnor");
+  }
+  GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr->loop_len);
 
   *(gpuHQNor **)tls_data = static_cast<gpuHQNor *>(GPU_vertbuf_get_data(vbo));

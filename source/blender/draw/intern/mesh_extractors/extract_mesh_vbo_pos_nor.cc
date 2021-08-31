@@ -43,8 +43,12 @@ struct MeshExtract_PosNor_Data {
   GPUNormal *normals;
 };
 
-static GPUVertFormat *get_pos_nor_format()
+static void extract_pos_nor_init(const MeshRenderData *mr,
+                                 struct MeshBatchCache *UNUSED(cache),
+                                 void *buf,
+                                 void *tls_data)
 {
+  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     /* WARNING Adjust #PosNorLoop struct accordingly. */
@@ -52,29 +56,7 @@ static GPUVertFormat *get_pos_nor_format()
     GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
     GPU_vertformat_alias_add(&format, "vnor");
   }
-  return &format;
-}
-
-static GPUVertFormat *get_pos_nor_format_hq()
-{
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    /* WARNING Adjust #PosNorHQLoop struct accordingly. */
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_U16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
-    GPU_vertformat_alias_add(&format, "vnor");
-  }
-  return &format;
-}
-
-static void extract_pos_nor_init(const MeshRenderData *mr,
-                                 struct MeshBatchCache *UNUSED(cache),
-                                 void *buf,
-                                 void *tls_data)
-{
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
-  GPUVertFormat *format = get_pos_nor_format();
-  GPU_vertbuf_init_with_format(vbo, format);
+  GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr->loop_len + mr->loop_loose_len);
 
   /* Pack normals per vert, reduce amount of computation. */
@@ -214,6 +196,17 @@ static void extract_pos_nor_finish(const MeshRenderData *UNUSED(mr),
   MEM_freeN(data->normals);
 }
 
+static GPUVertFormat *get_pos_nor_format()
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+    GPU_vertformat_alias_add(&format, "vnor");
+  }
+  return &format;
+}
+
 static GPUVertFormat *get_normals_format()
 {
   static GPUVertFormat format = {0};
@@ -231,15 +224,13 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                         void *UNUSED(data))
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  const bool do_hq_normals = subdiv_cache->do_hq_normals;
   const bool do_limit_normals = subdiv_cache->do_limit_normals;
 
   /* Initialise the vertex buffer, it was already allocated. */
-  GPU_vertbuf_init_build_on_device(vbo,
-                                   do_hq_normals ? get_pos_nor_format_hq() : get_pos_nor_format(),
-                                   subdiv_cache->num_subdiv_loops + mr->loop_loose_len);
+  GPU_vertbuf_init_build_on_device(
+      vbo, get_pos_nor_format(), subdiv_cache->num_subdiv_loops + mr->loop_loose_len);
 
-  draw_subdiv_extract_pos_nor(subdiv_cache, vbo, do_limit_normals, do_hq_normals);
+  draw_subdiv_extract_pos_nor(subdiv_cache, vbo, do_limit_normals);
 
   if (!do_limit_normals) {
     /* We cannot evaluate vertex normals using the limit surface, so compute them manually. */
@@ -256,8 +247,7 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
                                    subdiv_cache->subdiv_vertex_face_adjacency,
                                    vertex_normals);
 
-    draw_subdiv_finalize_normals(
-        subdiv_cache, vertex_normals, subdiv_loop_subdiv_vert_index, vbo, do_hq_normals);
+    draw_subdiv_finalize_normals(subdiv_cache, vertex_normals, subdiv_loop_subdiv_vert_index, vbo);
 
     GPU_vertbuf_discard(vertex_normals);
     GPU_vertbuf_discard(subdiv_loop_subdiv_vert_index);
@@ -353,8 +343,14 @@ static void extract_pos_nor_hq_init(const MeshRenderData *mr,
                                     void *tls_data)
 {
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
-  GPUVertFormat *format = get_pos_nor_format_hq();
-  GPU_vertbuf_init_with_format(vbo, format);
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    /* WARNING Adjust #PosNorHQLoop struct accordingly. */
+    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    GPU_vertformat_alias_add(&format, "vnor");
+  }
+  GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr->loop_len + mr->loop_loose_len);
 
   /* Pack normals per vert, reduce amount of computation. */

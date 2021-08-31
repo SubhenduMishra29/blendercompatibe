@@ -62,7 +62,6 @@ typedef struct DRWSubdivCache {
   struct Mesh *mesh;
   struct Subdiv *subdiv;
   bool optimal_display;
-  bool do_hq_normals;
   bool do_limit_normals;
 
   /* Coordinates used to evaluate patches for UVs, positions, and normals. */
@@ -164,13 +163,11 @@ void draw_subdiv_accumulate_normals(const DRWSubdivCache *cache,
 void draw_subdiv_finalize_normals(const DRWSubdivCache *cache,
                                   struct GPUVertBuf *vertex_normals,
                                   struct GPUVertBuf *subdiv_loop_subdiv_vert_index,
-                                  struct GPUVertBuf *pos_nor,
-                                  const bool do_hq_normals);
+                                  struct GPUVertBuf *pos_nor);
 
 void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
                                  struct GPUVertBuf *pos_nor,
-                                 const bool do_limit_normals,
-                                 const bool do_hq_normals);
+                                 const bool do_limit_normals);
 
 void draw_subdiv_interp_custom_data(const DRWSubdivCache *cache,
                                     struct GPUVertBuf *src_data,
@@ -186,8 +183,7 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *cache,
 void draw_subdiv_build_edge_fac_buffer(const DRWSubdivCache *cache,
                                        struct GPUVertBuf *pos_nor,
                                        struct GPUVertBuf *edge_idx,
-                                       struct GPUVertBuf *edge_fac,
-                                       const bool do_hq_normals);
+                                       struct GPUVertBuf *edge_fac);
 
 void draw_subdiv_build_tris_buffer(const DRWSubdivCache *cache,
                                    struct GPUIndexBuf *subdiv_tris,
@@ -203,8 +199,7 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
 
 void draw_subdiv_build_lnor_buffer(const DRWSubdivCache *cache,
                                    struct GPUVertBuf *pos_nor,
-                                   struct GPUVertBuf *lnor,
-                                   const bool do_hq_normals);
+                                   struct GPUVertBuf *lnor);
 
 #ifdef __cplusplus
 }
