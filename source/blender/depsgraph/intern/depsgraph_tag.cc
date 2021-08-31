@@ -602,12 +602,12 @@ void graph_tag_ids_for_subdivision_update(Depsgraph *graph)
       Object *object_orig = reinterpret_cast<Object *>(id_node->id_orig);
 
       if (BKE_object_get_last_modifier_if_subsurf(object_orig)) {
-        std::cerr << "Tagging an object with a subsurf modifier for an update.\n";
-
-        id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
-        int flag = ID_RECALC_GEOMETRY;
-        graph_id_tag_update(
-            bmain, graph, id_node->id_orig, flag, DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION);
+        if (object_orig->runtime.subsurf_data_eval == nullptr) {
+          id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
+          int flag = ID_RECALC_GEOMETRY;
+          graph_id_tag_update(
+              bmain, graph, id_node->id_orig, flag, DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION);
+        }
       }
     }
   }

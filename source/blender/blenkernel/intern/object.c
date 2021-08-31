@@ -1739,6 +1739,11 @@ void BKE_object_free_derived_caches(Object *ob)
     BKE_mesh_eval_delete(mesh_deform_eval);
     ob->runtime.mesh_deform_eval = NULL;
   }
+  if (ob->runtime.subsurf_data_eval != NULL) {
+    Mesh *mesh_subsurf_eval = ob->runtime.subsurf_data_eval;
+    BKE_mesh_eval_delete(mesh_subsurf_eval);
+    ob->runtime.subsurf_data_eval = NULL;
+  }
 
   /* Restore initial pointer for copy-on-write datablocks, object->data
    * might be pointing to an evaluated datablock data was just freed above. */
@@ -4460,11 +4465,20 @@ bool BKE_object_obdata_texspace_get(Object *ob, short **r_texflag, float **r_loc
   return true;
 }
 
-/** Get evaluated mesh for given object. */
-Mesh *BKE_object_get_evaluated_mesh(const Object *object)
+/** Get evaluated mesh without subdivision for given object. */
+Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
 {
   ID *data_eval = object->runtime.data_eval;
   return (data_eval && GS(data_eval->name) == ID_ME) ? (Mesh *)data_eval : NULL;
+}
+
+/** Get evaluated mesh for given object. */
+Mesh *BKE_object_get_evaluated_mesh(const Object *object)
+{
+  if (object->runtime.subsurf_data_eval) {
+    return object->runtime.subsurf_data_eval;
+  }
+  return BKE_object_get_evaluated_mesh_no_subsurf(object);
 }
 
 /**
@@ -5127,6 +5141,7 @@ void BKE_object_runtime_reset_on_copy(Object *object, const int UNUSED(flag))
   runtime->object_as_temp_mesh = NULL;
   runtime->object_as_temp_curve = NULL;
   runtime->geometry_set_eval = NULL;
+  runtime->subsurf_data_eval = NULL;
 }
 
 /**

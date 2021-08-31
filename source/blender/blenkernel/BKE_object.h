@@ -334,6 +334,7 @@ bool BKE_object_obdata_texspace_get(struct Object *ob,
                                     float **r_loc,
                                     float **r_size);
 
+struct Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const struct Object *object);
 struct Mesh *BKE_object_get_evaluated_mesh(const struct Object *object);
 struct Mesh *BKE_object_get_pre_modified_mesh(const struct Object *object);
 struct Mesh *BKE_object_get_original_mesh(const struct Object *object);

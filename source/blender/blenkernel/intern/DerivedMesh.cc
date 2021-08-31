@@ -980,6 +980,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
                                 /* return args */
                                 Mesh **r_deform,
                                 Mesh **r_final,
+                                Mesh **r_subsurf,
                                 GeometrySet **r_geometry_set)
 {
   /* Input and final mesh. Final mesh is only created the moment the first
@@ -1020,10 +1021,11 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
   /* Modifier evaluation contexts for different types of modifiers. */
   ModifierApplyFlag apply_render = use_render ? MOD_APPLY_RENDER : (ModifierApplyFlag)0;
   ModifierApplyFlag apply_cache = use_cache ? MOD_APPLY_USECACHE : (ModifierApplyFlag)0;
+
   const uint32_t eval_flags = DEG_get_eval_flags_for_id(depsgraph, &ob->id);
-  ModifierApplyFlag apply_subdiv_on_cpu = (eval_flags & DAG_EVAL_NEED_SUBDIVISION_MESH) ?
-                                              MOD_APPLY_CPU_SUBDIVISION :
-                                              (ModifierApplyFlag)0;
+  const bool eval_subsurf_on_cpu = (eval_flags & DAG_EVAL_NEED_SUBDIVISION_MESH) != 0;
+  ModifierApplyFlag apply_subdiv_on_cpu = eval_subsurf_on_cpu ? MOD_APPLY_CPU_SUBDIVISION :
+                                                                (ModifierApplyFlag)0;
   const ModifierEvalContext mectx = {
       depsgraph, ob, (ModifierApplyFlag)(apply_render | apply_cache | apply_subdiv_on_cpu)};
   const ModifierEvalContext mectx_orco = {
@@ -1299,11 +1301,17 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
 
       if (mesh_next) {
         /* if the modifier returned a new mesh, release the old one */
-        if (mesh_final != mesh_next) {
-          BLI_assert(mesh_final != mesh_input);
-          BKE_id_free(nullptr, mesh_final);
+        if (md != reinterpret_cast<ModifierData *>(last_subsurf) || !eval_subsurf_on_cpu ||
+            !r_subsurf) {
+          if (mesh_final != mesh_next) {
+            BLI_assert(mesh_final != mesh_input);
+            BKE_id_free(nullptr, mesh_final);
+          }
+          mesh_final = mesh_next;
         }
-        mesh_final = mesh_next;
+        else {
+          *r_subsurf = mesh_next;
+        }
 
         if (deformed_verts) {
           MEM_freeN(deformed_verts);
@@ -1914,7 +1922,7 @@ static void mesh_build_data(struct Depsgraph *depsgraph,
   }
 #endif
 
-  Mesh *mesh_eval = nullptr, *mesh_deform_eval = nullptr;
+  Mesh *mesh_eval = nullptr, *mesh_deform_eval = nullptr, *mesh_subsurf_eval = nullptr;
   GeometrySet *geometry_set_eval = nullptr;
   mesh_calc_modifiers(depsgraph,
                       scene,
@@ -1927,6 +1935,7 @@ static void mesh_build_data(struct Depsgraph *depsgraph,
                       true,
                       &mesh_deform_eval,
                       &mesh_eval,
+                      &mesh_subsurf_eval,
                       &geometry_set_eval);
 
   /* The modifier stack evaluation is storing result in mesh->runtime.mesh_eval, but this result
@@ -1945,6 +1954,7 @@ static void mesh_build_data(struct Depsgraph *depsgraph,
   ob->runtime.geometry_set_eval = geometry_set_eval;
 
   ob->runtime.mesh_deform_eval = mesh_deform_eval;
+  ob->runtime.subsurf_data_eval = mesh_subsurf_eval;
   ob->runtime.last_data_mask = *dataMask;
   ob->runtime.last_need_mapping = need_mapping;
 
@@ -2142,8 +2152,19 @@ Mesh *mesh_create_eval_final(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(
-      depsgraph, scene, ob, true, false, dataMask, -1, false, false, nullptr, &final, nullptr);
+  mesh_calc_modifiers(depsgraph,
+                      scene,
+                      ob,
+                      true,
+                      false,
+                      dataMask,
+                      -1,
+                      false,
+                      false,
+                      nullptr,
+                      nullptr,
+                      &final,
+                      nullptr);
 
   return final;
 }
@@ -2156,8 +2177,19 @@ Mesh *mesh_create_eval_final_index_render(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(
-      depsgraph, scene, ob, true, false, dataMask, index, false, false, nullptr, &final, nullptr);
+  mesh_calc_modifiers(depsgraph,
+                      scene,
+                      ob,
+                      true,
+                      false,
+                      dataMask,
+                      index,
+                      false,
+                      false,
+                      nullptr,
+                      nullptr,
+                      &final,
+                      nullptr);
 
   return final;
 }
@@ -2169,8 +2201,19 @@ Mesh *mesh_create_eval_no_deform(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(
-      depsgraph, scene, ob, false, false, dataMask, -1, false, false, nullptr, &final, nullptr);
+  mesh_calc_modifiers(depsgraph,
+                      scene,
+                      ob,
+                      false,
+                      false,
+                      dataMask,
+                      -1,
+                      false,
+                      false,
+                      nullptr,
+                      nullptr,
+                      &final,
+                      nullptr);
 
   return final;
 }
@@ -2182,8 +2225,19 @@ Mesh *mesh_create_eval_no_deform_render(Depsgraph *depsgraph,
 {
   Mesh *final;
 
-  mesh_calc_modifiers(
-      depsgraph, scene, ob, false, false, dataMask, -1, false, false, nullptr, &final, nullptr);
+  mesh_calc_modifiers(depsgraph,
+                      scene,
+                      ob,
+                      false,
+                      false,
+                      dataMask,
+                      -1,
+                      false,
+                      false,
+                      nullptr,
+                      nullptr,
+                      &final,
+                      nullptr);
 
   return final;
 }

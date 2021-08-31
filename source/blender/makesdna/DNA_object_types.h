@@ -164,6 +164,12 @@ typedef struct Object_Runtime {
   struct ID *data_eval;
 
   /**
+   * Mesh structure created during object evaluation.
+   * It has all modifiers applied on it, including the last potential subsurf modifier.
+   */
+  struct Mesh *subsurf_data_eval;
+
+  /**
    * Objects can evaluate to a geometry set instead of a single ID. In those cases, the evaluated
    * geometry set will be stored here. An ID of the correct type is still stored in #data_eval.
    * #geometry_set_eval might reference the ID pointed to by #data_eval as well, but does not own
@@ -206,6 +212,7 @@ typedef struct Object_Runtime {
 
   unsigned short local_collections_bits;
   short _pad2[3];
+  void *_pad3;
 } Object_Runtime;
 
 typedef struct ObjectLineArt {

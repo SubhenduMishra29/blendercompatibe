@@ -1693,7 +1693,6 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   initTransInfo(C, t, op, event);
 
-  fprintf(stderr, "tagging depsgraph for a subdivision update...\n");
   DEG_graph_tag_on_subdivision_update(t->depsgraph);
 
   if (t->spacetype == SPACE_VIEW3D) {
