@@ -139,6 +139,11 @@ void AssetCatalogService::load_from_disk(const CatalogFilePath &file_or_director
       // TODO(@sybren): throw an appropriate exception.
       return;
   }
+
+  /* TODO: Should there be a sanitize step? E.g. to remove catalogs with identical paths? */
+
+  catalog_tree_ = read_into_tree();
+  print_tree();
 }
 
 void AssetCatalogService::load_directory_recursive(const CatalogFilePath &directory_path)
@@ -226,6 +231,90 @@ std::unique_ptr<AssetCatalog> AssetCatalogService::parse_catalog_line(
   const CatalogPath catalog_path = AssetCatalog::cleanup_path(line.substr(first_space + 1));
 
   return std::make_unique<AssetCatalog>(catalog_id, catalog_path);
+}
+
+std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
+{
+  auto tree = std::make_unique<AssetCatalogTree>();
+
+  /* Go through the catalogs, insert each path component into the tree where needed. */
+  for (auto &catalog : catalogs_.values()) {
+    fs::path catalog_path = catalog->path;
+
+    const AssetCatalogTreeItem *parent = nullptr;
+    AssetCatalogTreeItem::ChildVec *insert_to_vec = &tree->children_;
+
+    BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
+                   "Malformed catalog path: Path should be a relative path, with no root-name or "
+                   "root-directory as defined by std::filesystem::path.");
+    for (const fs::path &component : catalog_path) {
+      std::string component_name = component.string();
+
+      auto matching_item = std::find_if(
+          insert_to_vec->begin(), insert_to_vec->end(), [&component_name](auto &iter_item) {
+            return component_name.c_str() == iter_item->get_name();
+          });
+      if (matching_item != insert_to_vec->end()) {
+        /* The component already exists in the tree. Walk further into the path. */
+        parent = matching_item->get();
+        insert_to_vec = &(*matching_item)->children_;
+        continue;
+      }
+
+      /* Create a new component and walk further into the path. */
+      AssetCatalogTreeItem &new_item = *insert_to_vec->emplace_back(
+          new AssetCatalogTreeItem(component_name, parent));
+      parent = &new_item;
+      insert_to_vec = &new_item.children_;
+    }
+  }
+
+  return tree;
+}
+
+/* TODO just for testing. */
+void AssetCatalogService::print_tree()
+{
+  std::cout << "==== Printing Catalog Tree: ====" << std::endl;
+  catalog_tree_->foreach_item([](const AssetCatalogTreeItem &item) {
+    for (int i = 0; i < item.count_parents(); i++) {
+      std::cout << "  ";
+    }
+    std::cout << item.get_name() << std::endl;
+  });
+}
+
+AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent)
+    : name_(name), parent_(parent)
+{
+}
+
+StringRef AssetCatalogTreeItem::get_name() const
+{
+  return name_;
+}
+
+int AssetCatalogTreeItem::count_parents() const
+{
+  int i = 0;
+  for (const AssetCatalogTreeItem *parent = parent_; parent; parent = parent->parent_) {
+    i++;
+  }
+  return i;
+}
+
+void AssetCatalogTree::foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const
+{
+  AssetCatalogTreeItem::foreach_item_recursive(children_, callback);
+}
+
+void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::ChildVec &children,
+                                                  const ItemIterFn callback)
+{
+  for (const std::unique_ptr<AssetCatalogTreeItem> &item : children) {
+    callback(*item);
+    foreach_item_recursive(item->children_, callback);
+  }
 }
 
 AssetCatalogDefinitionFile *AssetCatalogService::get_catalog_definition_file()

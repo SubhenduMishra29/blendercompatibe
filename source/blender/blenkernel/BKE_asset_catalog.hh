@@ -25,10 +25,11 @@
 #endif
 
 #include "BLI_filesystem.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
-#include "BLI_vector_set.hh"
+#include "BLI_vector.hh"
 
 #include <filesystem>
 #include <memory>
@@ -38,10 +39,12 @@ namespace blender::bke {
 
 using CatalogID = std::string;
 using CatalogPath = std::string;
+using CatalogPathComponent = std::string;
 using CatalogFilePath = filesystem::path;
 
 class AssetCatalog;
 class AssetCatalogDefinitionFile;
+class AssetCatalogTree;
 
 /* Manages the asset catalogs of a single asset library (i.e. of catalogs defined in a single
  * directory hierarchy). */
@@ -75,6 +78,7 @@ class AssetCatalogService {
   /* These pointers are owned by this AssetCatalogService. */
   Map<CatalogID, std::unique_ptr<AssetCatalog>> catalogs_;
   std::unique_ptr<AssetCatalogDefinitionFile> catalog_definition_file_;
+  std::unique_ptr<AssetCatalogTree> catalog_tree_;
   CatalogFilePath asset_library_root_;
 
   void load_directory_recursive(const CatalogFilePath &directory_path);
@@ -96,6 +100,50 @@ class AssetCatalogService {
    * TODO(@sybren): this might move to the #AssetLibrary class instead, and just assumed to exist
    * in this class. */
   bool ensure_asset_library_root();
+
+  std::unique_ptr<AssetCatalogTree> read_into_tree();
+  void print_tree();
+};
+
+class AssetCatalogTreeItem {
+  friend class AssetCatalogService;
+
+ public:
+  /* Would be nice to avoid needing a vector of pointers. But child items want to keep a pointer to
+   * the parent, which would get invalidated once the vector grows and reallocates. */
+  using ChildVec = std::vector<std::unique_ptr<AssetCatalogTreeItem>>;
+  using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
+
+  AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
+
+  StringRef get_name() const;
+  int count_parents() const;
+
+  static void foreach_item_recursive(const ChildVec &children_, const ItemIterFn callback);
+
+ protected:
+  ChildVec children_;
+  /** The user visible name of this component. */
+  CatalogPathComponent name_;
+
+  /** Pointer back to the parent item. Used to reconstruct the hierarchy from an item (e.g. to
+   * build a path). */
+  const AssetCatalogTreeItem *parent_ = nullptr;
+};
+
+/**
+ * A representation of the catalog paths as tree structure. Each component of the catalog tree is
+ * represented by a #AssetCatalogTreeItem.
+ * There is no single root tree element, the #AssetCatalogTree instance itself represents the root.
+ */
+class AssetCatalogTree {
+  friend class AssetCatalogService;
+
+ public:
+  void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const;
+
+ protected:
+  AssetCatalogTreeItem::ChildVec children_;
 };
 
 /** Keeps track of which catalogs are defined in a certain file on disk.

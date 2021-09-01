@@ -24,6 +24,10 @@
 
 #include <memory>
 
+/**
+ * Loading an asset library at this point only means loading the catalogs. Later on this should
+ * invoke reading of asset representations too.
+ */
 struct AssetLibrary *BKE_asset_library_load(const char *library_path)
 {
   blender::bke::AssetLibrary *lib = new blender::bke::AssetLibrary();
