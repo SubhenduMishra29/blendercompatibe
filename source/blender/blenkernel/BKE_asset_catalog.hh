@@ -27,11 +27,10 @@
 #include "BLI_filesystem.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
-#include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
-#include <filesystem>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -109,9 +108,7 @@ class AssetCatalogTreeItem {
   friend class AssetCatalogService;
 
  public:
-  /* Would be nice to avoid needing a vector of pointers. But child items want to keep a pointer to
-   * the parent, which would get invalidated once the vector grows and reallocates. */
-  using ChildVec = std::vector<std::unique_ptr<AssetCatalogTreeItem>>;
+  using ChildSet = std::map<std::string, AssetCatalogTreeItem>;
   using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
 
   AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
@@ -119,10 +116,11 @@ class AssetCatalogTreeItem {
   StringRef get_name() const;
   int count_parents() const;
 
-  static void foreach_item_recursive(const ChildVec &children_, const ItemIterFn callback);
+  static void foreach_item_recursive(const ChildSet &children_, const ItemIterFn callback);
 
  protected:
-  ChildVec children_;
+  /** Child tree items, ordered by their names. */
+  ChildSet children_;
   /** The user visible name of this component. */
   CatalogPathComponent name_;
 
@@ -143,7 +141,8 @@ class AssetCatalogTree {
   void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const;
 
  protected:
-  AssetCatalogTreeItem::ChildVec children_;
+  /** Child tree items, ordered by their names. */
+  AssetCatalogTreeItem::ChildSet children_;
 };
 
 /** Keeps track of which catalogs are defined in a certain file on disk.
