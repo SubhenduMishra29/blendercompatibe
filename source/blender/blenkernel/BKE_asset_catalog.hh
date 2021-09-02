@@ -107,6 +107,7 @@ class AssetCatalogService {
 
 class AssetCatalogTreeItem {
   friend class AssetCatalogService;
+  friend class AssetCatalogTree;
 
  public:
   using ChildSet = std::map<std::string, AssetCatalogTreeItem>;
@@ -143,6 +144,9 @@ class AssetCatalogTree {
   friend class AssetCatalogService;
 
  public:
+  /** Ensure an item representing \a path is in the tree, adding it if necessary. */
+  void insert_item(StringRef catalog_path_str);
+
   void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const;
 
  protected:

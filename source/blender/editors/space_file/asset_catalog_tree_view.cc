@@ -30,8 +30,12 @@
 
 #include "BLI_string_ref.hh"
 
+#include "RNA_access.h"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
+
+#include "WM_types.h"
 
 #include "file_intern.h"
 
@@ -72,6 +76,13 @@ void file_draw_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c
       uiBut *but = add_row_button(
           block, item.get_name(), item.has_children() ? ICON_TRIA_DOWN : ICON_NONE);
       UI_but_datasetrow_indentation_set(but, item.count_parents());
+
+      PointerRNA *ptr_props = UI_but_extra_operator_icon_add(
+          but, "ASSET_OT_catalog_new", WM_OP_EXEC_DEFAULT, ICON_ADD);
+
+      RNA_string_set(ptr_props, "parent_path", item.catalog_path().c_str());
+
+      UI_block_layout_set_current(block, layout);
     });
   }
 

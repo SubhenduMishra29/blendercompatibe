@@ -18,17 +18,25 @@
  * \ingroup edasset
  */
 
+#include "BKE_asset_catalog.hh"
 #include "BKE_context.h"
 #include "BKE_report.h"
 
+#include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
 #include "ED_asset.h"
+#include "ED_asset_catalog.hh"
+/* XXX needs access to the file list, should all be done via the asset system in future. */
+#include "ED_fileselect.h"
 
 #include "RNA_access.h"
+#include "RNA_define.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
+
+using namespace blender;
 
 /* -------------------------------------------------------------------- */
 
@@ -295,10 +303,53 @@ static void ASSET_OT_list_refresh(struct wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 
+static bool asset_catalog_new_poll(bContext *C)
+{
+  const SpaceFile *sfile = CTX_wm_space_file(C);
+  return asset_operation_poll(C) && sfile && ED_fileselect_active_asset_library_get(sfile);
+}
+
+static int asset_catalog_new_exec(bContext *C, wmOperator *op)
+{
+  SpaceFile *sfile = CTX_wm_space_file(C);
+  struct AssetLibrary *asset_library = ED_fileselect_active_asset_library_get(sfile);
+  char *parent_path = RNA_string_get_alloc(op->ptr, "parent_path", nullptr, 0, nullptr);
+
+  ED_asset_catalog_add(
+      reinterpret_cast<blender::bke::AssetLibrary *>(asset_library), "Catalog", parent_path);
+
+  MEM_freeN(parent_path);
+
+  return OPERATOR_FINISHED;
+}
+
+static void ASSET_OT_catalog_new(struct wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "New Asset Catalog";
+  ot->description = "Create a new catalog to put assets in";
+  ot->idname = "ASSET_OT_catalog_new";
+
+  /* api callbacks */
+  ot->exec = asset_catalog_new_exec;
+  ot->poll = asset_catalog_new_poll;
+
+  RNA_def_string(ot->srna,
+                 "parent_path",
+                 nullptr,
+                 0,
+                 "Parent Path",
+                 "Optional path defining the location to put the new catalog under");
+}
+
+/* -------------------------------------------------------------------- */
+
 void ED_operatortypes_asset(void)
 {
   WM_operatortype_append(ASSET_OT_mark);
   WM_operatortype_append(ASSET_OT_clear);
+
+  WM_operatortype_append(ASSET_OT_catalog_new);
 
   WM_operatortype_append(ASSET_OT_list_refresh);
 }

@@ -71,6 +71,8 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   catalog_definition_file_->add_new(catalog_ptr);
   catalog_definition_file_->write_to_disk();
 
+  catalog_tree_->insert_item(catalog_ptr->path);
+
   return catalog_ptr;
 }
 
@@ -238,27 +240,7 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
   /* Go through the catalogs, insert each path component into the tree where needed. */
   for (auto &catalog : catalogs_.values()) {
-    /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
-     * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
-    fs::path catalog_path = catalog->path;
-
-    const AssetCatalogTreeItem *parent = nullptr;
-    AssetCatalogTreeItem::ChildSet *insert_to_set = &tree->children_;
-
-    BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
-                   "Malformed catalog path: Path should be a relative path, with no root-name or "
-                   "root-directory as defined by std::filesystem::path.");
-    for (const fs::path &component : catalog_path) {
-      std::string component_name = component.string();
-
-      /* Insert new tree element - if no matching one is there yet! */
-      auto [item, was_inserted] = insert_to_set->emplace(
-          component_name, AssetCatalogTreeItem(component_name, parent));
-
-      /* Walk further into the path (no matter if a new item was created or not). */
-      parent = &item->second;
-      insert_to_set = &item->second.children_;
-    }
+    tree->insert_item(catalog->path);
   }
 
   return tree;
@@ -295,6 +277,31 @@ int AssetCatalogTreeItem::count_parents() const
 bool AssetCatalogTreeItem::has_children() const
 {
   return !children_.empty();
+}
+
+void AssetCatalogTree::insert_item(StringRef catalog_path_str)
+{
+  /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
+   * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
+  fs::path catalog_path = std::string_view(catalog_path_str);
+
+  const AssetCatalogTreeItem *parent = nullptr;
+  AssetCatalogTreeItem::ChildSet *insert_to_set = &children_;
+
+  BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
+                 "Malformed catalog path: Path should be a relative path, with no root-name or "
+                 "root-directory as defined by std::filesystem::path.");
+  for (const fs::path &component : catalog_path) {
+    std::string component_name = component.string();
+
+    /* Insert new tree element - if no matching one is there yet! */
+    auto [item, was_inserted] = insert_to_set->emplace(
+        component_name, AssetCatalogTreeItem(component_name, parent));
+
+    /* Walk further into the path (no matter if a new item was created or not). */
+    parent = &item->second;
+    insert_to_set = &item->second.children_;
+  }
 }
 
 void AssetCatalogTree::foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const
