@@ -292,6 +292,11 @@ int AssetCatalogTreeItem::count_parents() const
   return i;
 }
 
+bool AssetCatalogTreeItem::has_children() const
+{
+  return !children_.empty();
+}
+
 void AssetCatalogTree::foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const
 {
   AssetCatalogTreeItem::foreach_item_recursive(children_, callback);

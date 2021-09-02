@@ -31,9 +31,11 @@ set(INC
   ../../../../intern/atomic
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
+  ../../../../extern/ghc_filesystem
 )
 
 set(SRC
+  asset_catalog_tree_view.cc
   file_draw.c
   file_ops.c
   file_panels.c

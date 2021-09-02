@@ -119,6 +119,7 @@ class AssetCatalogTreeItem {
    * catalog path of its parent and a separator. */
   CatalogPath catalog_path() const;
   int count_parents() const;
+  bool has_children() const;
 
   static void foreach_item_recursive(const ChildSet &children_, const ItemIterFn callback);
 

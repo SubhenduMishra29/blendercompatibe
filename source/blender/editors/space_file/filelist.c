@@ -1795,6 +1795,11 @@ void filelist_free(struct FileList *filelist)
   filelist->flags &= ~(FL_NEED_SORTING | FL_NEED_FILTERING);
 }
 
+AssetLibrary *filelist_asset_library(FileList *filelist)
+{
+  return filelist->asset_library;
+}
+
 void filelist_freelib(struct FileList *filelist)
 {
   if (filelist->libfiledata) {
