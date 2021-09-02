@@ -93,6 +93,45 @@ TEST_F(AssetCatalogTest, load_single_file)
   EXPECT_EQ("character/Ružena/poselib", poses_ruzena->path);
 }
 
+static int count_path_parents(const fs::path &path)
+{
+  int counter = 0;
+  for (fs::path segment : path.parent_path()) {
+    counter++;
+  }
+  return counter;
+}
+
+TEST_F(AssetCatalogTest, load_single_file_into_tree)
+{
+  AssetCatalogService service(asset_library_root_);
+  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+
+  std::vector<fs::path> expected_paths{
+      "character",
+      "character/Elly",
+      "character/Elly/poselib",
+      "character/Elly/poselib/white space",
+      "character/Ružena",
+      "character/Ružena/poselib",
+      "character/Ružena/poselib/face",
+      "character/Ružena/poselib/hand",
+  };
+
+  AssetCatalogTree *tree = service.get_catalog_tree();
+
+  int i = 0;
+  tree->foreach_item([&](const AssetCatalogTreeItem &actual_item) {
+    /* Is the catalog name as expected? "character", "Elly", ... */
+    EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
+    /* Does the amount of parents match? */
+    EXPECT_EQ(count_path_parents(expected_paths[i]), actual_item.count_parents());
+    EXPECT_EQ(expected_paths[i].generic_string(), actual_item.catalog_path());
+
+    i++;
+  });
+}
+
 TEST_F(AssetCatalogTest, write_single_file)
 {
   AssetCatalogService service(asset_library_root_);

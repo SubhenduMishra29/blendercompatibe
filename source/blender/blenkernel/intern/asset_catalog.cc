@@ -143,7 +143,6 @@ void AssetCatalogService::load_from_disk(const CatalogFilePath &file_or_director
   /* TODO: Should there be a sanitize step? E.g. to remove catalogs with identical paths? */
 
   catalog_tree_ = read_into_tree();
-  print_tree();
 }
 
 void AssetCatalogService::load_directory_recursive(const CatalogFilePath &directory_path)
@@ -239,6 +238,8 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
   /* Go through the catalogs, insert each path component into the tree where needed. */
   for (auto &catalog : catalogs_.values()) {
+    /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
+     * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
     fs::path catalog_path = catalog->path;
 
     const AssetCatalogTreeItem *parent = nullptr;
@@ -263,18 +264,6 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
   return tree;
 }
 
-/* TODO just for testing. */
-void AssetCatalogService::print_tree()
-{
-  std::cout << "==== Printing Catalog Tree: ====" << std::endl;
-  catalog_tree_->foreach_item([](const AssetCatalogTreeItem &item) {
-    for (int i = 0; i < item.count_parents(); i++) {
-      std::cout << "  ";
-    }
-    std::cout << item.get_name() << std::endl;
-  });
-}
-
 AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent)
     : name_(name), parent_(parent)
 {
@@ -283,6 +272,15 @@ AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTre
 StringRef AssetCatalogTreeItem::get_name() const
 {
   return name_;
+}
+
+CatalogPath AssetCatalogTreeItem::catalog_path() const
+{
+  std::string current_path = name_;
+  for (const AssetCatalogTreeItem *parent = parent_; parent; parent = parent->parent_) {
+    current_path = parent->name_ + AssetCatalogService::PATH_SEPARATOR + current_path;
+  }
+  return current_path;
 }
 
 int AssetCatalogTreeItem::count_parents() const
@@ -311,6 +309,11 @@ void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::Ch
 AssetCatalogDefinitionFile *AssetCatalogService::get_catalog_definition_file()
 {
   return catalog_definition_file_.get();
+}
+
+AssetCatalogTree *AssetCatalogService::get_catalog_tree()
+{
+  return catalog_tree_.get();
 }
 
 bool AssetCatalogDefinitionFile::contains(const CatalogID &catalog_id) const

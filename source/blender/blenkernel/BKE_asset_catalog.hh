@@ -70,6 +70,8 @@ class AssetCatalogService {
   /** For testing only, get the loaded catalog definition file. */
   AssetCatalogDefinitionFile *get_catalog_definition_file();
 
+  AssetCatalogTree *get_catalog_tree();
+
   /** Return true iff there are no catalogs known. */
   bool is_empty() const;
 
@@ -101,7 +103,6 @@ class AssetCatalogService {
   bool ensure_asset_library_root();
 
   std::unique_ptr<AssetCatalogTree> read_into_tree();
-  void print_tree();
 };
 
 class AssetCatalogTreeItem {
@@ -114,6 +115,9 @@ class AssetCatalogTreeItem {
   AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
 
   StringRef get_name() const;
+  /** Return the full catalog path, defined as the name of this catalog prefixed by the full
+   * catalog path of its parent and a separator. */
+  CatalogPath catalog_path() const;
   int count_parents() const;
 
   static void foreach_item_recursive(const ChildSet &children_, const ItemIterFn callback);
