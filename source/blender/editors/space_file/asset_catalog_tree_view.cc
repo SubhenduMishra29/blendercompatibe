@@ -46,7 +46,7 @@ static uiBut *add_row_button(uiBlock *block, StringRef name, BIFIconID icon)
                           name.data(),
                           0,
                           0,
-                          UI_UNIT_X * 3,
+                          0,
                           UI_UNIT_Y,
                           nullptr,
                           0,
@@ -70,7 +70,7 @@ void file_draw_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c
 
     catalog_tree->foreach_item([&](const AssetCatalogTreeItem &item) {
       uiBut *but = add_row_button(
-          block, item.get_name(), item.has_children() ? ICON_TRIA_DOWN : ICON_BLANK1);
+          block, item.get_name(), item.has_children() ? ICON_TRIA_DOWN : ICON_NONE);
       UI_but_datasetrow_indentation_set(but, item.count_parents());
     });
   }
