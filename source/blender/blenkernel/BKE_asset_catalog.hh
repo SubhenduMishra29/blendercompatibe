@@ -44,6 +44,7 @@ using CatalogFilePath = filesystem::path;
 class AssetCatalog;
 class AssetCatalogDefinitionFile;
 class AssetCatalogTree;
+class AssetCatalogTreeItemIterator;
 
 /* Manages the asset catalogs of a single asset library (i.e. of catalogs defined in a single
  * directory hierarchy). */
@@ -110,11 +111,13 @@ class AssetCatalogTreeItem {
   friend class AssetCatalogTree;
 
  public:
+  /* TODO change name to ChildMap! */
   using ChildSet = std::map<std::string, AssetCatalogTreeItem>;
   using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
 
   AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
 
+  AssetCatalogTreeItemIterator children();
   StringRef get_name() const;
   /** Return the full catalog path, defined as the name of this catalog prefixed by the full
    * catalog path of its parent and a separator. */
@@ -142,16 +145,46 @@ class AssetCatalogTreeItem {
  */
 class AssetCatalogTree {
   friend class AssetCatalogService;
+  using ChildSet = AssetCatalogTreeItem::ChildSet;
 
  public:
   /** Ensure an item representing \a path is in the tree, adding it if necessary. */
   void insert_item(StringRef catalog_path_str);
 
+  AssetCatalogTreeItemIterator children();
   void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const;
 
  protected:
   /** Child tree items, ordered by their names. */
-  AssetCatalogTreeItem::ChildSet children_;
+  ChildSet children_;
+};
+
+/* TODO mostly boilerplate code. Is that worth it? Could alternatively expose the ChildSet
+ * directly, and let users iterate over the map and its (key, value) pairs directly. */
+class AssetCatalogTreeItemIterator
+    : public std::iterator<std::forward_iterator_tag, AssetCatalogTreeItem> {
+  /** #AssetCatalogTreeItemIterator is just a wrapper around the child-maps iterator. That is so we
+   * can iterate over the values only of the map's (key, value) pairs. */
+  using WrappedIterator = AssetCatalogTreeItem::ChildSet::iterator;
+
+  WrappedIterator wrapped_iterator_;
+  WrappedIterator wrapped_end_iterator_;
+
+ public:
+  AssetCatalogTreeItemIterator(WrappedIterator wrapped_iterator,
+                               WrappedIterator wrapped_end_iterator);
+
+  AssetCatalogTreeItemIterator begin() const;
+  AssetCatalogTreeItemIterator end() const;
+
+  AssetCatalogTreeItem &operator*() const;
+  AssetCatalogTreeItem *operator->() const;
+
+  AssetCatalogTreeItemIterator &operator++();
+  AssetCatalogTreeItemIterator operator++(int);
+
+  friend bool operator==(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b);
+  friend bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b);
 };
 
 /** Keeps track of which catalogs are defined in a certain file on disk.

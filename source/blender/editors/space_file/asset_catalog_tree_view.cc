@@ -30,61 +30,88 @@
 
 #include "BLI_string_ref.hh"
 
+#include "BLT_translation.h"
+
 #include "RNA_access.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
+#include "UI_tree_view.hh"
 
 #include "WM_types.h"
 
 #include "file_intern.h"
 
 using namespace blender;
+using namespace blender::ui;
+using namespace blender::bke;
 
-static uiBut *add_row_button(uiBlock *block, StringRef name, BIFIconID icon)
-{
-  return uiDefIconTextBut(block,
-                          UI_BTYPE_DATASETROW,
-                          0,
-                          icon,
-                          name.data(),
-                          0,
-                          0,
-                          0,
-                          UI_UNIT_Y,
-                          nullptr,
-                          0,
-                          0,
-                          0,
-                          0,
-                          nullptr);
-}
+class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
+  AssetCatalogTreeItem &catalog_;
+
+ public:
+  AssetCatalogTreeViewItem(AssetCatalogTreeItem &catalog)
+      : uiBasicTreeViewItem(catalog.get_name(),
+                            catalog.has_children() ? ICON_TRIA_DOWN : ICON_NONE),
+        catalog_(catalog)
+  {
+  }
+
+  void build_row(uiLayout &row) override
+  {
+    uiBasicTreeViewItem::build_row(row);
+
+    PointerRNA *props = UI_but_extra_operator_icon_add(
+        button(), "ASSET_OT_catalog_new", WM_OP_EXEC_DEFAULT, ICON_ADD);
+    RNA_string_set(props, "parent_path", catalog_.catalog_path().data());
+  }
+};
+
+class AssetCatalogTreeView : public uiAbstractTreeView {
+  bke::AssetLibrary *library_;
+
+ public:
+  AssetCatalogTreeView(bke::AssetLibrary *library) : library_(library)
+  {
+  }
+
+  void build_tree() override
+  {
+    add_tree_item<uiBasicTreeViewItem>(IFACE_("All"), ICON_HOME);
+
+    if (library_) {
+      AssetCatalogTree *catalog_tree = library_->catalog_service->get_catalog_tree();
+
+      for (AssetCatalogTreeItem &item : catalog_tree->children()) {
+        build_recursive(*this, item);
+      }
+    }
+
+    add_tree_item<uiBasicTreeViewItem>(IFACE_("Unassigned"), ICON_FILE_HIDDEN);
+  }
+
+ private:
+  void build_recursive(uiTreeViewItemContainer &view_parent_item, AssetCatalogTreeItem &catalog)
+  {
+    uiBasicTreeViewItem &view_item = view_parent_item.add_tree_item<AssetCatalogTreeViewItem>(
+        catalog);
+
+    for (AssetCatalogTreeItem &child : catalog.children()) {
+      build_recursive(view_item, child);
+    }
+  }
+};
 
 void file_draw_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c, uiLayout *layout)
 {
-  using namespace blender::bke;
-
   uiBlock *block = uiLayoutGetBlock(layout);
 
-  add_row_button(block, "All", ICON_HOME);
+  bke::AssetLibrary *asset_library = reinterpret_cast<blender::bke::AssetLibrary *>(
+      asset_library_c);
 
-  if (asset_library_c) {
-    auto *asset_library = reinterpret_cast<blender::bke::AssetLibrary *>(asset_library_c);
-    AssetCatalogTree *catalog_tree = asset_library->catalog_service->get_catalog_tree();
+  static std::unique_ptr<AssetCatalogTreeView> asset_tree_view = nullptr;
+  asset_tree_view = std::make_unique<AssetCatalogTreeView>(asset_library);
 
-    catalog_tree->foreach_item([&](const AssetCatalogTreeItem &item) {
-      uiBut *but = add_row_button(
-          block, item.get_name(), item.has_children() ? ICON_TRIA_DOWN : ICON_NONE);
-      UI_but_datasetrow_indentation_set(but, item.count_parents());
-
-      PointerRNA *ptr_props = UI_but_extra_operator_icon_add(
-          but, "ASSET_OT_catalog_new", WM_OP_EXEC_DEFAULT, ICON_ADD);
-
-      RNA_string_set(ptr_props, "parent_path", item.catalog_path().c_str());
-
-      UI_block_layout_set_current(block, layout);
-    });
-  }
-
-  add_row_button(block, "Unassigned", ICON_FILE_HIDDEN);
+  asset_tree_view->build_tree();
+  asset_tree_view->build_layout_from_tree(uiTreeViewLayoutBuilder(*block));
 }

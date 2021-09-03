@@ -360,6 +360,13 @@ typedef struct uiButDatasetRow {
   int indentation;
 } uiButDatasetRow;
 
+/** Derived struct for #UI_BTYPE_TREEROW. */
+typedef struct uiButTreeRow {
+  uiBut but;
+
+  int indentation;
+} uiButTreeRow;
+
 /** Derived struct for #UI_BTYPE_HSVCUBE. */
 typedef struct uiButHSVCube {
   uiBut but;

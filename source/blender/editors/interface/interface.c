@@ -3942,6 +3942,10 @@ static void ui_but_alloc_info(const eButType type,
       alloc_size = sizeof(uiButDatasetRow);
       alloc_str = "uiButDatasetRow";
       break;
+    case UI_BTYPE_TREEROW:
+      alloc_size = sizeof(uiButTreeRow);
+      alloc_str = "uiButTreeRow";
+      break;
     default:
       alloc_size = sizeof(uiBut);
       alloc_str = "uiBut";
@@ -4141,6 +4145,7 @@ static uiBut *ui_def_but(uiBlock *block,
                 UI_BTYPE_BUT_MENU,
                 UI_BTYPE_SEARCH_MENU,
                 UI_BTYPE_DATASETROW,
+                UI_BTYPE_TREEROW,
                 UI_BTYPE_POPOVER)) {
     but->drawflag |= (UI_BUT_TEXT_LEFT | UI_BUT_ICON_LEFT);
   }
@@ -6875,6 +6880,15 @@ void UI_but_datasetrow_indentation_set(uiBut *but, int indentation)
   BLI_assert(but->type == UI_BTYPE_DATASETROW);
 
   but_dataset->indentation = indentation;
+  BLI_assert(indentation >= 0);
+}
+
+void UI_but_treerow_indentation_set(uiBut *but, int indentation)
+{
+  uiButTreeRow *but_row = (uiButTreeRow *)but;
+  BLI_assert(but->type == UI_BTYPE_TREEROW);
+
+  but_row->indentation = indentation;
   BLI_assert(indentation >= 0);
 }
 

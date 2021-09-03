@@ -75,6 +75,7 @@ set(SRC
   interface_utils.c
   interface_widgets.c
   resources.c
+  tree_view.cc
   view2d.c
   view2d_draw.c
   view2d_edge_pan.c

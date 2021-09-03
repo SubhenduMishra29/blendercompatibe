@@ -246,9 +246,16 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
   return tree;
 }
 
+/* ---------------------------------------------------------------------- */
+
 AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent)
     : name_(name), parent_(parent)
 {
+}
+
+AssetCatalogTreeItemIterator AssetCatalogTreeItem::children()
+{
+  return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
 }
 
 StringRef AssetCatalogTreeItem::get_name() const
@@ -279,6 +286,56 @@ bool AssetCatalogTreeItem::has_children() const
   return !children_.empty();
 }
 
+/* ---------------------------------------------------------------------- */
+
+AssetCatalogTreeItemIterator::AssetCatalogTreeItemIterator(WrappedIterator wrapped_iterator,
+                                                           WrappedIterator wrapped_end_iterator)
+    : wrapped_iterator_(wrapped_iterator), wrapped_end_iterator_(wrapped_end_iterator)
+{
+}
+
+AssetCatalogTreeItemIterator AssetCatalogTreeItemIterator::begin() const
+{
+  return *this;
+}
+
+AssetCatalogTreeItemIterator AssetCatalogTreeItemIterator::end() const
+{
+  return AssetCatalogTreeItemIterator(wrapped_end_iterator_, wrapped_end_iterator_);
+}
+
+AssetCatalogTreeItem &AssetCatalogTreeItemIterator::operator*() const
+{
+  return wrapped_iterator_->second;
+}
+AssetCatalogTreeItem *AssetCatalogTreeItemIterator::operator->() const
+{
+  return &wrapped_iterator_->second;
+}
+
+AssetCatalogTreeItemIterator &AssetCatalogTreeItemIterator::operator++()
+{
+  ++wrapped_iterator_;
+  return *this;
+}
+AssetCatalogTreeItemIterator AssetCatalogTreeItemIterator::operator++(int)
+{
+  AssetCatalogTreeItemIterator copy(*this);
+  ++wrapped_iterator_;
+  return copy;
+}
+
+bool operator==(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
+{
+  return a.wrapped_iterator_ == b.wrapped_iterator_;
+}
+bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
+{
+  return a.wrapped_iterator_ != b.wrapped_iterator_;
+}
+
+/* ---------------------------------------------------------------------- */
+
 void AssetCatalogTree::insert_item(StringRef catalog_path_str)
 {
   /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
@@ -302,6 +359,11 @@ void AssetCatalogTree::insert_item(StringRef catalog_path_str)
     parent = &item->second;
     insert_to_set = &item->second.children_;
   }
+}
+
+AssetCatalogTreeItemIterator AssetCatalogTree::children()
+{
+  return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
 }
 
 void AssetCatalogTree::foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const
