@@ -939,6 +939,19 @@ class _defs_edit_mesh:
         )
 
     @ToolDef.from_fn
+    def extrude_boolean():
+        return dict(
+            idname="builtin.extrude_boolean",
+            label="Extrude Boolean",
+            description=(
+                "Extrude, dissolves edges whose faces form a flat surface and intersect new edges"
+            ),
+            icon="ops.mesh.extrude_manifold",
+            widget="VIEW3D_GGT_tool_generic_handle_normal",
+            keymap=(),
+        )
+
+    @ToolDef.from_fn
     def extrude_normals():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("mesh.extrude_region_shrink_fatten")
@@ -2746,6 +2759,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             (
                 _defs_edit_mesh.extrude,
                 _defs_edit_mesh.extrude_manifold,
+                _defs_edit_mesh.extrude_boolean,
                 _defs_edit_mesh.extrude_normals,
                 _defs_edit_mesh.extrude_individual,
                 _defs_edit_mesh.extrude_cursor,

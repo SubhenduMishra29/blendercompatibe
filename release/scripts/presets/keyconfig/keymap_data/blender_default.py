@@ -6226,6 +6226,16 @@ def km_3d_view_tool_edit_mesh_extrude_manifold(params):
     )
 
 
+def km_3d_view_tool_edit_mesh_extrude_boolean(params):
+    return (
+        "3D View Tool: Edit Mesh, Extrude Boolean",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("mesh.extrude_boolean", {"type": params.tool_tweak, "value": 'ANY'}, None),
+        ]},
+    )
+
+
 def km_3d_view_tool_edit_mesh_extrude_along_normals(params):
     return (
         "3D View Tool: Edit Mesh, Extrude Along Normals",
@@ -7222,6 +7232,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_armature_extrude_to_cursor(params),
         km_3d_view_tool_edit_mesh_extrude_region(params),
         km_3d_view_tool_edit_mesh_extrude_manifold(params),
+        km_3d_view_tool_edit_mesh_extrude_boolean(params),
         km_3d_view_tool_edit_mesh_extrude_along_normals(params),
         km_3d_view_tool_edit_mesh_extrude_individual(params),
         km_3d_view_tool_edit_mesh_extrude_to_cursor(params),

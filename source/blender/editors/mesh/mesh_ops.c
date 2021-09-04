@@ -81,6 +81,8 @@ void ED_operatortypes_mesh(void)
   WM_operatortype_append(MESH_OT_extrude_edges_indiv);
   WM_operatortype_append(MESH_OT_extrude_verts_indiv);
 
+  WM_operatortype_append(MESH_OT_extrude_boolean);
+
   WM_operatortype_append(MESH_OT_split);
   WM_operatortype_append(MESH_OT_extrude_repeat);
   WM_operatortype_append(MESH_OT_edge_rotate);
