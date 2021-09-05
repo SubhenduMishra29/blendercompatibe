@@ -25,8 +25,6 @@
 
 #include "draw_subdivision.h"
 
-#include <iostream>
-
 namespace blender::draw {
 
 /* ---------------------------------------------------------------------- */

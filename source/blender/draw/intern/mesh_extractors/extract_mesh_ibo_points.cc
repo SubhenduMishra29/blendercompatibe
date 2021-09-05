@@ -227,7 +227,6 @@ constexpr MeshExtract create_extractor_points()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_points_init;
-  extractor.init_subdiv = extract_points_init_subdiv;
   extractor.iter_poly_bm = extract_points_iter_poly_bm;
   extractor.iter_poly_mesh = extract_points_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_points_iter_ledge_bm;
@@ -235,8 +234,9 @@ constexpr MeshExtract create_extractor_points()
   extractor.iter_lvert_bm = extract_points_iter_lvert_bm;
   extractor.iter_lvert_mesh = extract_points_iter_lvert_mesh;
   extractor.task_reduce = extract_points_task_reduce;
-  extractor.iter_loose_geom_subdiv = extract_points_loose_geom_subdiv;
   extractor.finish = extract_points_finish;
+  extractor.init_subdiv = extract_points_init_subdiv;
+  extractor.iter_loose_geom_subdiv = extract_points_loose_geom_subdiv;
   extractor.finish_subdiv = extract_points_finish_subdiv;
   extractor.use_threading = true;
   extractor.data_type = MR_DATA_NONE;

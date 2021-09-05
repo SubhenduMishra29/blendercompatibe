@@ -27,24 +27,36 @@ struct OpenSubdiv_EvaluatorInternal;
 struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 
+// Interface for doing input/output operations on buffers.
+// Useful to abstract GPU buffers.
 typedef struct OpenSubdiv_BufferInterface {
-  unsigned int (*bind)(struct OpenSubdiv_BufferInterface *buffer);
+  // Bind the buffer to the GPU and return the device pointer, or buffer name in OpenGL parlance.
+  unsigned int (*bind_gpu)(struct OpenSubdiv_BufferInterface *buffer);
 
+  // Allocate the buffer on the host for the given size in bytes.
   void *(*alloc)(struct OpenSubdiv_BufferInterface *buffer, const unsigned int size);
 
+  // Allocate the buffer directly on the device for the given size in bytes.
   void (*device_alloc)(struct OpenSubdiv_BufferInterface *buffer, const unsigned int size);
 
+  // Return the number of individual elements in the buffer.
   int (*num_vertices)(struct OpenSubdiv_BufferInterface *buffer);
 
-  int buffer_offset;
-
+  // Wrap an existing GPU buffer, given its device pointer or buffer name in OpenGL parlance, for
+  // read-only use.
   void (*wrap)(struct OpenSubdiv_BufferInterface *buffer, unsigned int device_ptr);
 
+  // Update the given range of the buffer with new data.
   void (*update_data)(struct OpenSubdiv_BufferInterface *buffer,
                       unsigned int start,
                       unsigned int len,
                       const void *data);
 
+  // Offset in the buffer where the data starts, if a single buffer is used for multiple data
+  // channels.
+  int buffer_offset;
+
+  // Pointer to user defined data.
   void *data;
 } OpenSubdiv_BufferInterface;
 
@@ -130,6 +142,7 @@ typedef struct OpenSubdiv_Evaluator {
                               float face_v,
                               float face_varying[2]);
 
+  // Evaluate face-varying data from a given array of bilinear coordinates.
   void (*evaluateFaceVaryingFromBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                         const int face_varying_channel,
                                         OpenSubdiv_BufferInterface *patch_coords_buffer,
@@ -148,12 +161,14 @@ typedef struct OpenSubdiv_Evaluator {
                                float *dPdu,
                                float *dPdv);
 
+  // Evaluate the limit surface at the given patch coordinates.
   void (*evaluatePatchesLimitFromBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                          struct OpenSubdiv_BufferInterface *patch_coords,
                                          struct OpenSubdiv_BufferInterface *P,
                                          struct OpenSubdiv_BufferInterface *dPdu,
                                          struct OpenSubdiv_BufferInterface *dPdv);
 
+  // Copy the patch map to the given buffers, and output some topology information.
   void (*getPatchMap)(struct OpenSubdiv_Evaluator *evaluator,
                       struct OpenSubdiv_BufferInterface *patch_map_handles,
                       struct OpenSubdiv_BufferInterface *patch_map_quadtree,
@@ -162,30 +177,38 @@ typedef struct OpenSubdiv_Evaluator {
                       int *max_depth,
                       int *patches_are_triangular);
 
+  // Fill the given buffer with data from the evaluator's patch array buffer.
   void (*buildPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                  struct OpenSubdiv_BufferInterface *patch_array_buffer);
 
+  // Fill the given buffer with data from the evaluator's patch index buffer.
   void (*buildPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                 struct OpenSubdiv_BufferInterface *patch_index_buffer);
 
+  // Fill the given buffer with data from the evaluator's patch parameter buffer.
   void (*buildPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                 struct OpenSubdiv_BufferInterface *patch_param_buffer);
 
+  // Fill the given buffer with data from the evaluator's source buffer.
   void (*buildSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                          struct OpenSubdiv_BufferInterface *src_buffer);
 
+  // Fill the given buffer with data from the evaluator's face varying patch array buffer.
   void (*buildFVarPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                      const int face_varying_channel,
                                      struct OpenSubdiv_BufferInterface *patch_array_buffer);
 
+  // Fill the given buffer with data from the evaluator's face varying patch index buffer.
   void (*buildFVarPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                     const int face_varying_channel,
                                     struct OpenSubdiv_BufferInterface *patch_index_buffer);
 
+  // Fill the given buffer with data from the evaluator's face varying patch parameter buffer.
   void (*buildFVarPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                     const int face_varying_channel,
                                     struct OpenSubdiv_BufferInterface *patch_param_buffer);
 
+  // Fill the given buffer with data from the evaluator's face varying source buffer.
   void (*buildFVarSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                              const int face_varying_channel,
                              struct OpenSubdiv_BufferInterface *src_buffer);
@@ -210,6 +233,7 @@ OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(int evaluator_type);
 
 void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache);
 
+// Return the GLSL source code from the OpenSubDiv library used for patch evaluation.
 const char *openSubdiv_getGLSLPatchBasisSource(void);
 
 #ifdef __cplusplus

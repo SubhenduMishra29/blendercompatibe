@@ -301,11 +301,11 @@ constexpr MeshExtract create_extractor_edge_fac()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_edge_fac_init;
-  extractor.init_subdiv = extract_edge_fac_init_subdiv;
   extractor.iter_poly_bm = extract_edge_fac_iter_poly_bm;
   extractor.iter_poly_mesh = extract_edge_fac_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_edge_fac_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_edge_fac_iter_ledge_mesh;
+  extractor.init_subdiv = extract_edge_fac_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_edge_fac_loose_geom_subdiv;
   extractor.finish = extract_edge_fac_finish;
   extractor.data_type = MR_DATA_POLY_NOR;

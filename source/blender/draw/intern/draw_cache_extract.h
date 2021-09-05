@@ -22,6 +22,7 @@
 
 #pragma once
 
+struct DRWSubdivCache;
 struct TaskGraph;
 
 #include "GPU_batch.h"

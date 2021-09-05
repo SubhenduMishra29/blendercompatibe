@@ -188,7 +188,7 @@ class BufferInterfaceWrapper {
 
   unsigned int BindVBO()
   {
-    return buffer_->bind(buffer_);
+    return buffer_->bind_gpu(buffer_);
   }
 
   int GetNumVertices() const
@@ -745,7 +745,7 @@ static void buildPatchArraysBufferFromVector(const PatchArrayVector &patch_array
   size_t patch_array_size = sizeof(PatchArray);
 
   patch_arrays_buffer->device_alloc(patch_arrays_buffer, patch_arrays.size());
-  patch_arrays_buffer->bind(patch_arrays_buffer);
+  patch_arrays_buffer->bind_gpu(patch_arrays_buffer);
 
   for (size_t i = 0; i < patch_arrays.size(); ++i) {
     patch_arrays_buffer->update_data(

@@ -287,9 +287,6 @@ struct OpenSubdiv_EvaluatorCacheImpl {
   OpenSubdiv_EvaluatorCacheImpl();
   ~OpenSubdiv_EvaluatorCacheImpl();
 
-  // TODO(kevindietrich)
-  // typedef typename blender::opensubdiv::GpuEvalOutputAPI::EvaluatorCache EvaluatorCache;
-
   void *eval_cache;
   MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorCacheImpl");
 };

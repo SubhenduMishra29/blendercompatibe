@@ -33,7 +33,6 @@ set(INC
   ../editors/space_view3d
   ../functions
   ../gpu
-  ../gpu/intern/
   ../imbuf
   ../makesdna
   ../makesrna

@@ -407,7 +407,7 @@ static void opensubdiv_gpu_buffer_init(OpenSubdiv_BufferInterface *buffer_interf
                                        GPUVertBuf *vertbuf)
 {
   buffer_interface->data = vertbuf;
-  buffer_interface->bind = vertbuf_bind_gpu;
+  buffer_interface->bind_gpu = vertbuf_bind_gpu;
   buffer_interface->alloc = vertbuf_alloc;
   buffer_interface->num_vertices = vertbuf_num_vertices;
   buffer_interface->buffer_offset = 0;
@@ -543,6 +543,7 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   gpu_patch_map_free(&cache->gpu_patch_map);
   if (cache->ubo) {
     GPU_uniformbuf_free(cache->ubo);
+    cache->ubo = nullptr;
   }
 }
 

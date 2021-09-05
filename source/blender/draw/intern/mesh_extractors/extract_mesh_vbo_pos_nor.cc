@@ -305,15 +305,15 @@ constexpr MeshExtract create_extractor_pos_nor()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_pos_nor_init;
-  extractor.init_subdiv = extract_pos_nor_init_subdiv;
   extractor.iter_poly_bm = extract_pos_nor_iter_poly_bm;
   extractor.iter_poly_mesh = extract_pos_nor_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_pos_nor_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_pos_nor_iter_ledge_mesh;
   extractor.iter_lvert_bm = extract_pos_nor_iter_lvert_bm;
   extractor.iter_lvert_mesh = extract_pos_nor_iter_lvert_mesh;
-  extractor.iter_loose_geom_subdiv = extract_pos_nor_loose_geom_subdiv;
   extractor.finish = extract_pos_nor_finish;
+  extractor.init_subdiv = extract_pos_nor_init_subdiv;
+  extractor.iter_loose_geom_subdiv = extract_pos_nor_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(MeshExtract_PosNor_Data);
   extractor.use_threading = true;

@@ -292,9 +292,9 @@ constexpr MeshExtract create_extractor_poly_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
-  extractor.init_subdiv = extract_poly_idx_init_subdiv;
   extractor.iter_poly_bm = extract_poly_idx_iter_poly_bm;
   extractor.iter_poly_mesh = extract_poly_idx_iter_poly_mesh;
+  extractor.init_subdiv = extract_poly_idx_init_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(uint32_t *);
   extractor.use_threading = true;
@@ -306,11 +306,11 @@ constexpr MeshExtract create_extractor_edge_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
-  extractor.init_subdiv = extract_edge_idx_init_subdiv;
   extractor.iter_poly_bm = extract_edge_idx_iter_poly_bm;
   extractor.iter_poly_mesh = extract_edge_idx_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_edge_idx_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_edge_idx_iter_ledge_mesh;
+  extractor.init_subdiv = extract_edge_idx_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_edge_idx_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(uint32_t *);
@@ -323,13 +323,13 @@ constexpr MeshExtract create_extractor_vert_idx()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_select_idx_init;
-  extractor.init_subdiv = extract_vert_idx_init_subdiv;
   extractor.iter_poly_bm = extract_vert_idx_iter_poly_bm;
   extractor.iter_poly_mesh = extract_vert_idx_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_vert_idx_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_vert_idx_iter_ledge_mesh;
   extractor.iter_lvert_bm = extract_vert_idx_iter_lvert_bm;
   extractor.iter_lvert_mesh = extract_vert_idx_iter_lvert_mesh;
+  extractor.init_subdiv = extract_vert_idx_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_vert_idx_loose_geom_subdiv;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(uint32_t *);

@@ -776,10 +776,10 @@ static void mesh_buffer_cache_create_requested(struct TaskGraph *task_graph,
 #endif
 }
 
-void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
-                                               MeshBufferCache *mbc,
-                                               DRWSubdivCache *subdiv_cache,
-                                               const ToolSettings *ts)
+static void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
+                                                      MeshBufferCache *mbc,
+                                                      DRWSubdivCache *subdiv_cache,
+                                                      const ToolSettings *ts)
 {
   /* Create an array containing all the extractors that needs to be executed. */
   ExtractorRunDatas extractors;

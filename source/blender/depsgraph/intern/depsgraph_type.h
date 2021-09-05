@@ -84,7 +84,7 @@ enum eUpdateSource {
   DEG_UPDATE_SOURCE_RELATIONS = (1 << 2),
   /* Update is happening due to visibility change. */
   DEG_UPDATE_SOURCE_VISIBILITY = (1 << 3),
-  /* Update is happening as an operator needs subdivision data on the CPU side. */
+  /* Update is happening because an operator or modifier needs subdivision data on the CPU side. */
   DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION = (1 << 4),
 };
 

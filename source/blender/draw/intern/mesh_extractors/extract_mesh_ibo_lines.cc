@@ -199,11 +199,11 @@ constexpr MeshExtract create_extractor_lines()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lines_init;
-  extractor.init_subdiv = extract_lines_init_subdiv;
   extractor.iter_poly_bm = extract_lines_iter_poly_bm;
   extractor.iter_poly_mesh = extract_lines_iter_poly_mesh;
   extractor.iter_ledge_bm = extract_lines_iter_ledge_bm;
   extractor.iter_ledge_mesh = extract_lines_iter_ledge_mesh;
+  extractor.init_subdiv = extract_lines_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_lines_loose_geom_subdiv;
   extractor.task_reduce = extract_lines_task_reduce;
   extractor.finish = extract_lines_finish;
