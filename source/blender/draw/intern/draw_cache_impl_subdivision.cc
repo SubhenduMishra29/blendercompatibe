@@ -299,8 +299,8 @@ typedef struct CompressedPatchCoord {
 MINLINE CompressedPatchCoord make_patch_coord(int ptex_face_index, float u, float v)
 {
   CompressedPatchCoord patch_coord = {
-      .ptex_face_index = ptex_face_index,
-      .encoded_uv = ((unsigned int)(u * 65535.0f) << 16) | (unsigned int)(v * 65535.0f),
+      ptex_face_index,
+      (static_cast<unsigned int>(u * 65535.0f) << 16) | static_cast<unsigned int>(v * 65535.0f),
   };
   return patch_coord;
 }
