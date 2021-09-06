@@ -94,7 +94,7 @@ static TransData *SeqToTransData(
 
 void createTransSeqImageData(TransInfo *t)
 {
-  Editing *ed = SEQ_editing_get(t->scene, false);
+  Editing *ed = SEQ_editing_get(t->scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   SeqCollection *strips = Seq_query_rendered_strips(seqbase, t->scene->r.cfra, 0);
   SEQ_filter_selected_strips(strips);
@@ -130,15 +130,16 @@ void recalcData_sequencer_image(TransInfo *t)
   int i;
 
   for (i = 0, td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
+    /* Origin. */
     float loc[2];
     copy_v2_v2(loc, td2d->loc);
     i++, td++, td2d++;
 
+    /* X and Y helper handle points used to read scale and rotation. */
     float handle_x[2];
     copy_v2_v2(handle_x, td2d->loc);
     sub_v2_v2(handle_x, loc);
     i++, td++, td2d++;
-
     float handle_y[2];
     copy_v2_v2(handle_y, td2d->loc);
     sub_v2_v2(handle_y, loc);

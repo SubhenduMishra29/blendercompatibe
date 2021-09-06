@@ -246,7 +246,7 @@ static float gizmo2d_calc_rotation(const bContext *C)
   }
 
   Scene *scene = CTX_data_scene(C);
-  Editing *ed = SEQ_editing_get(scene, false);
+  Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, 0);
   SEQ_filter_selected_strips(strips);
@@ -277,7 +277,7 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
   }
   else if (area->spacetype == SPACE_SEQ) {
     Scene *scene = CTX_data_scene(C);
-    ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene, false));
+    ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
     SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, 0);
     SEQ_filter_selected_strips(strips);
 
