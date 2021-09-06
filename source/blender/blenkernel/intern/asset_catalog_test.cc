@@ -96,8 +96,9 @@ TEST_F(AssetCatalogTest, load_single_file)
 static int count_path_parents(const fs::path &path)
 {
   int counter = 0;
-  for (fs::path segment : path.parent_path()) {
+  for (const fs::path &segment : path.parent_path()) {
     counter++;
+    UNUSED_VARS(segment);
   }
   return counter;
 }
