@@ -7045,6 +7045,39 @@ def km_sequencer_editor_tool_blade(_params):
     )
 
 
+def km_sequencer_editor_tool_move(params):
+    return (
+        "Sequencer Tool: Move",
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.translate", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("sequencer_image", True), ("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_sequencer_editor_tool_rotate(params):
+    return (
+        "Sequencer Tool: Rotate",
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.rotate", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("sequencer_image", True), ("release_confirm", True)]}),
+        ]},
+    )
+
+
+def km_sequencer_editor_tool_scale(params):
+    return (
+        "Sequencer Tool: Scale",
+        {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("transform.resize", {"type": params.tool_tweak, "value": 'ANY'},
+             {"properties": [("sequencer_image", True), ("release_confirm", True)]}),
+        ]},
+    )
+
+
 # ------------------------------------------------------------------------------
 # Full Configuration
 
@@ -7298,6 +7331,9 @@ def generate_keymaps(params=None):
         km_sequencer_editor_tool_select_box(params),
         km_sequencer_editor_tool_blade(params),
         km_sequencer_editor_tool_generic_sample(params),
+        km_sequencer_editor_tool_scale(params),
+        km_sequencer_editor_tool_rotate(params),
+        km_sequencer_editor_tool_move(params),
     ]
 
 # ------------------------------------------------------------------------------

@@ -96,11 +96,12 @@ void createTransSeqImageData(TransInfo *t)
 {
   Editing *ed = SEQ_editing_get(t->scene, false);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
-  SeqCollection *selected_strips = SEQ_query_selected_strips(seqbase);
+  SeqCollection *strips = Seq_query_rendered_strips(seqbase, t->scene->r.cfra, 0);
+  SEQ_filter_selected_strips(strips);
 
-  const int count = SEQ_collection_len(selected_strips);
+  const int count = SEQ_collection_len(strips);
   if (ed == NULL || count == 0) {
-    SEQ_collection_free(selected_strips);
+    SEQ_collection_free(strips);
     return;
   }
 
@@ -112,13 +113,13 @@ void createTransSeqImageData(TransInfo *t)
   TransDataSeq *tdseq = MEM_callocN(tc->data_len * sizeof(TransDataSeq), "TransSeq TransDataSeq");
 
   Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, selected_strips) {
+  SEQ_ITERATOR_FOREACH (seq, strips) {
     SeqToTransData(seq, td++, td2d++, tdseq++, 0);
     SeqToTransData(seq, td++, td2d++, tdseq++, 1);
     SeqToTransData(seq, td++, td2d++, tdseq++, 2);
   }
 
-  SEQ_collection_free(selected_strips);
+  SEQ_collection_free(strips);
 }
 
 void recalcData_sequencer_image(TransInfo *t)

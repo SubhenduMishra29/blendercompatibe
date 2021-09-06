@@ -49,6 +49,10 @@
 #include "ED_screen.h"
 #include "ED_uvedit.h"
 
+#include "SEQ_iterator.h"
+#include "SEQ_sequencer.h"
+#include "SEQ_time.h"
+
 #include "transform.h" /* own include */
 
 /* -------------------------------------------------------------------- */
@@ -234,6 +238,32 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
   return changed;
 }
 
+static float gizmo2d_calc_rotation(const bContext *C)
+{
+  ScrArea *area = CTX_wm_area(C);
+  if (area->spacetype != SPACE_SEQ) {
+    return 0.0f;
+  }
+
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene, false);
+  ListBase *seqbase = SEQ_active_seqbase_get(ed);
+  SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, 0);
+  SEQ_filter_selected_strips(strips);
+
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    if (seq == ed->act_seq) {
+      StripTransform *transform = seq->strip->transform;
+      SEQ_collection_free(strips);
+      return transform->rotation;
+    }
+  }
+
+  SEQ_collection_free(strips);
+  return 0.0f;
+}
+
 static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
 {
   ScrArea *area = CTX_wm_area(C);
@@ -244,6 +274,29 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
     Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = CTX_data_view_layer(C);
     ED_uvedit_center_from_pivot_ex(sima, scene, view_layer, r_center, sima->around, &has_select);
+  }
+  else if (area->spacetype == SPACE_SEQ) {
+    Scene *scene = CTX_data_scene(C);
+    ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene, false));
+    SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, 0);
+    SEQ_filter_selected_strips(strips);
+
+    if (SEQ_collection_len(strips) <= 0) {
+      SEQ_collection_free(strips);
+      return false;
+    }
+
+    has_select = true;
+    Sequence *seq;
+    SEQ_ITERATOR_FOREACH (seq, strips) {
+      StripTransform *transform = seq->strip->transform;
+      r_center[0] += transform->xofs;
+      r_center[1] += transform->yofs;
+    }
+    r_center[0] /= SEQ_collection_len(strips);
+    r_center[1] /= SEQ_collection_len(strips);
+
+    SEQ_collection_free(strips);
   }
   return has_select;
 }
@@ -276,7 +329,7 @@ static int gizmo2d_modal(bContext *C,
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
+static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
   wmOperatorType *ot_translate = WM_operatortype_find("TRANSFORM_OT_translate", true);
   GizmoGroup2D *ggd = gizmogroup2d_init(gzgroup);
@@ -338,7 +391,12 @@ static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup
       }
     }
 
-    RNA_boolean_set(ptr, "release_confirm", 1);
+    RNA_boolean_set(ptr, "release_confirm", true);
+
+    ScrArea *area = CTX_wm_area(C);
+    if (area->spacetype == SPACE_SEQ) {
+      RNA_boolean_set(ptr, "sequencer_image", true);
+    }
   }
 
   {
@@ -382,6 +440,11 @@ static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
     ptr = WM_gizmo_operator_set(ggd->cage, ED_GIZMO_CAGE2D_PART_ROTATE, ot_rotate, NULL);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+
+    ScrArea *area = CTX_wm_area(C);
+    if (area->spacetype == SPACE_SEQ) {
+      RNA_boolean_set(ptr, "sequencer_image", true);
+    }
   }
 }
 
@@ -539,6 +602,7 @@ void ED_widgetgroup_gizmo2d_xform_no_cage_callbacks_set(wmGizmoGroupType *gzgt)
 typedef struct GizmoGroup_Resize2D {
   wmGizmo *gizmo_xy[3];
   float origin[2];
+  float rotation;
 } GizmoGroup_Resize2D;
 
 static GizmoGroup_Resize2D *gizmogroup2d_resize_init(wmGizmoGroup *gzgroup)
@@ -571,6 +635,7 @@ static void gizmo2d_resize_refresh(const bContext *C, wmGizmoGroup *gzgroup)
       ggd->gizmo_xy[i]->flag &= ~WM_GIZMO_HIDDEN;
     }
     copy_v2_v2(ggd->origin, origin);
+    ggd->rotation = gizmo2d_calc_rotation(C);
   }
 }
 
@@ -595,10 +660,17 @@ static void gizmo2d_resize_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup
   for (int i = 0; i < ARRAY_SIZE(ggd->gizmo_xy); i++) {
     wmGizmo *gz = ggd->gizmo_xy[i];
     WM_gizmo_set_matrix_location(gz, origin);
+
+    if (i < 2) {
+      float axis[3] = {0.0f}, rotated_axis[3];
+      axis[i] = 1.0f;
+      rotate_v3_v3v3fl(rotated_axis, axis, (float[3]){0, 0, 1}, ggd->rotation);
+      WM_gizmo_set_matrix_rotation_from_z_axis(gz, rotated_axis);
+    }
   }
 }
 
-static void gizmo2d_resize_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
+static void gizmo2d_resize_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
 
   wmOperatorType *ot_resize = WM_operatortype_find("TRANSFORM_OT_resize", true);
@@ -617,9 +689,10 @@ static void gizmo2d_resize_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
 
       /* set up widget data */
       RNA_float_set(gz->ptr, "length", 1.0f);
-      float axis[3] = {0.0f};
-      axis[i] = 1.0f;
-      WM_gizmo_set_matrix_rotation_from_z_axis(gz, axis);
+
+      /*      float axis[3] = {0.0f};
+            axis[i] = 1.0f;
+            WM_gizmo_set_matrix_rotation_from_z_axis(gz, axis);*/
 
       RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_BOX);
 
@@ -658,6 +731,11 @@ static void gizmo2d_resize_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
       }
     }
     RNA_boolean_set(ptr, "release_confirm", true);
+
+    ScrArea *area = CTX_wm_area(C);
+    if (area->spacetype == SPACE_SEQ) {
+      RNA_boolean_set(ptr, "sequencer_image", true);
+    }
   }
 }
 
@@ -745,7 +823,7 @@ static void gizmo2d_rotate_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup
   WM_gizmo_set_matrix_location(gz, origin);
 }
 
-static void gizmo2d_rotate_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
+static void gizmo2d_rotate_setup(const bContext *C, wmGizmoGroup *gzgroup)
 {
 
   wmOperatorType *ot_resize = WM_operatortype_find("TRANSFORM_OT_rotate", true);
@@ -775,9 +853,14 @@ static void gizmo2d_rotate_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgrou
       WM_gizmo_set_color_highlight(gz, color);
     }
 
+    ScrArea *area = CTX_wm_area(C);
+
     /* Assign operator. */
     PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_resize, NULL);
     RNA_boolean_set(ptr, "release_confirm", true);
+    if (area->spacetype == SPACE_SEQ) {
+      RNA_boolean_set(ptr, "sequencer_image", true);
+    }
   }
 }
 
