@@ -142,12 +142,13 @@ class SEQUENCER_HT_header(Header):
         layout.separator_spacer()
 
         tool_settings = context.tool_settings
-        layout.prop(tool_settings, "transform_pivot_point", text="", icon_only=True)
+        sequencer_tool_settings = tool_settings.sequencer_tool_settings
 
-        layout.separator_spacer()
+        if st.view_type == 'PREVIEW':
+            layout.prop(sequencer_tool_settings, "pivot_point", text="", icon_only=True)
+            layout.separator_spacer()
 
         if st.view_type in {'SEQUENCER', 'SEQUENCER_PREVIEW'}:
-            sequencer_tool_settings = tool_settings.sequencer_tool_settings
             row = layout.row(align=True)
             row.prop(sequencer_tool_settings, "overlap_mode", text="")
             row = layout.row(align=True)

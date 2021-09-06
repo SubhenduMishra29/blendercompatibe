@@ -321,6 +321,7 @@ SequencerToolSettings *SEQ_tool_settings_init(void)
                              SEQ_SNAP_TO_STRIP_HOLD;
   tool_settings->snap_distance = 15;
   tool_settings->overlap_mode = SEQ_OVERLAP_SHUFFLE;
+  tool_settings->pivot_point = V3D_AROUND_LOCAL_ORIGINS;
 
   return tool_settings;
 }
@@ -375,6 +376,12 @@ eSeqOverlapMode SEQ_tool_settings_overlap_mode_get(Scene *scene)
 {
   const SequencerToolSettings *tool_settings = SEQ_tool_settings_ensure(scene);
   return tool_settings->overlap_mode;
+}
+
+int SEQ_tool_settings_pivot_point_get(Scene *scene)
+{
+  const SequencerToolSettings *tool_settings = SEQ_tool_settings_ensure(scene);
+  return tool_settings->pivot_point;
 }
 
 /**
