@@ -178,38 +178,38 @@ typedef struct OpenSubdiv_Evaluator {
                       int *patches_are_triangular);
 
   // Fill the given buffer with data from the evaluator's patch array buffer.
-  void (*buildPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                  struct OpenSubdiv_BufferInterface *patch_array_buffer);
 
   // Fill the given buffer with data from the evaluator's patch index buffer.
-  void (*buildPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                 struct OpenSubdiv_BufferInterface *patch_index_buffer);
 
   // Fill the given buffer with data from the evaluator's patch parameter buffer.
-  void (*buildPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                 struct OpenSubdiv_BufferInterface *patch_param_buffer);
 
   // Fill the given buffer with data from the evaluator's source buffer.
-  void (*buildSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                          struct OpenSubdiv_BufferInterface *src_buffer);
 
   // Fill the given buffer with data from the evaluator's face varying patch array buffer.
-  void (*buildFVarPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapFVarPatchArraysBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                      const int face_varying_channel,
                                      struct OpenSubdiv_BufferInterface *patch_array_buffer);
 
   // Fill the given buffer with data from the evaluator's face varying patch index buffer.
-  void (*buildFVarPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapFVarPatchIndexBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                     const int face_varying_channel,
                                     struct OpenSubdiv_BufferInterface *patch_index_buffer);
 
   // Fill the given buffer with data from the evaluator's face varying patch parameter buffer.
-  void (*buildFVarPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapFVarPatchParamBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                                     const int face_varying_channel,
                                     struct OpenSubdiv_BufferInterface *patch_param_buffer);
 
   // Fill the given buffer with data from the evaluator's face varying source buffer.
-  void (*buildFVarSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
+  void (*wrapFVarSrcBuffer)(struct OpenSubdiv_Evaluator *evaluator,
                              const int face_varying_channel,
                              struct OpenSubdiv_BufferInterface *src_buffer);
 

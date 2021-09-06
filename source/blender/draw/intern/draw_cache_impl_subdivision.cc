@@ -1005,22 +1005,22 @@ void draw_subdiv_extract_pos_nor(const DRWSubdivCache *cache,
   OpenSubdiv_BufferInterface src_buffer_interface;
   GPUVertBuf *src_buffer = create_buffer_and_interface(&src_buffer_interface,
                                                        get_subdiv_vertex_format());
-  subdiv->evaluator->buildSrcBuffer(subdiv->evaluator, &src_buffer_interface);
+  subdiv->evaluator->wrapSrcBuffer(subdiv->evaluator, &src_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   GPUVertBuf *patch_arrays_buffer = create_buffer_and_interface(&patch_arrays_buffer_interface,
                                                                 get_patch_array_format());
-  subdiv->evaluator->buildPatchArraysBuffer(subdiv->evaluator, &patch_arrays_buffer_interface);
+  subdiv->evaluator->wrapPatchArraysBuffer(subdiv->evaluator, &patch_arrays_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_index_buffer_interface;
   GPUVertBuf *patch_index_buffer = create_buffer_and_interface(&patch_index_buffer_interface,
                                                                get_patch_index_format());
-  subdiv->evaluator->buildPatchIndexBuffer(subdiv->evaluator, &patch_index_buffer_interface);
+  subdiv->evaluator->wrapPatchIndexBuffer(subdiv->evaluator, &patch_index_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_param_buffer_interface;
   GPUVertBuf *patch_param_buffer = create_buffer_and_interface(&patch_param_buffer_interface,
                                                                get_patch_param_format());
-  subdiv->evaluator->buildPatchParamBuffer(subdiv->evaluator, &patch_param_buffer_interface);
+  subdiv->evaluator->wrapPatchParamBuffer(subdiv->evaluator, &patch_param_buffer_interface);
 
   GPUShader *shader = get_patch_evaluation_shader(
       do_limit_normals ? SHADER_PATCH_EVALUATION_LIMIT_NORMALS : SHADER_PATCH_EVALUATION);
@@ -1066,25 +1066,25 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *cache,
 
   OpenSubdiv_BufferInterface src_buffer_interface;
   GPUVertBuf *src_buffer = create_buffer_and_interface(&src_buffer_interface, get_uvs_format());
-  subdiv->evaluator->buildFVarSrcBuffer(
+  subdiv->evaluator->wrapFVarSrcBuffer(
       subdiv->evaluator, face_varying_channel, &src_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   GPUVertBuf *patch_arrays_buffer = create_buffer_and_interface(&patch_arrays_buffer_interface,
                                                                 get_patch_array_format());
-  subdiv->evaluator->buildFVarPatchArraysBuffer(
+  subdiv->evaluator->wrapFVarPatchArraysBuffer(
       subdiv->evaluator, face_varying_channel, &patch_arrays_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_index_buffer_interface;
   GPUVertBuf *patch_index_buffer = create_buffer_and_interface(&patch_index_buffer_interface,
                                                                get_patch_index_format());
-  subdiv->evaluator->buildFVarPatchIndexBuffer(
+  subdiv->evaluator->wrapFVarPatchIndexBuffer(
       subdiv->evaluator, face_varying_channel, &patch_index_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_param_buffer_interface;
   GPUVertBuf *patch_param_buffer = create_buffer_and_interface(&patch_param_buffer_interface,
                                                                get_patch_param_format());
-  subdiv->evaluator->buildFVarPatchParamBuffer(
+  subdiv->evaluator->wrapFVarPatchParamBuffer(
       subdiv->evaluator, face_varying_channel, &patch_param_buffer_interface);
 
   GPUShader *shader = get_patch_evaluation_shader(SHADER_PATCH_EVALUATION_FVAR);
@@ -1254,23 +1254,23 @@ void draw_subdiv_build_fdots_buffers(const DRWSubdivCache *cache,
   OpenSubdiv_BufferInterface src_buffer_interface;
   GPUVertBuf *src_buffer = create_buffer_and_interface(&src_buffer_interface,
                                                        get_subdiv_vertex_format());
-  subdiv->evaluator->buildSrcBuffer(subdiv->evaluator, &src_buffer_interface);
+  subdiv->evaluator->wrapSrcBuffer(subdiv->evaluator, &src_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   GPUVertBuf *patch_arrays_buffer = create_buffer_and_interface(&patch_arrays_buffer_interface,
                                                                 get_patch_array_format());
   opensubdiv_gpu_buffer_init(&patch_arrays_buffer_interface, patch_arrays_buffer);
-  subdiv->evaluator->buildPatchArraysBuffer(subdiv->evaluator, &patch_arrays_buffer_interface);
+  subdiv->evaluator->wrapPatchArraysBuffer(subdiv->evaluator, &patch_arrays_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_index_buffer_interface;
   GPUVertBuf *patch_index_buffer = create_buffer_and_interface(&patch_index_buffer_interface,
                                                                get_patch_index_format());
-  subdiv->evaluator->buildPatchIndexBuffer(subdiv->evaluator, &patch_index_buffer_interface);
+  subdiv->evaluator->wrapPatchIndexBuffer(subdiv->evaluator, &patch_index_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_param_buffer_interface;
   GPUVertBuf *patch_param_buffer = create_buffer_and_interface(&patch_param_buffer_interface,
                                                                get_patch_param_format());
-  subdiv->evaluator->buildPatchParamBuffer(subdiv->evaluator, &patch_param_buffer_interface);
+  subdiv->evaluator->wrapPatchParamBuffer(subdiv->evaluator, &patch_param_buffer_interface);
 
   GPUShader *shader = get_patch_evaluation_shader(SHADER_PATCH_EVALUATION_FACE_DOTS);
   GPU_shader_bind(shader);

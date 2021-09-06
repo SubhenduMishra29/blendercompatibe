@@ -739,8 +739,8 @@ void convertPatchCoordsToArray(const OpenSubdiv_PatchCoord *patch_coords,
   }
 }
 
-static void buildPatchArraysBufferFromVector(const PatchArrayVector &patch_arrays,
-                                             OpenSubdiv_BufferInterface *patch_arrays_buffer)
+static void wrapPatchArraysBufferFromVector(const PatchArrayVector &patch_arrays,
+                                            OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
   size_t patch_array_size = sizeof(PatchArray);
 
@@ -810,10 +810,76 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Evaluator wrapper for anonymous API.
+// Evaluator wrappers for anonymous API.
+
+EvalOutputAPI::EvalOutputAPI(PatchMap *patch_map) : patch_map_(patch_map)
+{
+}
+
+EvalOutputAPI::~EvalOutputAPI()
+{
+}
+
+void EvalOutputAPI::evaluateFaceVarying(const int /*face_varying_channel*/,
+                                        OpenSubdiv_BufferInterface * /*patch_coords_buffer*/,
+                                        OpenSubdiv_BufferInterface * /*face_varying*/)
+{
+}
+
+void EvalOutputAPI::evaluatePatchesLimit(OpenSubdiv_BufferInterface * /*patch_coords*/,
+                                         OpenSubdiv_BufferInterface * /*P*/,
+                                         OpenSubdiv_BufferInterface * /*dPdu*/,
+                                         OpenSubdiv_BufferInterface * /*dPdv*/)
+{
+}
+
+void EvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface * /*patch_map_handles*/,
+                                OpenSubdiv_BufferInterface * /*patch_map_quadtree*/,
+                                int * /*min_patch_face*/,
+                                int * /*max_patch_face*/,
+                                int * /*max_depth*/,
+                                int * /*patches_are_triangular*/)
+{
+}
+
+void EvalOutputAPI::wrapPatchArraysBuffer(OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapPatchIndexBuffer(OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapPatchParamBuffer(OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapSrcBuffer(OpenSubdiv_BufferInterface * /*src_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapFVarPatchArraysBuffer(const int /*face_varying_channel*/,
+                                              OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapFVarPatchIndexBuffer(const int /*face_varying_channel*/,
+                                             OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapFVarPatchParamBuffer(const int /*face_varying_channel*/,
+                                             OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
+{
+}
+
+void EvalOutputAPI::wrapFVarSrcBuffer(const int /*face_varying_channel*/,
+                                      OpenSubdiv_BufferInterface * /*src_buffer*/)
+{
+}
 
 CpuEvalOutputAPI::CpuEvalOutputAPI(CpuEvalOutput *implementation, PatchMap *patch_map)
-    : implementation_(implementation), patch_map_(patch_map)
+    : EvalOutputAPI(patch_map), implementation_(implementation)
 {
 }
 
@@ -975,7 +1041,7 @@ void CpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_c
 }
 
 GpuEvalOutputAPI::GpuEvalOutputAPI(GpuEvalOutput *implementation, PatchMap *patch_map)
-    : implementation_(implementation), patch_map_(patch_map)
+    : EvalOutputAPI(patch_map), implementation_(implementation)
 {
 }
 
@@ -1179,56 +1245,56 @@ void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles
   memcpy(buffer_nodes, &quadtree[0], sizeof(PatchMap::QuadNode) * quadtree.size());
 }
 
-void GpuEvalOutputAPI::buildPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer)
+void GpuEvalOutputAPI::wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
   GLPatchTable *patch_table = implementation_->getPatchTable();
-  buildPatchArraysBufferFromVector(patch_table->GetPatchArrays(), patch_arrays_buffer);
+  wrapPatchArraysBufferFromVector(patch_table->GetPatchArrays(), patch_arrays_buffer);
 }
 
-void GpuEvalOutputAPI::buildPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer)
+void GpuEvalOutputAPI::wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer)
 {
   GLPatchTable *patch_table = implementation_->getPatchTable();
   patch_index_buffer->wrap(patch_index_buffer, patch_table->GetPatchIndexBuffer());
 }
 
-void GpuEvalOutputAPI::buildPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer)
+void GpuEvalOutputAPI::wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer)
 {
   GLPatchTable *patch_table = implementation_->getPatchTable();
   patch_param_buffer->wrap(patch_param_buffer, patch_table->GetPatchParamBuffer());
 }
 
-void GpuEvalOutputAPI::buildSrcBuffer(OpenSubdiv_BufferInterface *src_buffer)
+void GpuEvalOutputAPI::wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer)
 {
   GLVertexBuffer *vertex_buffer = implementation_->getSrcBuffer();
   src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
 }
 
-void GpuEvalOutputAPI::buildFVarPatchArraysBuffer(const int face_varying_channel,
-                                                  OpenSubdiv_BufferInterface *patch_arrays_buffer)
+void GpuEvalOutputAPI::wrapFVarPatchArraysBuffer(const int face_varying_channel,
+                                                 OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
   GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
-  buildPatchArraysBufferFromVector(patch_table->GetFVarPatchArrays(face_varying_channel),
-                                   patch_arrays_buffer);
+  wrapPatchArraysBufferFromVector(patch_table->GetFVarPatchArrays(face_varying_channel),
+                                  patch_arrays_buffer);
 }
 
-void GpuEvalOutputAPI::buildFVarPatchIndexBuffer(const int face_varying_channel,
-                                                 OpenSubdiv_BufferInterface *patch_index_buffer)
+void GpuEvalOutputAPI::wrapFVarPatchIndexBuffer(const int face_varying_channel,
+                                                OpenSubdiv_BufferInterface *patch_index_buffer)
 {
   GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
   patch_index_buffer->wrap(patch_index_buffer,
                            patch_table->GetFVarPatchIndexBuffer(face_varying_channel));
 }
 
-void GpuEvalOutputAPI::buildFVarPatchParamBuffer(const int face_varying_channel,
-                                                 OpenSubdiv_BufferInterface *patch_param_buffer)
+void GpuEvalOutputAPI::wrapFVarPatchParamBuffer(const int face_varying_channel,
+                                                OpenSubdiv_BufferInterface *patch_param_buffer)
 {
   GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
   patch_param_buffer->wrap(patch_param_buffer,
                            patch_table->GetFVarPatchParamBuffer(face_varying_channel));
 }
 
-void GpuEvalOutputAPI::buildFVarSrcBuffer(const int face_varying_channel,
-                                          OpenSubdiv_BufferInterface *src_buffer)
+void GpuEvalOutputAPI::wrapFVarSrcBuffer(const int face_varying_channel,
+                                         OpenSubdiv_BufferInterface *src_buffer)
 {
   GLVertexBuffer *vertex_buffer = implementation_->getFVarSrcBuffer(face_varying_channel);
   src_buffer->buffer_offset = implementation_->getFVarSrcBufferOffset(face_varying_channel);
@@ -1246,7 +1312,6 @@ OpenSubdiv_EvaluatorImpl::OpenSubdiv_EvaluatorImpl()
 OpenSubdiv_EvaluatorImpl::~OpenSubdiv_EvaluatorImpl()
 {
   delete eval_output;
-  delete eval_output_gpu;
   delete patch_map;
   delete patch_table;
 }
@@ -1393,14 +1458,12 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
   evaluator_descr = new OpenSubdiv_EvaluatorImpl();
 
   if (use_gl_evaluator) {
-    evaluator_descr->eval_output_gpu = new blender::opensubdiv::GpuEvalOutputAPI(eval_output_gpu,
-                                                                                 patch_map);
-    evaluator_descr->eval_output = nullptr;
+    evaluator_descr->eval_output = new blender::opensubdiv::GpuEvalOutputAPI(eval_output_gpu,
+                                                                             patch_map);
   }
   else {
     evaluator_descr->eval_output = new blender::opensubdiv::CpuEvalOutputAPI(eval_output_cpu,
                                                                              patch_map);
-    evaluator_descr->eval_output_gpu = nullptr;
   }
   evaluator_descr->patch_map = patch_map;
   evaluator_descr->patch_table = patch_table;

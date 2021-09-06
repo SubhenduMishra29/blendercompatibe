@@ -37,6 +37,153 @@ class PatchMap;
 namespace blender {
 namespace opensubdiv {
 
+class EvalOutputAPI {
+ public:
+  // NOTE: PatchMap is not owned, only referenced.
+  EvalOutputAPI(PatchMap *patch_map);
+
+  virtual ~EvalOutputAPI();
+
+  // Set coarse positions from a continuous array of coordinates.
+  virtual void setCoarsePositions(const float *positions,
+                                  const int start_vertex_index,
+                                  const int num_vertices) = 0;
+  // Set varying data from a continuous array of data.
+  virtual void setVaryingData(const float *varying_data,
+                              const int start_vertex_index,
+                              const int num_vertices) = 0;
+  // Set face varying data from a continuous array of data.
+  //
+  // TODO(sergey): Find a better name for vertex here. It is not the vertex of
+  // geometry, but a vertex of UV map.
+  virtual void setFaceVaryingData(const int face_varying_channel,
+                                  const float *varying_data,
+                                  const int start_vertex_index,
+                                  const int num_vertices) = 0;
+
+  // Set coarse vertex position from a continuous memory buffer where
+  // first coordinate starts at offset of `start_offset` and there is `stride`
+  // bytes between adjacent vertex coordinates.
+  virtual void setCoarsePositionsFromBuffer(const void *buffer,
+                                            const int start_offset,
+                                            const int stride,
+                                            const int start_vertex_index,
+                                            const int num_vertices) = 0;
+  // Set varying data from a continuous memory buffer where
+  // first coordinate starts at offset of `start_offset` and there is `stride`
+  // bytes between adjacent vertex coordinates.
+  virtual void setVaryingDataFromBuffer(const void *buffer,
+                                        const int start_offset,
+                                        const int stride,
+                                        const int start_vertex_index,
+                                        const int num_vertices) = 0;
+  // Set face varying data from a continuous memory buffer where
+  // first coordinate starts at offset of `start_offset` and there is `stride`
+  // bytes between adjacent vertex coordinates.
+  //
+  // TODO(sergey): Find a better name for vertex here. It is not the vertex of
+  // geometry, but a vertex of UV map.
+  virtual void setFaceVaryingDataFromBuffer(const int face_varying_channel,
+                                            const void *buffer,
+                                            const int start_offset,
+                                            const int stride,
+                                            const int start_vertex_index,
+                                            const int num_vertices) = 0;
+
+  // Refine after coarse positions update.
+  virtual void refine() = 0;
+
+  // Evaluate given ptex face at given bilinear coordinate.
+  // If derivatives are NULL, they will not be evaluated.
+  virtual void evaluateLimit(const int ptex_face_index,
+                             float face_u,
+                             float face_v,
+                             float P[3],
+                             float dPdu[3],
+                             float dPdv[3]) = 0;
+
+  // Evaluate varying data at a given bilinear coordinate of given ptex face.
+  virtual void evaluateVarying(const int ptes_face_index,
+                               float face_u,
+                               float face_v,
+                               float varying[3]) = 0;
+
+  // Evaluate facee-varying data at a given bilinear coordinate of given
+  // ptex face.
+  virtual void evaluateFaceVarying(const int face_varying_channel,
+                                   const int ptes_face_index,
+                                   float face_u,
+                                   float face_v,
+                                   float face_varying[2]) = 0;
+
+  virtual void evaluateFaceVarying(const int face_varying_channel,
+                                   OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                   OpenSubdiv_BufferInterface *face_varying);
+
+  // Batched evaluation of multiple input coordinates.
+
+  // Evaluate given ptex face at given bilinear coordinate.
+  // If derivatives are NULL, they will not be evaluated.
+  //
+  // NOTE: Output arrays must point to a memory of size float[3]*num_patch_coords.
+  virtual void evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
+                                    const int num_patch_coords,
+                                    float *P,
+                                    float *dPdu,
+                                    float *dPdv) = 0;
+
+  virtual void evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
+                                    OpenSubdiv_BufferInterface *P,
+                                    OpenSubdiv_BufferInterface *dPdu,
+                                    OpenSubdiv_BufferInterface *dPdv);
+
+  // Fill the output buffers and variables with data from the PatchMap.
+  virtual void getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
+                           OpenSubdiv_BufferInterface *patch_map_quadtree,
+                           int *min_patch_face,
+                           int *max_patch_face,
+                           int *max_depth,
+                           int *patches_are_triangular);
+
+  // Wrap the patch arrays buffer used by OpenSubDiv for the source data with the given buffer
+  // interface.
+  virtual void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer);
+
+  // Wrap the patch index buffer used by OpenSubDiv for the source data with the given buffer
+  // interface.
+  virtual void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer);
+
+  // Wrap the patch param buffer used by OpenSubDiv for the source data with the given buffer
+  // interface.
+  virtual void wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer);
+
+  // Wrap the buffer used by OpenSubDiv for the source data with the given buffer interface.
+  virtual void wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer);
+
+  // Wrap the patch arrays buffer used by OpenSubDiv for the face varying channel with the given
+  // buffer interface.
+  virtual void wrapFVarPatchArraysBuffer(const int face_varying_channel,
+                                         OpenSubdiv_BufferInterface *patch_arrays_buffer);
+
+  // Wrap the patch index buffer used by OpenSubDiv for the face varying channel with the given
+  // buffer interface.
+  virtual void wrapFVarPatchIndexBuffer(const int face_varying_channel,
+                                        OpenSubdiv_BufferInterface *patch_index_buffer);
+
+  // Wrap the patch param buffer used by OpenSubDiv for the face varying channel with the given
+  // buffer interface.
+  virtual void wrapFVarPatchParamBuffer(const int face_varying_channel,
+                                        OpenSubdiv_BufferInterface *patch_param_buffer);
+
+  // Wrap thebuffer used by OpenSubDiv for the face varying channel with the given buffer
+  // interface.
+  virtual void wrapFVarSrcBuffer(const int face_varying_channel,
+                                 OpenSubdiv_BufferInterface *src_buffer);
+
+ protected:
+  PatchMap *patch_map_;
+};
+
 // Anonymous forward declaration of actual evaluator implementation.
 class CpuEvalOutput;
 class GpuEvalOutput;
@@ -47,223 +194,168 @@ class GpuEvalOutput;
 // TODO(sergey):  It is almost the same as C-API object, so ideally need to
 // merge them somehow, but how to do this and keep files with all the templates
 // and such separate?
-class CpuEvalOutputAPI {
+class CpuEvalOutputAPI final : public EvalOutputAPI {
  public:
   // NOTE: API object becomes an owner of evaluator. Patch we are referencing.
   CpuEvalOutputAPI(CpuEvalOutput *implementation, PatchMap *patch_map);
-  ~CpuEvalOutputAPI();
+  ~CpuEvalOutputAPI() override;
 
-  // Set coarse positions from a continuous array of coordinates.
   void setCoarsePositions(const float *positions,
                           const int start_vertex_index,
-                          const int num_vertices);
-  // Set varying data from a continuous array of data.
+                          const int num_vertices) override;
   void setVaryingData(const float *varying_data,
                       const int start_vertex_index,
-                      const int num_vertices);
-  // Set face varying data from a continuous array of data.
-  //
-  // TODO(sergey): Find a better name for vertex here. It is not the vertex of
-  // geometry, but a vertex of UV map.
+                      const int num_vertices) override;
   void setFaceVaryingData(const int face_varying_channel,
                           const float *varying_data,
                           const int start_vertex_index,
-                          const int num_vertices);
+                          const int num_vertices) override;
 
-  // Set coarse vertex position from a continuous memory buffer where
-  // first coordinate starts at offset of `start_offset` and there is `stride`
-  // bytes between adjacent vertex coordinates.
   void setCoarsePositionsFromBuffer(const void *buffer,
                                     const int start_offset,
                                     const int stride,
                                     const int start_vertex_index,
-                                    const int num_vertices);
-  // Set varying data from a continuous memory buffer where
-  // first coordinate starts at offset of `start_offset` and there is `stride`
-  // bytes between adjacent vertex coordinates.
+                                    const int num_vertices) override;
   void setVaryingDataFromBuffer(const void *buffer,
                                 const int start_offset,
                                 const int stride,
                                 const int start_vertex_index,
-                                const int num_vertices);
-  // Set face varying data from a continuous memory buffer where
-  // first coordinate starts at offset of `start_offset` and there is `stride`
-  // bytes between adjacent vertex coordinates.
-  //
-  // TODO(sergey): Find a better name for vertex here. It is not the vertex of
-  // geometry, but a vertex of UV map.
+                                const int num_vertices) override;
   void setFaceVaryingDataFromBuffer(const int face_varying_channel,
                                     const void *buffer,
                                     const int start_offset,
                                     const int stride,
                                     const int start_vertex_index,
-                                    const int num_vertices);
+                                    const int num_vertices) override;
 
-  // Refine after coarse positions update.
-  void refine();
+  void refine() override;
 
-  // Evaluate given ptex face at given bilinear coordinate.
-  // If derivatives are NULL, they will not be evaluated.
   void evaluateLimit(const int ptex_face_index,
                      float face_u,
                      float face_v,
                      float P[3],
                      float dPdu[3],
-                     float dPdv[3]);
+                     float dPdv[3]) override;
 
-  // Evaluate varying data at a given bilinear coordinate of given ptex face.
-  void evaluateVarying(const int ptes_face_index, float face_u, float face_v, float varying[3]);
+  void evaluateVarying(const int ptes_face_index,
+                       float face_u,
+                       float face_v,
+                       float varying[3]) override;
 
-  // Evaluate facee-varying data at a given bilinear coordinate of given
-  // ptex face.
   void evaluateFaceVarying(const int face_varying_channel,
                            const int ptes_face_index,
                            float face_u,
                            float face_v,
-                           float face_varying[2]);
+                           float face_varying[2]) override;
 
-  // Batched evaluation of multiple input coordinates.
-
-  // Evaluate given ptex face at given bilinear coordinate.
-  // If derivatives are NULL, they will not be evaluated.
-  //
-  // NOTE: Output arrays must point to a memory of size float[3]*num_patch_coords.
   void evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
                             const int num_patch_coords,
                             float *P,
                             float *dPdu,
-                            float *dPdv);
+                            float *dPdv) override;
 
  protected:
   CpuEvalOutput *implementation_;
-  PatchMap *patch_map_;
 };
 
-class GpuEvalOutputAPI {
+class GpuEvalOutputAPI final : public EvalOutputAPI {
  public:
   // NOTE: API object becomes an owner of evaluator. Patch we are referencing.
   GpuEvalOutputAPI(GpuEvalOutput *implementation, PatchMap *patch_map);
-  ~GpuEvalOutputAPI();
+  ~GpuEvalOutputAPI() override;
 
-  // Set coarse positions from a continuous array of coordinates.
   void setCoarsePositions(const float *positions,
                           const int start_vertex_index,
-                          const int num_vertices);
-  // Set varying data from a continuous array of data.
+                          const int num_vertices) override;
   void setVaryingData(const float *varying_data,
                       const int start_vertex_index,
-                      const int num_vertices);
-  // Set face varying data from a continuous array of data.
-  //
-  // TODO(sergey): Find a better name for vertex here. It is not the vertex of
-  // geometry, but a vertex of UV map.
+                      const int num_vertices) override;
   void setFaceVaryingData(const int face_varying_channel,
                           const float *varying_data,
                           const int start_vertex_index,
-                          const int num_vertices);
+                          const int num_vertices) override;
 
-  // Set coarse vertex position from a continuous memory buffer where
-  // first coordinate starts at offset of `start_offset` and there is `stride`
-  // bytes between adjacent vertex coordinates.
   void setCoarsePositionsFromBuffer(const void *buffer,
                                     const int start_offset,
                                     const int stride,
                                     const int start_vertex_index,
-                                    const int num_vertices);
-  // Set varying data from a continuous memory buffer where
-  // first coordinate starts at offset of `start_offset` and there is `stride`
-  // bytes between adjacent vertex coordinates.
+                                    const int num_vertices) override;
   void setVaryingDataFromBuffer(const void *buffer,
                                 const int start_offset,
                                 const int stride,
                                 const int start_vertex_index,
-                                const int num_vertices);
-  // Set face varying data from a continuous memory buffer where
-  // first coordinate starts at offset of `start_offset` and there is `stride`
-  // bytes between adjacent vertex coordinates.
-  //
-  // TODO(sergey): Find a better name for vertex here. It is not the vertex of
-  // geometry, but a vertex of UV map.
+                                const int num_vertices) override;
   void setFaceVaryingDataFromBuffer(const int face_varying_channel,
                                     const void *buffer,
                                     const int start_offset,
                                     const int stride,
                                     const int start_vertex_index,
-                                    const int num_vertices);
+                                    const int num_vertices) override;
 
-  // Refine after coarse positions update.
-  void refine();
+  void refine() override;
 
-  // Evaluate given ptex face at given bilinear coordinate.
-  // If derivatives are NULL, they will not be evaluated.
   void evaluateLimit(const int ptex_face_index,
                      float face_u,
                      float face_v,
                      float P[3],
                      float dPdu[3],
-                     float dPdv[3]);
+                     float dPdv[3]) override;
 
-  // Evaluate varying data at a given bilinear coordinate of given ptex face.
-  void evaluateVarying(const int ptes_face_index, float face_u, float face_v, float varying[3]);
+  void evaluateVarying(const int ptes_face_index,
+                       float face_u,
+                       float face_v,
+                       float varying[3]) override;
 
-  // Evaluate facee-varying data at a given bilinear coordinate of given
-  // ptex face.
   void evaluateFaceVarying(const int face_varying_channel,
                            const int ptes_face_index,
                            float face_u,
                            float face_v,
-                           float face_varying[2]);
+                           float face_varying[2]) override;
 
   void evaluateFaceVarying(const int face_varying_channel,
                            OpenSubdiv_BufferInterface *patch_coords_buffer,
-                           OpenSubdiv_BufferInterface *face_varying);
+                           OpenSubdiv_BufferInterface *face_varying) override;
 
-  // Batched evaluation of multiple input coordinates.
-
-  // Evaluate given ptex face at given bilinear coordinate.
-  // If derivatives are NULL, they will not be evaluated.
-  //
-  // NOTE: Output arrays must point to a memory of size float[3]*num_patch_coords.
   void evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
                             const int num_patch_coords,
                             float *P,
                             float *dPdu,
-                            float *dPdv);
+                            float *dPdv) override;
 
   void evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
                             OpenSubdiv_BufferInterface *P,
                             OpenSubdiv_BufferInterface *dPdu,
-                            OpenSubdiv_BufferInterface *dPdv);
+                            OpenSubdiv_BufferInterface *dPdv) override;
 
   void getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
                    OpenSubdiv_BufferInterface *patch_map_quadtree,
                    int *min_patch_face,
                    int *max_patch_face,
                    int *max_depth,
-                   int *patches_are_triangular);
+                   int *patches_are_triangular) override;
 
-  void buildPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer);
+  void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer) override;
 
-  void buildPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer);
+  void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer) override;
 
-  void buildPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer);
+  void wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer) override;
 
-  void buildSrcBuffer(OpenSubdiv_BufferInterface *src_buffer);
+  void wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer) override;
 
-  void buildFVarPatchArraysBuffer(const int face_varying_channel,
-                                  OpenSubdiv_BufferInterface *patch_arrays_buffer);
+  void wrapFVarPatchArraysBuffer(const int face_varying_channel,
+                                 OpenSubdiv_BufferInterface *patch_arrays_buffer) override;
 
-  void buildFVarPatchIndexBuffer(const int face_varying_channel,
-                                 OpenSubdiv_BufferInterface *patch_index_buffer);
+  void wrapFVarPatchIndexBuffer(const int face_varying_channel,
+                                OpenSubdiv_BufferInterface *patch_index_buffer) override;
 
-  void buildFVarPatchParamBuffer(const int face_varying_channel,
-                                 OpenSubdiv_BufferInterface *patch_param_buffer);
+  void wrapFVarPatchParamBuffer(const int face_varying_channel,
+                                OpenSubdiv_BufferInterface *patch_param_buffer) override;
 
-  void buildFVarSrcBuffer(const int face_varying_channel, OpenSubdiv_BufferInterface *src_buffer);
+  void wrapFVarSrcBuffer(const int face_varying_channel,
+                         OpenSubdiv_BufferInterface *src_buffer) override;
 
  protected:
   GpuEvalOutput *implementation_;
-  PatchMap *patch_map_;
 };
 
 }  // namespace opensubdiv
@@ -274,8 +366,7 @@ struct OpenSubdiv_EvaluatorImpl {
   OpenSubdiv_EvaluatorImpl();
   ~OpenSubdiv_EvaluatorImpl();
 
-  blender::opensubdiv::GpuEvalOutputAPI *eval_output_gpu;
-  blender::opensubdiv::CpuEvalOutputAPI *eval_output;
+  blender::opensubdiv::EvalOutputAPI *eval_output;
   const PatchMap *patch_map;
   const OpenSubdiv::Far::PatchTable *patch_table;
 
