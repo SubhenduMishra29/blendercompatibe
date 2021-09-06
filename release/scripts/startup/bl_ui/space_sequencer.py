@@ -1758,6 +1758,9 @@ class SEQUENCER_PT_adjust_transform(SequencerButtonsPanel, Panel):
         col = layout.column(align=True)
         col.prop(strip.transform, "rotation", text="Rotation")
 
+        col = layout.column(align=True)
+        col.prop(strip.transform, "origin")
+
         row = layout.row(heading="Mirror")
         sub = row.row(align=True)
         sub.prop(strip, "use_flip_x", text="X", toggle=True)

@@ -74,6 +74,7 @@ typedef struct StripTransform {
   float scale_x;
   float scale_y;
   float rotation;
+  float origin[2];
 } StripTransform;
 
 typedef struct StripColorBalance {

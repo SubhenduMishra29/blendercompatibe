@@ -55,7 +55,8 @@ static TransData *SeqToTransData(
     Sequence *seq, TransData *td, TransData2D *td2d, TransDataSeq *tdseq, int vert_index)
 {
   const StripTransform *transform = seq->strip->transform;
-  float vertex[2] = {transform->xofs, transform->yofs};
+  float vertex[2] = {transform->xofs + transform->origin[0],
+                     transform->yofs + transform->origin[1]};
 
   /* Add control vertex, so rotation and scale can be calculated. */
   if (vert_index == 1) {
@@ -71,8 +72,8 @@ static TransData *SeqToTransData(
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
 
-  td->center[0] = transform->xofs;
-  td->center[1] = transform->yofs;
+  td->center[0] = transform->xofs + transform->origin[0];
+  td->center[1] = transform->yofs + transform->origin[1];
 
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
@@ -135,7 +136,7 @@ void recalcData_sequencer_image(TransInfo *t)
     copy_v2_v2(loc, td2d->loc);
     i++, td++, td2d++;
 
-    /* X and Y helper handle points used to read scale and rotation. */
+    /* X and Y control points used to read scale and rotation. */
     float handle_x[2];
     copy_v2_v2(handle_x, td2d->loc);
     sub_v2_v2(handle_x, loc);
@@ -147,8 +148,8 @@ void recalcData_sequencer_image(TransInfo *t)
     TransDataSeq *tdseq = td->extra;
     Sequence *seq = tdseq->seq;
     StripTransform *transform = seq->strip->transform;
-    transform->xofs = round_fl_to_int(loc[0]);
-    transform->yofs = round_fl_to_int(loc[1]);
+    transform->xofs = round_fl_to_int(loc[0] - transform->origin[0]);
+    transform->yofs = round_fl_to_int(loc[1] - transform->origin[1]);
     transform->scale_x = tdseq->orig_scale_x * fabs(len_v2(handle_x));
     transform->scale_y = tdseq->orig_scale_y * fabs(len_v2(handle_y));
     /* Scaling can cause negative rotation. */

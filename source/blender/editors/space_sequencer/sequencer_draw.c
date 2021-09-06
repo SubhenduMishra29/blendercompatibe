@@ -71,6 +71,7 @@
 #include "BIF_glutil.h"
 
 #include "SEQ_effects.h"
+#include "SEQ_iterator.h"
 #include "SEQ_prefetch.h"
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
@@ -2047,6 +2048,25 @@ static int sequencer_draw_get_transform_preview_frame(Scene *scene)
   return preview_frame;
 }
 
+static void seq_draw_origins(const bContext *C, Sequence *seq)
+{
+  const StripTransform *transform = seq->strip->transform;
+  float x = transform->xofs + transform->origin[0];
+  float y = transform->yofs + transform->origin[1];
+
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA);
+  immUniform1f("outlineWidth", 1.5f);
+  immUniformColor3f(1.0f, 1.0f, 1.0f);
+  immUniform4f("outlineColor", 0.0f, 0.0f, 0.0f, 1.0f);
+  immUniform1f("size", 12.0f);
+  immBegin(GPU_PRIM_POINTS, 1);
+  immVertex2f(pos, x, y);
+  immEnd();
+  immUnbindProgram();
+}
+
 void sequencer_draw_preview(const bContext *C,
                             Scene *scene,
                             ARegion *region,
@@ -2134,6 +2154,14 @@ void sequencer_draw_preview(const bContext *C,
   if (ibuf) {
     IMB_freeImBuf(ibuf);
   }
+
+  /* Image origins, may be only visible for development. */
+  SeqCollection *collection = SEQ_query_all_strips(&scene->ed->seqbase);
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, collection) {
+    seq_draw_origins(C, seq);
+  }
+  SEQ_collection_free(collection);
 
   UI_view2d_view_restore(C);
   seq_prefetch_wm_notify(C, scene);

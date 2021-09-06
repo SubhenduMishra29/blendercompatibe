@@ -290,8 +290,8 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
     Sequence *seq;
     SEQ_ITERATOR_FOREACH (seq, strips) {
       StripTransform *transform = seq->strip->transform;
-      r_center[0] += transform->xofs;
-      r_center[1] += transform->yofs;
+      r_center[0] += transform->xofs + transform->origin[0];
+      r_center[1] += transform->yofs + transform->origin[1];
     }
     r_center[0] /= SEQ_collection_len(strips);
     r_center[1] /= SEQ_collection_len(strips);
