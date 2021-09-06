@@ -109,7 +109,7 @@ class AssetCatalogTreeItem {
   friend class AssetCatalogService;
 
  public:
-  using ChildSet = std::map<std::string, AssetCatalogTreeItem>;
+  using ChildMap = std::map<std::string, AssetCatalogTreeItem>;
   using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
 
   AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
@@ -120,11 +120,11 @@ class AssetCatalogTreeItem {
   CatalogPath catalog_path() const;
   int count_parents() const;
 
-  static void foreach_item_recursive(const ChildSet &children_, const ItemIterFn callback);
+  static void foreach_item_recursive(const ChildMap &children_, const ItemIterFn callback);
 
  protected:
   /** Child tree items, ordered by their names. */
-  ChildSet children_;
+  ChildMap children_;
   /** The user visible name of this component. */
   CatalogPathComponent name_;
 
@@ -146,7 +146,7 @@ class AssetCatalogTree {
 
  protected:
   /** Child tree items, ordered by their names. */
-  AssetCatalogTreeItem::ChildSet children_;
+  AssetCatalogTreeItem::ChildMap children_;
 };
 
 /** Keeps track of which catalogs are defined in a certain file on disk.
