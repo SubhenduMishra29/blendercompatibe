@@ -111,8 +111,7 @@ class AssetCatalogTreeItem {
   friend class AssetCatalogTree;
 
  public:
-  /* TODO change name to ChildMap! */
-  using ChildSet = std::map<std::string, AssetCatalogTreeItem>;
+  using ChildMap = std::map<std::string, AssetCatalogTreeItem>;
   using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
 
   AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
@@ -125,11 +124,11 @@ class AssetCatalogTreeItem {
   int count_parents() const;
   bool has_children() const;
 
-  static void foreach_item_recursive(const ChildSet &children_, const ItemIterFn callback);
+  static void foreach_item_recursive(const ChildMap &children_, const ItemIterFn callback);
 
  protected:
   /** Child tree items, ordered by their names. */
-  ChildSet children_;
+  ChildMap children_;
   /** The user visible name of this component. */
   CatalogPathComponent name_;
 
@@ -145,7 +144,7 @@ class AssetCatalogTreeItem {
  */
 class AssetCatalogTree {
   friend class AssetCatalogService;
-  using ChildSet = AssetCatalogTreeItem::ChildSet;
+  using ChildMap = AssetCatalogTreeItem::ChildMap;
 
  public:
   /** Ensure an item representing \a path is in the tree, adding it if necessary. */
@@ -156,16 +155,16 @@ class AssetCatalogTree {
 
  protected:
   /** Child tree items, ordered by their names. */
-  ChildSet children_;
+  ChildMap children_;
 };
 
-/* TODO mostly boilerplate code. Is that worth it? Could alternatively expose the ChildSet
+/* TODO mostly boilerplate code. Is that worth it? Could alternatively expose the ChildMap
  * directly, and let users iterate over the map and its (key, value) pairs directly. */
 class AssetCatalogTreeItemIterator
     : public std::iterator<std::forward_iterator_tag, AssetCatalogTreeItem> {
   /** #AssetCatalogTreeItemIterator is just a wrapper around the child-maps iterator. That is so we
    * can iterate over the values only of the map's (key, value) pairs. */
-  using WrappedIterator = AssetCatalogTreeItem::ChildSet::iterator;
+  using WrappedIterator = AssetCatalogTreeItem::ChildMap::iterator;
 
   WrappedIterator wrapped_iterator_;
   WrappedIterator wrapped_end_iterator_;

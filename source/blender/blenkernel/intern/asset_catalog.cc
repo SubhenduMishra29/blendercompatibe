@@ -343,7 +343,7 @@ void AssetCatalogTree::insert_item(StringRef catalog_path_str)
   fs::path catalog_path = std::string_view(catalog_path_str);
 
   const AssetCatalogTreeItem *parent = nullptr;
-  AssetCatalogTreeItem::ChildSet *insert_to_set = &children_;
+  AssetCatalogTreeItem::ChildMap *insert_to_map = &children_;
 
   BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
                  "Malformed catalog path: Path should be a relative path, with no root-name or "
@@ -352,12 +352,12 @@ void AssetCatalogTree::insert_item(StringRef catalog_path_str)
     std::string component_name = component.string();
 
     /* Insert new tree element - if no matching one is there yet! */
-    auto [item, was_inserted] = insert_to_set->emplace(
+    auto [item, was_inserted] = insert_to_map->emplace(
         component_name, AssetCatalogTreeItem(component_name, parent));
 
     /* Walk further into the path (no matter if a new item was created or not). */
     parent = &item->second;
-    insert_to_set = &item->second.children_;
+    insert_to_map = &item->second.children_;
   }
 }
 
@@ -371,7 +371,7 @@ void AssetCatalogTree::foreach_item(const AssetCatalogTreeItem::ItemIterFn callb
   AssetCatalogTreeItem::foreach_item_recursive(children_, callback);
 }
 
-void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::ChildSet &children,
+void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::ChildMap &children,
                                                   const ItemIterFn callback)
 {
   for (const auto &[key, item] : children) {
