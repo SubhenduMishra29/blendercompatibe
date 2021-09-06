@@ -115,7 +115,7 @@ void evaluatePatchesLimit(OpenSubdiv_Evaluator *evaluator,
 }
 
 void evaluatePatchesLimitFromBuffer(OpenSubdiv_Evaluator *evaluator,
-                                    OpenSubdiv_BufferInterface *patch_coords,
+                                    const OpenSubdiv_BufferInterface *patch_coords,
                                     OpenSubdiv_BufferInterface *P,
                                     OpenSubdiv_BufferInterface *dPdu,
                                     OpenSubdiv_BufferInterface *dPdv)
@@ -145,7 +145,7 @@ void evaluateFaceVarying(OpenSubdiv_Evaluator *evaluator,
 
 void evaluateFaceVaryingFromBuffer(OpenSubdiv_Evaluator *evaluator,
                                    const int face_varying_channel,
-                                   OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                   const OpenSubdiv_BufferInterface *patch_coords_buffer,
                                    OpenSubdiv_BufferInterface *face_varying_buffer)
 {
   evaluator->impl->eval_output->evaluateFaceVarying(

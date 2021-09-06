@@ -117,7 +117,7 @@ class EvalOutputAPI {
                                    float face_varying[2]) = 0;
 
   virtual void evaluateFaceVarying(const int face_varying_channel,
-                                   OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                   const OpenSubdiv_BufferInterface *patch_coords_buffer,
                                    OpenSubdiv_BufferInterface *face_varying);
 
   // Batched evaluation of multiple input coordinates.
@@ -132,7 +132,7 @@ class EvalOutputAPI {
                                     float *dPdu,
                                     float *dPdv) = 0;
 
-  virtual void evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
+  virtual void evaluatePatchesLimit(const OpenSubdiv_BufferInterface *patch_coords,
                                     OpenSubdiv_BufferInterface *P,
                                     OpenSubdiv_BufferInterface *dPdu,
                                     OpenSubdiv_BufferInterface *dPdv);
@@ -313,7 +313,7 @@ class GpuEvalOutputAPI final : public EvalOutputAPI {
                            float face_varying[2]) override;
 
   void evaluateFaceVarying(const int face_varying_channel,
-                           OpenSubdiv_BufferInterface *patch_coords_buffer,
+                           const OpenSubdiv_BufferInterface *patch_coords_buffer,
                            OpenSubdiv_BufferInterface *face_varying) override;
 
   void evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
@@ -322,7 +322,7 @@ class GpuEvalOutputAPI final : public EvalOutputAPI {
                             float *dPdu,
                             float *dPdv) override;
 
-  void evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
+  void evaluatePatchesLimit(const OpenSubdiv_BufferInterface *patch_coords,
                             OpenSubdiv_BufferInterface *P,
                             OpenSubdiv_BufferInterface *dPdu,
                             OpenSubdiv_BufferInterface *dPdv) override;

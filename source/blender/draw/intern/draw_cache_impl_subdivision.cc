@@ -360,21 +360,21 @@ static uint tris_count_from_number_of_loops(const uint number_of_loops)
 /** \name Utilities to initialize a OpenSubdiv_BufferInterface for a GPUVertBuf.
  * \{ */
 
-static uint vertbuf_bind_gpu(OpenSubdiv_BufferInterface *buffer)
+static uint vertbuf_bind_gpu(const OpenSubdiv_BufferInterface *buffer)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(buffer->data);
   GPU_vertbuf_use(verts);
   return GPU_vertbuf_get_device_ptr(verts);
 }
 
-static void *vertbuf_alloc(OpenSubdiv_BufferInterface *interface, const uint len)
+static void *vertbuf_alloc(const OpenSubdiv_BufferInterface *interface, const uint len)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
   GPU_vertbuf_data_alloc(verts, len);
   return GPU_vertbuf_get_data(verts);
 }
 
-static void vertbuf_device_alloc(OpenSubdiv_BufferInterface *interface, const uint len)
+static void vertbuf_device_alloc(const OpenSubdiv_BufferInterface *interface, const uint len)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
   /* This assumes that GPU_USAGE_DEVICE_ONLY was used, which won't allocate host memory. */
@@ -382,19 +382,19 @@ static void vertbuf_device_alloc(OpenSubdiv_BufferInterface *interface, const ui
   GPU_vertbuf_data_alloc(verts, len);
 }
 
-static int vertbuf_num_vertices(OpenSubdiv_BufferInterface *interface)
+static int vertbuf_num_vertices(const OpenSubdiv_BufferInterface *interface)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
   return GPU_vertbuf_get_vertex_len(verts);
 }
 
-static void vertbuf_wrap(OpenSubdiv_BufferInterface *interface, uint device_ptr)
+static void vertbuf_wrap(const OpenSubdiv_BufferInterface *interface, uint device_ptr)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
   GPU_vertbuf_wrap_device_ptr(verts, device_ptr);
 }
 
-static void vertbuf_update_data(OpenSubdiv_BufferInterface *interface,
+static void vertbuf_update_data(const OpenSubdiv_BufferInterface *interface,
                                 uint start,
                                 uint len,
                                 const void *data)

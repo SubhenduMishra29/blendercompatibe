@@ -177,7 +177,7 @@ template<typename T> class RawDataWrapperBuffer {
 
 class BufferInterfaceWrapper {
  public:
-  BufferInterfaceWrapper(OpenSubdiv_BufferInterface *buffer) : buffer_(buffer)
+  BufferInterfaceWrapper(const OpenSubdiv_BufferInterface *buffer) : buffer_(buffer)
   {
   }
 
@@ -197,7 +197,7 @@ class BufferInterfaceWrapper {
   }
 
  private:
-  OpenSubdiv_BufferInterface *buffer_;
+  const OpenSubdiv_BufferInterface *buffer_;
 };
 
 template<typename T> class RawDataWrapperVertexBuffer : public RawDataWrapperBuffer<T> {
@@ -319,7 +319,7 @@ class FaceVaryingVolatileEval {
                                       device_context_);
   }
 
-  void evalPatches(OpenSubdiv_BufferInterface *patch_coords,
+  void evalPatches(const OpenSubdiv_BufferInterface *patch_coords,
                    OpenSubdiv_BufferInterface *face_varying)
   {
     BufferInterfaceWrapper face_varying_data(face_varying);
@@ -556,7 +556,7 @@ class VolatileEvalOutput {
                            device_context_);
   }
 
-  void evalPatches(OpenSubdiv_BufferInterface *patch_coord, OpenSubdiv_BufferInterface *P)
+  void evalPatches(const OpenSubdiv_BufferInterface *patch_coord, OpenSubdiv_BufferInterface *P)
   {
     BufferInterfaceWrapper P_data(P);
     BufferDescriptor P_desc(0, 3, 3);
@@ -608,7 +608,7 @@ class VolatileEvalOutput {
   }
 
   // NOTE: P, dPdu, dPdv must point to a memory of at least float[3]*num_patch_coords.
-  void evalPatchesWithDerivatives(OpenSubdiv_BufferInterface *patch_coord,
+  void evalPatchesWithDerivatives(const OpenSubdiv_BufferInterface *patch_coord,
                                   OpenSubdiv_BufferInterface *P,
                                   OpenSubdiv_BufferInterface *dPdu,
                                   OpenSubdiv_BufferInterface *dPdv)
@@ -674,7 +674,7 @@ class VolatileEvalOutput {
   }
 
   void evalPatchesFaceVarying(const int face_varying_channel,
-                              OpenSubdiv_BufferInterface *patch_coords,
+                              const OpenSubdiv_BufferInterface *patch_coords,
                               OpenSubdiv_BufferInterface *face_varying)
   {
     assert(face_varying_channel >= 0);
@@ -821,12 +821,12 @@ EvalOutputAPI::~EvalOutputAPI()
 }
 
 void EvalOutputAPI::evaluateFaceVarying(const int /*face_varying_channel*/,
-                                        OpenSubdiv_BufferInterface * /*patch_coords_buffer*/,
+                                        const OpenSubdiv_BufferInterface * /*patch_coords_buffer*/,
                                         OpenSubdiv_BufferInterface * /*face_varying*/)
 {
 }
 
-void EvalOutputAPI::evaluatePatchesLimit(OpenSubdiv_BufferInterface * /*patch_coords*/,
+void EvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_BufferInterface * /*patch_coords*/,
                                          OpenSubdiv_BufferInterface * /*P*/,
                                          OpenSubdiv_BufferInterface * /*dPdu*/,
                                          OpenSubdiv_BufferInterface * /*dPdv*/)
@@ -1186,7 +1186,7 @@ void GpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
 }
 
 void GpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
-                                           OpenSubdiv_BufferInterface *patch_coords_buffer,
+                                           const OpenSubdiv_BufferInterface *patch_coords_buffer,
                                            OpenSubdiv_BufferInterface *face_varying)
 {
   implementation_->evalPatchesFaceVarying(face_varying_channel, patch_coords_buffer, face_varying);
@@ -1209,7 +1209,7 @@ void GpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_c
   }
 }
 
-void GpuEvalOutputAPI::evaluatePatchesLimit(OpenSubdiv_BufferInterface *patch_coords,
+void GpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_BufferInterface *patch_coords,
                                             OpenSubdiv_BufferInterface *P,
                                             OpenSubdiv_BufferInterface *dPdu,
                                             OpenSubdiv_BufferInterface *dPdv)
