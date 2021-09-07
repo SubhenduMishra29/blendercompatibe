@@ -225,7 +225,6 @@ OsdPatchCoord GetPatchCoord(int face_index, float u, float v)
 // perhaps be optimized.
 
 #if defined(FVAR_EVALUATION)
-uniform int src_offset = 0;
 void evaluate_patches_limits(int patch_index, float u, float v, inout vec2 dst)
 {
   OsdPatchCoord coord = GetPatchCoord(patch_index, u, v);
