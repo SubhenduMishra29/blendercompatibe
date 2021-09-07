@@ -149,6 +149,10 @@ typedef struct GizmoGroup2D {
   float min[2];
   float max[2];
 
+  /* Sequencer uses matrix instead of values above. */
+  float seq_matrix[4][4];
+  bool use_seq_matrix;
+
   bool no_cage;
 
 } GizmoGroup2D;
@@ -205,15 +209,17 @@ static GizmoGroup2D *gizmogroup2d_init(wmGizmoGroup *gzgroup)
 /**
  * Calculates origin in view space, use with #gizmo2d_origin_to_region.
  */
-static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min, float *r_max)
+static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, GizmoGroup2D *ggd)
 {
   float min_buf[2], max_buf[2];
-  if (r_min == NULL) {
-    r_min = min_buf;
+  if (ggd->min == NULL) {
+    copy_v2_v2(ggd->min, min_buf);
   }
-  if (r_max == NULL) {
-    r_max = max_buf;
+  if (ggd->max == NULL) {
+    copy_v2_v2(ggd->max, max_buf);
   }
+
+  ggd->use_seq_matrix = false;
 
   ScrArea *area = CTX_wm_area(C);
   bool changed = false;
@@ -223,18 +229,55 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
     uint objects_len = 0;
     Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
         view_layer, NULL, &objects_len);
-    if (ED_uvedit_minmax_multi(scene, objects, objects_len, r_min, r_max)) {
+    if (ED_uvedit_minmax_multi(scene, objects, objects_len, ggd->min, ggd->max)) {
       changed = true;
     }
     MEM_freeN(objects);
   }
+  else if (area->spacetype == SPACE_SEQ) {
+    Scene *scene = CTX_data_scene(C);
+    ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
+    SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, 0);
+    SEQ_filter_selected_strips(strips);
 
-  if (changed == false) {
-    zero_v2(r_min);
-    zero_v2(r_max);
+    Sequence *seq = NULL;
+    SEQ_ITERATOR_FOREACH (seq, strips) {
+      ggd->max[0] = seq->strip->stripdata->orig_width / 2;
+      ggd->min[0] = -ggd->max[0];
+      ggd->max[1] = seq->strip->stripdata->orig_height / 2;
+      ggd->min[1] = -ggd->max[1];
+      const StripTransform *transform = seq->strip->transform;
+      const float pivot[2] = {transform->origin[0], transform->origin[1]};
+      float transform_matrix[3][3];
+      loc_rot_size_to_mat3(transform_matrix,
+                           (const float[]){transform->xofs, transform->yofs},
+                           0,
+                           (const float[]){transform->scale_x, transform->scale_y});
+      transform_pivot_set_m3(transform_matrix, pivot);
+      mul_m3_v2(transform_matrix, ggd->max);
+      mul_m3_v2(transform_matrix, ggd->min);
+
+      float seq_loc[3] = {transform->xofs, transform->yofs, 0};
+      float seq_rot[3][3];
+      unit_m3(seq_rot);
+      rotate_m3(seq_rot, transform->rotation);
+      float seq_scale[3] = {1, 1, 0};
+      float seq_mat_pivot[3] = {pivot[0], pivot[1], 0};
+      loc_rot_size_to_mat4(ggd->seq_matrix, seq_loc, seq_rot, seq_scale);
+      transform_pivot_set_m4(ggd->seq_matrix, seq_mat_pivot);
+
+      ggd->use_seq_matrix = true;
+    }
+
+    changed = SEQ_collection_len(strips) > 0;
+    SEQ_collection_free(strips);
   }
 
-  mid_v2_v2v2(r_center, r_min, r_max);
+  if (changed == false) {
+    zero_v2(ggd->min);
+    zero_v2(ggd->max);
+  }
+  mid_v2_v2v2(r_center, ggd->min, ggd->max);
   return changed;
 }
 
@@ -335,6 +378,12 @@ static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
   GizmoGroup2D *ggd = gizmogroup2d_init(gzgroup);
   gzgroup->customdata = ggd;
 
+  bool is_sequencer = false;
+  ScrArea *area = CTX_wm_area(C);
+  if (area->spacetype == SPACE_SEQ) {
+    is_sequencer = true;
+  }
+
   for (int i = 0; i < ARRAY_SIZE(ggd->translate_xy); i++) {
     wmGizmo *gz = ggd->translate_xy[i];
 
@@ -392,11 +441,8 @@ static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
     }
 
     RNA_boolean_set(ptr, "release_confirm", true);
-
-    ScrArea *area = CTX_wm_area(C);
-    if (area->spacetype == SPACE_SEQ) {
-      RNA_boolean_set(ptr, "sequencer_image", true);
-    }
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
   }
 
   {
@@ -407,6 +453,8 @@ static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
     /* assign operator */
     ptr = WM_gizmo_operator_set(ggd->cage, 0, ot_translate, NULL);
     RNA_boolean_set(ptr, "release_confirm", 1);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
 
     const bool constraint_x[3] = {1, 0, 0};
     const bool constraint_y[3] = {0, 1, 0};
@@ -416,35 +464,48 @@ static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
     PropertyRNA *prop_constraint_axis = RNA_struct_find_property(ptr, "constraint_axis");
     RNA_property_boolean_set_array(ptr, prop_constraint_axis, constraint_x);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MAX_X, ot_resize, NULL);
     RNA_property_boolean_set_array(ptr, prop_constraint_axis, constraint_x);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MIN_Y, ot_resize, NULL);
     RNA_property_boolean_set_array(ptr, prop_constraint_axis, constraint_y);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MAX_Y, ot_resize, NULL);
     RNA_property_boolean_set_array(ptr, prop_constraint_axis, constraint_y);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
 
     ptr = WM_gizmo_operator_set(
         ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MIN_Y, ot_resize, NULL);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(
         ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MAX_Y, ot_resize, NULL);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(
         ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MIN_Y, ot_resize, NULL);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(
         ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MAX_Y, ot_resize, NULL);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
     ptr = WM_gizmo_operator_set(ggd->cage, ED_GIZMO_CAGE2D_PART_ROTATE, ot_rotate, NULL);
     RNA_property_boolean_set(ptr, prop_release_confirm, true);
-
-    ScrArea *area = CTX_wm_area(C);
-    if (area->spacetype == SPACE_SEQ) {
-      RNA_boolean_set(ptr, "sequencer_image", true);
-    }
+    is_sequencer ? RNA_boolean_set(ptr, "sequencer_image", true) :
+                   RNA_boolean_set(ptr, "sequencer_image", false);
   }
 }
 
@@ -464,7 +525,7 @@ static void gizmo2d_xform_refresh(const bContext *C, wmGizmoGroup *gzgroup)
     has_select = gizmo2d_calc_center(C, origin);
   }
   else {
-    has_select = gizmo2d_calc_bounds(C, origin, ggd->min, ggd->max);
+    has_select = gizmo2d_calc_bounds(C, origin, ggd);
   }
   copy_v2_v2(ggd->origin, origin);
   bool show_cage = !ggd->no_cage && !equals_v2v2(ggd->min, ggd->max);
@@ -557,7 +618,12 @@ static void gizmo2d_xform_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
   }
 
   UI_view2d_view_to_region_m4(&region->v2d, ggd->cage->matrix_space);
-  WM_gizmo_set_matrix_offset_location(ggd->cage, origin_aa);
+  if (ggd->use_seq_matrix) {
+    copy_m4_m4(ggd->cage->matrix_basis, ggd->seq_matrix);
+  }
+  else {
+    WM_gizmo_set_matrix_offset_location(ggd->cage, origin_aa);
+  }
   ggd->cage->matrix_offset[0][0] = (ggd->max[0] - ggd->min[0]);
   ggd->cage->matrix_offset[1][1] = (ggd->max[1] - ggd->min[1]);
 }
