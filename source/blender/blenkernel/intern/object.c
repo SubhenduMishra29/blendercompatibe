@@ -324,9 +324,17 @@ static void object_free_data(ID *id)
 
 static void object_make_local(Main *bmain, ID *id, const int flags)
 {
+  if (!ID_IS_LINKED(id)) {
+    return;
+  }
+
   Object *ob = (Object *)id;
   const bool lib_local = (flags & LIB_ID_MAKELOCAL_FULL_LIBRARY) != 0;
   const bool clear_proxy = (flags & LIB_ID_MAKELOCAL_OBJECT_NO_PROXY_CLEARING) == 0;
+  const bool force_local = (flags & LIB_ID_MAKELOCAL_FORCE_LOCAL) != 0;
+  const bool force_copy = (flags & LIB_ID_MAKELOCAL_FORCE_COPY) != 0;
+  BLI_assert(force_copy == false || force_copy != force_local);
+
   bool is_local = false, is_lib = false;
 
   /* - only lib users: do nothing (unless force_local is set)
@@ -336,14 +344,12 @@ static void object_make_local(Main *bmain, ID *id, const int flags)
    * we always want to localize, and we skip remapping (done later).
    */
 
-  if (!ID_IS_LINKED(ob)) {
-    return;
+  if (!force_local && !force_copy) {
+    BKE_library_ID_test_usages(bmain, ob, &is_local, &is_lib);
   }
 
-  BKE_library_ID_test_usages(bmain, ob, &is_local, &is_lib);
-
-  if (lib_local || is_local) {
-    if (!is_lib) {
+  if (lib_local || is_local || force_copy || force_local) {
+    if (!is_lib || force_local) {
       BKE_lib_id_clear_library_data(bmain, &ob->id);
       BKE_lib_id_expand_local(bmain, &ob->id);
       if (clear_proxy) {
@@ -1984,8 +1990,7 @@ int BKE_object_visibility(const Object *ob, const int dag_eval_mode)
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
-  if (ob->runtime.geometry_set_eval != NULL &&
-      BKE_geometry_set_has_instances(ob->runtime.geometry_set_eval)) {
+  if (BKE_object_has_geometry_set_instances(ob)) {
     visibility |= OB_VISIBLE_INSTANCES;
   }
 
@@ -5766,4 +5771,17 @@ SubsurfModifierData *BKE_object_get_last_modifier_if_subsurf(Object *ob)
   }
 
   return (SubsurfModifierData *)(md);
+}
+
+void BKE_object_replace_data_on_shallow_copy(Object *ob, ID *new_data)
+{
+  ob->type = BKE_object_obdata_to_type(new_data);
+  ob->data = new_data;
+  ob->runtime.geometry_set_eval = NULL;
+  ob->runtime.data_eval = NULL;
+  ob->runtime.subsurf_data_eval = NULL;
+  if (ob->runtime.bb != NULL) {
+    ob->runtime.bb->flag |= BOUNDBOX_DIRTY;
+  }
+  ob->id.py_instance = NULL;
 }

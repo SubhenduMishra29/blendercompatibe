@@ -463,6 +463,8 @@ void BKE_object_modifiers_lib_link_common(void *userData,
 /* Return the last modifier as a subsurf modifier if it is one, NULL otherwise. */
 struct SubsurfModifierData *BKE_object_get_last_modifier_if_subsurf(struct Object *ob);
 
+void BKE_object_replace_data_on_shallow_copy(struct Object *ob, struct ID *new_data);
+
 struct PartEff;
 struct PartEff *BKE_object_do_version_give_parteff_245(struct Object *ob);
 

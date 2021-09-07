@@ -12,37 +12,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *
+ * Copyright 2021, Blender Foundation.
  */
 
 #pragma once
 
-/** \file
- * \ingroup bke
+#include "COM_Node.h"
+
+namespace blender::compositor {
+
+/**
+ * \brief PosterizeNode
+ * \ingroup Node
  */
+class PosterizeNode : public Node {
+ public:
+  PosterizeNode(bNode *editorNode);
+  void convertToOperations(NodeConverter &converter,
+                           const CompositorContext &context) const override;
+};
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct Collection;
-struct GeometrySet;
-struct Object;
-
-/* Each geometry component has a specific type. The type determines what kind of data the component
- * stores. Functions modifying a geometry will usually just modify a subset of the component types.
- */
-typedef enum GeometryComponentType {
-  GEO_COMPONENT_TYPE_MESH = 0,
-  GEO_COMPONENT_TYPE_POINT_CLOUD = 1,
-  GEO_COMPONENT_TYPE_INSTANCES = 2,
-  GEO_COMPONENT_TYPE_VOLUME = 3,
-  GEO_COMPONENT_TYPE_CURVE = 4,
-} GeometryComponentType;
-
-void BKE_geometry_set_free(struct GeometrySet *geometry_set);
-
-bool BKE_object_has_geometry_set_instances(const struct Object *ob);
-
-#ifdef __cplusplus
-}
-#endif
+}  // namespace blender::compositor
