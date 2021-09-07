@@ -247,10 +247,6 @@ static void extrude_boolean_draw_fn(const bContext *C, ARegion *region, void *da
   GPU_blend(GPU_BLEND_ALPHA);
   GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
 
-  GPU_face_culling(GPU_CULL_BACK);
-  GPU_batch_draw(extrudata->draw_data.batch_faces);
-
-  GPU_face_culling(GPU_CULL_FRONT);
   GPU_batch_draw(extrudata->draw_data.batch_faces);
 
   ED_view3d_polygon_offset(rv3d, 0.0f);
@@ -413,21 +409,19 @@ static void vbo_tag_dirty(GPUVertBuf *vbo)
 
 static void mesh_extrude_drawdata_update(ExtrudeBooleanData *extrudata, float distance)
 {
-  BMVert **v_ptr;
-  float(*v_co)[3];
-  if (distance < 0.0f) {
-    v_ptr = &extrudata->moving_verts[0];
-    v_co = &extrudata->draw_data.v_co[0];
-  }
-  else {
-    v_ptr = &extrudata->moving_verts[extrudata->moving_verts_len];
-    v_co = &extrudata->draw_data.v_co[extrudata->moving_verts_len];
-  }
+  BMVert **v_ptr = &extrudata->moving_verts[0];
+  float(*v_co)[3] = &extrudata->draw_data.v_co[0];
 
+  float vert_len = 2 * extrudata->moving_verts_len;
   float offset[3];
   mul_v3_v3fl(offset, extrudata->normal, distance);
-  for (int i = 0; i < extrudata->moving_verts_len; i++, v_ptr++) {
-    add_v3_v3v3(v_co[i], (*v_ptr)->co, offset);
+  for (int i = 0; i < vert_len; i++, v_ptr++) {
+    if ((distance < 0.0f) == (i < extrudata->moving_verts_len)) {
+      add_v3_v3v3(v_co[i], (*v_ptr)->co, offset);
+    }
+    else {
+      copy_v3_v3(v_co[i], (*v_ptr)->co);
+    }
   }
 
   vbo_tag_dirty(extrudata->draw_data.vbo);
