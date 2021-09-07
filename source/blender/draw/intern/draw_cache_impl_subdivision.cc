@@ -453,10 +453,10 @@ GPUVertBuf *draw_subdiv_build_origindex_buffer(int *vert_origindex, uint num_loo
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Utilities for GPUPatchMap.
+/** \name Utilities for DRWPatchMap.
  * \{ */
 
-static void gpu_patch_map_build(GPUPatchMap *gpu_patch_map, Subdiv *subdiv)
+static void draw_patch_map_build(DRWPatchMap *gpu_patch_map, Subdiv *subdiv)
 {
   GPUVertBuf *patch_map_handles = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format_ex(patch_map_handles, get_patch_handle_format(), GPU_USAGE_STATIC);
@@ -492,7 +492,7 @@ static void gpu_patch_map_build(GPUPatchMap *gpu_patch_map, Subdiv *subdiv)
   gpu_patch_map->patches_are_triangular = patches_are_triangular;
 }
 
-static void gpu_patch_map_free(GPUPatchMap *gpu_patch_map)
+static void draw_patch_map_free(DRWPatchMap *gpu_patch_map)
 {
   GPU_VERTBUF_DISCARD_SAFE(gpu_patch_map->patch_map_handles);
   GPU_VERTBUF_DISCARD_SAFE(gpu_patch_map->patch_map_quadtree);
@@ -540,7 +540,7 @@ static void draw_subdiv_cache_free(DRWSubdivCache *cache)
   cache->num_subdiv_quads = 0;
   draw_subdiv_free_edit_mode_cache(cache);
   draw_subdiv_cache_free_material_data(cache);
-  gpu_patch_map_free(&cache->gpu_patch_map);
+  draw_patch_map_free(&cache->gpu_patch_map);
   if (cache->ubo) {
     GPU_uniformbuf_free(cache->ubo);
     cache->ubo = nullptr;
@@ -885,7 +885,7 @@ static bool draw_subdiv_build_cache(DRWSubdivCache *cache,
   }
 
   /* Build buffers for the PatchMap. */
-  gpu_patch_map_build(&cache->gpu_patch_map, subdiv);
+  draw_patch_map_build(&cache->gpu_patch_map, subdiv);
 
   cache->face_ptex_offset = BKE_subdiv_face_ptex_offset_get(subdiv);
 
@@ -938,7 +938,7 @@ typedef struct DRWSubdivUboStorage {
   int src_offset;
   int dst_offset;
 
-  /* Parameters for the GPUPatchMap. */
+  /* Parameters for the DRWPatchMap. */
   int min_patch_face;
   int max_patch_face;
   int max_depth;

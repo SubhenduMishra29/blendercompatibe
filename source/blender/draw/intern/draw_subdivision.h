@@ -37,19 +37,19 @@ struct Subdiv;
 struct ToolSettings;
 
 /* -------------------------------------------------------------------- */
-/** \name GPUPatchMap is a GPU version of the OpenSubDiv PatchMap. The quad tree and the patch
+/** \name DRWPatchMap is a GPU version of the OpenSubDiv PatchMap. The quad tree and the patch
  * handles are copied to GPU buffers in order to lookup the right patch for a given set of patch
  * coordinates.
  * \{ */
 
-typedef struct GPUPatchMap {
+typedef struct DRWPatchMap {
   struct GPUVertBuf *patch_map_handles;
   struct GPUVertBuf *patch_map_quadtree;
   int min_patch_face;
   int max_patch_face;
   int max_depth;
   int patches_are_triangular;
-} GPUPatchMap;
+} DRWPatchMap;
 
 /** \} */
 
@@ -122,7 +122,7 @@ typedef struct DRWSubdivCache {
   int *mat_end;
   struct GPUVertBuf *polygon_mat_offset;
 
-  GPUPatchMap gpu_patch_map;
+  DRWPatchMap gpu_patch_map;
 
   /* UBO to store settings for the various compute shaders. */
   struct GPUUniformBuf *ubo;

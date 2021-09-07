@@ -5,7 +5,7 @@ layout(std140) uniform shader_data
   int src_offset;
   int dst_offset;
 
-  /* Parameters for the GPUPatchMap. */
+  /* Parameters for the DRWPatchMap. */
   int min_patch_face;
   int max_patch_face;
   int max_depth;
