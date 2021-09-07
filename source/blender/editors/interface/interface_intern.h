@@ -495,6 +495,11 @@ struct uiBlock {
 
   ListBase contexts;
 
+  /** A block contain store "views" on data-sets. Currently tree-views (#uiAbstractTreeView) only.
+   * Others are imaginable, e.g. table-views, grid-views, etc. These are stored here to support
+   * state that is persistent over redraws (e.g. collapsed tree-view items). */
+  ListBase views;
+
   char name[UI_MAX_NAME_STR];
 
   float winmat[4][4];
@@ -1280,6 +1285,9 @@ bool ui_jump_to_target_button_poll(struct bContext *C);
 
 /* interface_queries.c */
 void ui_interface_tag_script_reload_queries(void);
+
+/* interface_view.cc */
+void ui_block_free_views(struct uiBlock *block);
 
 #ifdef __cplusplus
 }

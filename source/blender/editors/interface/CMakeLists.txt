@@ -73,6 +73,7 @@ set(SRC
   interface_templates.c
   interface_undo.c
   interface_utils.c
+  interface_view.cc
   interface_widgets.c
   resources.c
   tree_view.cc

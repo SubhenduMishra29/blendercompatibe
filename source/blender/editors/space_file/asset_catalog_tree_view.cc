@@ -35,6 +35,7 @@
 #include "RNA_access.h"
 
 #include "UI_interface.h"
+#include "UI_interface.hh"
 #include "UI_resources.h"
 #include "UI_tree_view.hh"
 
@@ -109,9 +110,9 @@ void file_draw_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c
   bke::AssetLibrary *asset_library = reinterpret_cast<blender::bke::AssetLibrary *>(
       asset_library_c);
 
-  static std::unique_ptr<AssetCatalogTreeView> asset_tree_view = nullptr;
-  asset_tree_view = std::make_unique<AssetCatalogTreeView>(asset_library);
+  uiAbstractTreeView &tree_view = UI_block_add_view(
+      block, "asset catalog tree view", std::make_unique<AssetCatalogTreeView>(asset_library));
 
-  asset_tree_view->build_tree();
-  asset_tree_view->build_layout_from_tree(uiTreeViewLayoutBuilder(*block));
+  tree_view.build_tree();
+  tree_view.build_layout_from_tree(uiTreeViewLayoutBuilder(*block));
 }

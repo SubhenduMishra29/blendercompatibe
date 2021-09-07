@@ -3447,6 +3447,7 @@ void UI_block_free(const bContext *C, uiBlock *block)
   BLI_freelistN(&block->color_pickers.list);
 
   ui_block_free_button_groups(block);
+  ui_block_free_views(block);
 
   MEM_freeN(block);
 }
