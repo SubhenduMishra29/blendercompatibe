@@ -93,6 +93,8 @@ class uiTreeViewLayoutBuilder {
   uiTreeViewLayoutBuilder(uiBlock &);
 
   void build_row(uiAbstractTreeViewItem &item) const;
+  uiBlock &block() const;
+  uiLayout *current_layout() const;
 };
 
 class uiAbstractTreeView : public uiTreeViewItemContainer {

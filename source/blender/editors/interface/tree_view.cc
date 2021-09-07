@@ -59,7 +59,13 @@ uiAbstractTreeViewItem &uiTreeViewItemContainer::add_tree_item(
 
 void uiAbstractTreeView::build_layout_from_tree(const uiTreeViewLayoutBuilder &builder)
 {
+  uiLayout *prev_layout = builder.current_layout();
+
+  uiLayoutColumn(prev_layout, true);
+
   build_layout_from_tree_recursive(builder, *this);
+
+  UI_block_layout_set_current(&builder.block(), prev_layout);
 }
 
 void uiAbstractTreeView::build_layout_from_tree_recursive(const uiTreeViewLayoutBuilder &builder,
@@ -102,13 +108,22 @@ uiTreeViewLayoutBuilder::uiTreeViewLayoutBuilder(uiBlock &block) : block_(block)
 
 void uiTreeViewLayoutBuilder::build_row(uiAbstractTreeViewItem &item) const
 {
-  uiLayout *prev_layout = block_.curlayout;
-
-  uiLayout *row = uiLayoutRow(block_.curlayout, false);
+  uiLayout *prev_layout = current_layout();
+  uiLayout *row = uiLayoutRow(prev_layout, false);
 
   item.build_row(*row);
 
   UI_block_layout_set_current(&block_, prev_layout);
+}
+
+uiBlock &uiTreeViewLayoutBuilder::block() const
+{
+  return block_;
+}
+
+uiLayout *uiTreeViewLayoutBuilder::current_layout() const
+{
+  return block_.curlayout;
 }
 
 /* ---------------------------------------------------------------------- */
