@@ -722,6 +722,7 @@ enum {
 
   SEQ_CACHE_PREFETCH_ENABLE = (1 << 10),
   SEQ_CACHE_DISK_CACHE_ENABLE = (1 << 11),
+  SEQ_CACHE_STORE_THUMBNAIL = (1 << 12),
 };
 
 #ifdef __cplusplus
