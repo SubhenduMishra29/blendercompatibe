@@ -174,14 +174,14 @@ void main()
 
   uint number_of_vertices = get_vertex_count(coarse_polygon);
   if (number_of_vertices == 4) {
-    // Interpolate the src data.
+    /* Interpolate the src data. */
     v0 = read_vertex(loop_start + 0);
     v1 = read_vertex(loop_start + 1);
     v2 = read_vertex(loop_start + 2);
     v3 = read_vertex(loop_start + 3);
   }
   else {
-    // Interpolate the src data for the center.
+    /* Interpolate the src data for the center. */
     uint loop_end = loop_start + number_of_vertices - 1;
     Vertex center_value;
     clear(center_value);
@@ -192,7 +192,7 @@ void main()
       add_with_weight(center_value, read_vertex(l), weight);
     }
 
-    // Interpolate between the previous and next corner for the middle values for the edges.
+    /* Interpolate between the previous and next corner for the middle values for the edges. */
     uint patch_index = uint(patch_coords[start_loop_index].patch_index);
     uint current_coarse_corner = get_polygon_corner_index(coarse_polygon, patch_index);
     uint next_coarse_corner = (current_coarse_corner + 1) % number_of_vertices;
@@ -203,7 +203,7 @@ void main()
     v1 = average(v0, read_vertex(loop_start + next_coarse_corner));
     v3 = average(v0, read_vertex(loop_start + prev_coarse_corner));
 
-    // Interpolate between the current value, and the ones for the center and mid-edges.
+    /* Interpolate between the current value, and the ones for the center and mid-edges. */
     v2 = center_value;
   }
 

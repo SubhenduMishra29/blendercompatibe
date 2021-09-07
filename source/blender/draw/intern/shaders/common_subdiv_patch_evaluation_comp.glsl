@@ -2,14 +2,13 @@
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 layout(std430) buffer;
 
-// source and destination buffers
-
+/* Source buffer. */
 layout(binding = 0) buffer src_buffer
 {
   float srcVertexBuffer[];
 };
 
-// GPUPatchMap
+/* #DRWPatchMap */
 layout(binding = 1) readonly buffer inputPatchHandles
 {
   PatchHandle input_patch_handles[];
@@ -30,22 +29,23 @@ layout(binding = 4) readonly buffer inputVertOrigIndices
   int input_vert_origindex[];
 };
 
-// patch buffers
-
+/* Patch buffers. */
 layout(binding = 5) buffer patchArray_buffer
 {
   OsdPatchArray patchArrayBuffer[];
 };
+
 layout(binding = 6) buffer patchIndex_buffer
 {
   int patchIndexBuffer[];
 };
+
 layout(binding = 7) buffer patchParam_buffer
 {
   OsdPatchParam patchParamBuffer[];
 };
 
-  // Outputs
+/* Output buffer(s). */
 
 #if defined(FVAR_EVALUATION)
 layout(binding = 8) writeonly buffer outputFVarData
@@ -58,10 +58,12 @@ layout(binding = 8) writeonly buffer outputVertices
 {
   vec3 output_verts[];
 };
+
 layout(binding = 9) writeonly buffer outputNormals
 {
   vec3 output_nors[];
 };
+
 layout(std430, binding = 10) writeonly buffer outputFdotsIndices
 {
   uint output_indices[];
@@ -100,9 +102,10 @@ OsdPatchParam GetPatchParam(int patchIndex)
   return patchParamBuffer[patchIndex];
 }
 
-// ------------------------------------------------------------------------------
-// Patch Coordinate lookup. Return an OsdPatchCoord for the given patch_index and uvs.
-// This code is a port of the OpenSubdiv PatchMap lookup code.
+/* ------------------------------------------------------------------------------
+ * Patch Coordinate lookup. Return an OsdPatchCoord for the given patch_index and uvs.
+ * This code is a port of the OpenSubdiv PatchMap lookup code.
+ */
 
 PatchHandle bogus_patch_handle()
 {
@@ -219,10 +222,11 @@ OsdPatchCoord GetPatchCoord(int face_index, float u, float v)
   return coord;
 }
 
-// ------------------------------------------------------------------------------
-// Patch evaluation. Note that the 1st and 2nd derivatives are always computed, although we
-// only return and use the 1st derivatives if adaptive patches are used. This could
-// perhaps be optimized.
+/* ------------------------------------------------------------------------------
+ * Patch evaluation. Note that the 1st and 2nd derivatives are always computed, although we
+ * only return and use the 1st derivatives if adaptive patches are used. This could
+ * perhaps be optimized.
+ */
 
 #if defined(FVAR_EVALUATION)
 void evaluate_patches_limits(int patch_index, float u, float v, inout vec2 dst)
@@ -272,8 +276,9 @@ void evaluate_patches_limits(
 }
 #endif
 
-// ------------------------------------------------------------------------------
-// Entry point.
+/* ------------------------------------------------------------------------------
+ * Entry point.
+ */
 
 #if defined(FVAR_EVALUATION)
 void main()
@@ -329,7 +334,7 @@ void main()
 #  if defined(LIMIT_NORMALS)
     vec3 nor = normalize(cross(du, dv));
 #  else
-    // This will be computed later.
+    /* This will be computed later. */
     vec3 nor = vec3(0.0);
 #  endif
 

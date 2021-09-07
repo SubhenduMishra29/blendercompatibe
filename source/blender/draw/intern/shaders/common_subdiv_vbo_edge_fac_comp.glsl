@@ -38,7 +38,7 @@ void write_vec4(uint index, vec4 edge_facs)
 #endif
 }
 
-// From extract_mesh_vbo_edge_fac.cc, keep in sync!
+/* From extract_mesh_vbo_edge_fac.cc, keep in sync! */
 float loop_edge_factor_get(vec3 f_no, vec3 v_co, vec3 v_no, vec3 v_next_co)
 {
   vec3 evec = v_next_co - v_co;
