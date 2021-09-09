@@ -672,15 +672,9 @@ static GPUVertBuf *convertPatchArraysBufferToGPUVertBuf(const PatchArrayVector &
   /* No need to allocate on the host as well, so let's copy directly to the device. */
   GPU_vertbuf_init_build_on_device(
       buffer, get_patch_array_format(), static_cast<uint>(patch_arrays.size()));
-
   GPU_vertbuf_use(buffer);
-
-  const size_t patch_array_size = sizeof(PatchArray);
-  for (size_t i = 0; i < patch_arrays.size(); ++i) {
-    GPU_vertbuf_update_sub(
-        buffer, static_cast<uint>(patch_array_size * i), patch_array_size, &patch_arrays[i]);
-  }
-
+  GPU_vertbuf_update_sub(
+      buffer, 0, static_cast<uint>(patch_arrays.size() * sizeof(PatchArray)), patch_arrays.data());
   return buffer;
 }
 
