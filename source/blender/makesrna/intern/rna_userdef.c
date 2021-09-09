@@ -6059,6 +6059,13 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem preview_type_items[] = {
+      {USER_FILE_PREVIEW_NONE, "NONE", 0, "None", "Do not create blend previews"},
+      {USER_FILE_PREVIEW_SCREENSHOT, "SCREENSHOT", 0, "Screenshot", "Capture the entire window"},
+      {USER_FILE_PREVIEW_CAMERA, "CAMERA", 0, "Camera View", "Workbench render of scene"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "PreferencesFilePaths", NULL);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_nested(brna, srna, "Preferences");
@@ -6214,12 +6221,9 @@ static void rna_def_userdef_filepaths(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Recent Files", "Maximum number of recently opened files to remember");
 
-  prop = RNA_def_property(srna, "use_save_preview_images", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flag", USER_SAVE_PREVIEWS);
-  RNA_def_property_ui_text(prop,
-                           "Save Preview Images",
-                           "Enables automatic saving of preview images in the .blend file "
-                           "as well as a thumbnail of the .blend");
+  prop = RNA_def_property(srna, "file_preview_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, preview_type_items);
+  RNA_def_property_ui_text(prop, "File Preview Type", "What type of blend preview to create");
 
   rna_def_userdef_filepaths_asset_library(brna);
 
@@ -6296,6 +6300,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "use_override_templates", 1);
   RNA_def_property_ui_text(
       prop, "Override Templates", "Enable library override template in the python API");
+
+  prop = RNA_def_property(srna, "use_geometry_nodes_fields", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "use_geometry_nodes_fields", 1);
+  RNA_def_property_ui_text(prop, "Geometry Nodes Fields", "Enable field nodes in geometry nodes");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
