@@ -238,7 +238,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     /* Happens on bad topology, but also on empty input mesh. */
     return result;
   }
-
   const bool use_clnors = (smd->flags & eSubsurfModifierFlag_UseCustomNormals) &&
                           (mesh->flag & ME_AUTOSMOOTH) &&
                           CustomData_has_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL);
