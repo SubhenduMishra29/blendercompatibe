@@ -154,7 +154,6 @@ void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding);
 
 GPUVertBuf *GPU_vertbuf_wrap(uint64_t handle);
 
-/* XXX do not use. */
 void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, const void *data);
 
 /* Metrics */
