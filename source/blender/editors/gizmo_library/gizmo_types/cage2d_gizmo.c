@@ -909,6 +909,7 @@ static int gizmo_cage2d_test_select(bContext *C, wmGizmo *gz, const int mval[2])
 
 typedef struct RectTransformInteraction {
   float orig_mouse[2];
+  float orig_mouse_pivot_comp[2];
   float orig_matrix_offset[4][4];
   float orig_matrix_final_no_offset[4][4];
   Dial *dial;
@@ -931,6 +932,14 @@ static int gizmo_cage2d_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
           C, gz, (const float[2]){UNPACK2(event->mval)}, 2, false, data->orig_mouse) == 0) {
     zero_v2(data->orig_mouse);
   }
+
+  float pivot[2];
+  zero_v2(pivot);
+  if (RNA_property_is_set(gz->ptr, RNA_struct_find_property(gz->ptr, "pivot"))) {
+    RNA_float_get_array(gz->ptr, "pivot", pivot);
+  }
+  copy_v2_v2(data->orig_mouse_pivot_comp, data->orig_mouse);
+  sub_v2_v2(data->orig_mouse_pivot_comp, pivot);
 
   gz->interaction_data = data;
 
@@ -1001,8 +1010,20 @@ static int gizmo_cage2d_modal(bContext *C,
 
       data->dial = BLI_dial_init(test_co, FLT_EPSILON);
 
-      MUL_V2_V3_M4_FINAL(test_co, data->orig_mouse);
+      MUL_V2_V3_M4_FINAL(test_co, data->orig_mouse_pivot_comp);
       BLI_dial_angle(data->dial, test_co);
+    }
+
+    float pivot[3];
+    if (RNA_property_is_set(
+            gz->ptr,
+            RNA_struct_find_property(gz->ptr, "pivot"))) {  // XXX this can be easily 0-1 range
+      zero_v3(pivot);
+      RNA_float_get_array(gz->ptr, "pivot", pivot);
+      sub_v2_v2(point_local, pivot);
+    }
+    else {
+      copy_v3_v3(pivot, data->orig_matrix_offset[3]);
     }
 
     /* rotate */
@@ -1011,19 +1032,15 @@ static int gizmo_cage2d_modal(bContext *C,
 
     float matrix_space_inv[4][4];
     float matrix_rotate[4][4];
-    float pivot[3];
-
-    copy_v3_v3(pivot, data->orig_matrix_offset[3]);
-
     invert_m4_m4(matrix_space_inv, gz->matrix_space);
-
     unit_m4(matrix_rotate);
     mul_m4_m4m4(matrix_rotate, matrix_rotate, matrix_space_inv);
     rotate_m4(matrix_rotate, 'Z', -angle);
-    mul_m4_m4m4(matrix_rotate, matrix_rotate, gz->matrix_space);
+    mul_m4_m4m4(matrix_rotate, matrix_rotate, gz->matrix_space);  // XXX M x inv(M) == Mid???
 
     zero_v3(matrix_rotate[3]);
     transform_pivot_set_m4(matrix_rotate, pivot);
+    printf("%f\n", RAD2DEG(angle));
 
     mul_m4_m4m4(gz->matrix_offset, matrix_rotate, data->orig_matrix_offset);
 
@@ -1189,6 +1206,9 @@ static void GIZMO_GT_cage_2d(wmGizmoType *gzt)
   static float unit_v2[2] = {1.0f, 1.0f};
   RNA_def_float_vector(
       gzt->srna, "dimensions", 2, unit_v2, 0, FLT_MAX, "Dimensions", "", 0.0f, FLT_MAX);
+  static float pivot_v2[2] = {0.0f, 0.0f};
+  RNA_def_float_vector(
+      gzt->srna, "pivot", 2, pivot_v2, 0, FLT_MAX, "Pivot Point", "", 0.0f, FLT_MAX);
   RNA_def_enum_flag(gzt->srna, "transform", rna_enum_transform, 0, "Transform Options", "");
   RNA_def_enum(gzt->srna,
                "draw_style",

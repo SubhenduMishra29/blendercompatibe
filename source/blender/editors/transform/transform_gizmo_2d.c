@@ -151,6 +151,7 @@ typedef struct GizmoGroup2D {
 
   /* Sequencer uses matrix instead of values above. */
   float seq_matrix[4][4];
+  float seq_center_point[2];
   bool use_seq_matrix;
 
   bool no_cage;
@@ -242,29 +243,36 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, GizmoGroup2D
 
     Sequence *seq = NULL;
     SEQ_ITERATOR_FOREACH (seq, strips) {
-      ggd->max[0] = seq->strip->stripdata->orig_width / 2;
-      ggd->min[0] = -ggd->max[0];
-      ggd->max[1] = seq->strip->stripdata->orig_height / 2;
-      ggd->min[1] = -ggd->max[1];
       const StripTransform *transform = seq->strip->transform;
-      const float pivot[2] = {transform->origin[0], transform->origin[1]};
-      float transform_matrix[3][3];
-      loc_rot_size_to_mat3(transform_matrix,
-                           (const float[]){transform->xofs, transform->yofs},
-                           0,
-                           (const float[]){transform->scale_x, transform->scale_y});
-      transform_pivot_set_m3(transform_matrix, pivot);
-      mul_m3_v2(transform_matrix, ggd->max);
-      mul_m3_v2(transform_matrix, ggd->min);
 
       float seq_loc[3] = {transform->xofs, transform->yofs, 0};
       float seq_rot[3][3];
       unit_m3(seq_rot);
       rotate_m3(seq_rot, transform->rotation);
-      float seq_scale[3] = {1, 1, 0};
+
+      // float seq_scale[3] = {1, 1, 1};
+      float seq_scale[3] = {transform->scale_x, transform->scale_y, 1};
+
+      float pivot[2] = {transform->origin[0], transform->origin[1]};
       float seq_mat_pivot[3] = {pivot[0], pivot[1], 0};
       loc_rot_size_to_mat4(ggd->seq_matrix, seq_loc, seq_rot, seq_scale);
       transform_pivot_set_m4(ggd->seq_matrix, seq_mat_pivot);
+
+      RNA_float_set_array(ggd->cage->ptr, "pivot", pivot);
+
+      add_v2_v2(pivot, (const float[]){transform->xofs, transform->yofs});
+      copy_v2_v2(ggd->seq_center_point, pivot);  // xxx this is bit awkward, that I need to specify
+                                                 // pivot again, this time in sequencer space
+
+      /*ggd->max[0] = transform->scale_x * seq->strip->stripdata->orig_width / 2;
+      ggd->min[0] = -ggd->max[0];
+      ggd->max[1] = transform->scale_y * seq->strip->stripdata->orig_height / 2;
+      ggd->min[1] = -ggd->max[1];*/
+
+      ggd->max[0] = seq->strip->stripdata->orig_width / 2;
+      ggd->min[0] = -ggd->max[0];
+      ggd->max[1] = seq->strip->stripdata->orig_height / 2;
+      ggd->min[1] = -ggd->max[1];
 
       ggd->use_seq_matrix = true;
     }
@@ -567,7 +575,12 @@ static void gizmo2d_xform_refresh(const bContext *C, wmGizmoGroup *gzgroup)
       float mid[2];
       const float *min = ggd->min;
       const float *max = ggd->max;
-      mid_v2_v2v2(mid, min, max);
+      if (ggd->use_seq_matrix) {
+        copy_v2_v2(mid, ggd->seq_center_point);
+      }
+      else {
+        mid_v2_v2v2(mid, min, max);
+      }
 
       gzop = WM_gizmo_operator_get(ggd->cage, ED_GIZMO_CAGE2D_PART_SCALE_MIN_X);
       PropertyRNA *prop_center_override = RNA_struct_find_property(&gzop->ptr, "center_override");

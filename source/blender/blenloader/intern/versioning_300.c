@@ -631,7 +631,6 @@ static bNodeSocket *do_version_replace_float_size_with_vector(bNodeTree *ntree,
   return new_socket;
 }
 
-<<<<<<< HEAD
 static bool geometry_node_is_293_legacy(const short node_type)
 {
   switch (node_type) {
@@ -765,376 +764,284 @@ static void version_geometry_nodes_change_legacy_names(bNodeTree *ntree)
                    temp_idname + strlen("GeometryNode"));
     }
   }
+}
+static bool seq_transform_origin_set(Sequence *seq, void *UNUSED(user_data))
+{
+  StripTransform *transform = seq->strip->transform;
+  transform->origin[0] = transform->origin[1] = 0.0f;
+  return true;
+}
 
-  static bool seq_transform_origin_set(Sequence * seq, void *UNUSED(user_data))
-  {
-    StripTransform *transform = seq->strip->transform;
-    transform->origin[0] = transform->origin[1] = 0.0f;
+/* NOLINTNEXTLINE: readability-function-size */
+void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
+{
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 1)) {
+    /* Set default value for the new bisect_threshold parameter in the mirror modifier. */
+    if (!DNA_struct_elem_find(fd->filesdna, "MirrorModifierData", "float", "bisect_threshold")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+          if (md->type == eModifierType_Mirror) {
+            MirrorModifierData *mmd = (MirrorModifierData *)md;
+            /* This was the previous hard-coded value. */
+            mmd->bisect_threshold = 0.001f;
+          }
+        }
+      }
+    }
+    /* Grease Pencil: Set default value for dilate pixels. */
+    if (!DNA_struct_elem_find(fd->filesdna, "BrushGpencilSettings", "int", "dilate_pixels")) {
+      LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+        if (brush->gpencil_settings) {
+          brush->gpencil_settings->dilate_pixels = 1;
+        }
+      }
+    }
   }
 
-  /* NOLINTNEXTLINE: readability-function-size */
-  void blo_do_versions_300(FileData * fd, Library * UNUSED(lib), Main * bmain)
-  {
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 1)) {
-      /* Set default value for the new bisect_threshold parameter in the mirror modifier. */
-      if (!DNA_struct_elem_find(fd->filesdna, "MirrorModifierData", "float", "bisect_threshold")) {
-        LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-          LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-            if (md->type == eModifierType_Mirror) {
-              MirrorModifierData *mmd = (MirrorModifierData *)md;
-              /* This was the previous hard-coded value. */
-              mmd->bisect_threshold = 0.001f;
-            }
-          }
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 2)) {
+    version_switch_node_input_prefix(bmain);
+
+    if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "float", "custom_scale_xyz[3]")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        if (ob->pose == NULL) {
+          continue;
+        }
+        LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+          copy_v3_fl(pchan->custom_scale_xyz, pchan->custom_scale);
         }
       }
-      /* Grease Pencil: Set default value for dilate pixels. */
-      if (!DNA_struct_elem_find(fd->filesdna, "BrushGpencilSettings", "int", "dilate_pixels")) {
-        LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-          if (brush->gpencil_settings) {
-            brush->gpencil_settings->dilate_pixels = 1;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 4)) {
+    /* Add a properties sidebar to the spreadsheet editor. */
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SPREADSHEET) {
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
+            ARegion *new_sidebar = do_versions_add_region_if_not_found(
+                regionbase, RGN_TYPE_UI, "sidebar for spreadsheet", RGN_TYPE_FOOTER);
+            if (new_sidebar != NULL) {
+              new_sidebar->alignment = RGN_ALIGN_RIGHT;
+              new_sidebar->flag |= RGN_FLAG_HIDDEN;
+            }
           }
         }
       }
     }
 
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 2)) {
-      version_switch_node_input_prefix(bmain);
-
-      if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "float", "custom_scale_xyz[3]")) {
-        LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-          if (ob->pose == NULL) {
-            continue;
+    /* Enable spreadsheet filtering in old files without row filters. */
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SPREADSHEET) {
+            SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)sl;
+            sspreadsheet->filter_flag |= SPREADSHEET_FILTER_ENABLE;
           }
+        }
+      }
+    }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_node_socket_name(ntree, GEO_NODE_BOUNDING_BOX, "Mesh", "Bounding Box");
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    if (!DNA_struct_elem_find(fd->filesdna, "FileAssetSelectParams", "int", "import_type")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_FILE) {
+              SpaceFile *sfile = (SpaceFile *)sl;
+              if (sfile->asset_params) {
+                sfile->asset_params->import_type = FILE_ASSET_IMPORT_APPEND;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /* Initialize length-wise scale B-Bone settings. */
+    if (!DNA_struct_elem_find(fd->filesdna, "Bone", "int", "bbone_flag")) {
+      /* Update armature data and pose channels. */
+      LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+        do_version_bones_bbone_len_scale(&arm->bonebase);
+      }
+
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        if (ob->pose) {
           LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-            copy_v3_fl(pchan->custom_scale_xyz, pchan->custom_scale);
+            copy_v3_fl3(pchan->scale_in, pchan->scale_in_x, 1.0f, pchan->scale_in_z);
+            copy_v3_fl3(pchan->scale_out, pchan->scale_out_x, 1.0f, pchan->scale_out_z);
           }
         }
       }
+
+      /* Update action curves and drivers. */
+      LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+        LISTBASE_FOREACH_MUTABLE (FCurve *, fcu, &act->curves) {
+          do_version_bbone_len_scale_fcurve_fix(fcu);
+        }
+      }
+
+      BKE_animdata_main_cb(bmain, do_version_bbone_len_scale_animdata_cb, NULL);
     }
+  }
 
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 4)) {
-      /* Add a properties sidebar to the spreadsheet editor. */
-      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-            if (sl->spacetype == SPACE_SPREADSHEET) {
-              ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
-                                                                     &sl->regionbase;
-              ARegion *new_sidebar = do_versions_add_region_if_not_found(
-                  regionbase, RGN_TYPE_UI, "sidebar for spreadsheet", RGN_TYPE_FOOTER);
-              if (new_sidebar != NULL) {
-                new_sidebar->alignment = RGN_ALIGN_RIGHT;
-                new_sidebar->flag |= RGN_FLAG_HIDDEN;
-              }
-            }
-          }
-        }
-      }
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 5)) {
+    /* Add a dataset sidebar to the spreadsheet editor. */
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SPREADSHEET) {
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
+            ARegion *spreadsheet_dataset_region = do_versions_add_region_if_not_found(
+                regionbase, RGN_TYPE_CHANNELS, "spreadsheet dataset region", RGN_TYPE_FOOTER);
 
-      /* Enable spreadsheet filtering in old files without row filters. */
-      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-            if (sl->spacetype == SPACE_SPREADSHEET) {
-              SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)sl;
-              sspreadsheet->filter_flag |= SPREADSHEET_FILTER_ENABLE;
-            }
-          }
-        }
-      }
-
-      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-        if (ntree->type == NTREE_GEOMETRY) {
-          version_node_socket_name(ntree, GEO_NODE_BOUNDING_BOX, "Mesh", "Bounding Box");
-        }
-      }
-      FOREACH_NODETREE_END;
-
-      if (!DNA_struct_elem_find(fd->filesdna, "FileAssetSelectParams", "int", "import_type")) {
-        LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-          LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-            LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-              if (sl->spacetype == SPACE_FILE) {
-                SpaceFile *sfile = (SpaceFile *)sl;
-                if (sfile->asset_params) {
-                  sfile->asset_params->import_type = FILE_ASSET_IMPORT_APPEND;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      /* Initialize length-wise scale B-Bone settings. */
-      if (!DNA_struct_elem_find(fd->filesdna, "Bone", "int", "bbone_flag")) {
-        /* Update armature data and pose channels. */
-        LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
-          do_version_bones_bbone_len_scale(&arm->bonebase);
-        }
-
-        LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-          if (ob->pose) {
-            LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-              copy_v3_fl3(pchan->scale_in, pchan->scale_in_x, 1.0f, pchan->scale_in_z);
-              copy_v3_fl3(pchan->scale_out, pchan->scale_out_x, 1.0f, pchan->scale_out_z);
-            }
-          }
-        }
-
-        /* Update action curves and drivers. */
-        LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
-          LISTBASE_FOREACH_MUTABLE (FCurve *, fcu, &act->curves) {
-            do_version_bbone_len_scale_fcurve_fix(fcu);
-          }
-        }
-
-        BKE_animdata_main_cb(bmain, do_version_bbone_len_scale_animdata_cb, NULL);
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 5)) {
-      /* Add a dataset sidebar to the spreadsheet editor. */
-      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-            if (sl->spacetype == SPACE_SPREADSHEET) {
-              ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
-                                                                     &sl->regionbase;
-              ARegion *spreadsheet_dataset_region = do_versions_add_region_if_not_found(
-                  regionbase, RGN_TYPE_CHANNELS, "spreadsheet dataset region", RGN_TYPE_FOOTER);
-
-              if (spreadsheet_dataset_region) {
-                spreadsheet_dataset_region->alignment = RGN_ALIGN_LEFT;
-                spreadsheet_dataset_region->v2d.scroll = (V2D_SCROLL_RIGHT | V2D_SCROLL_BOTTOM);
-              }
+            if (spreadsheet_dataset_region) {
+              spreadsheet_dataset_region->alignment = RGN_ALIGN_LEFT;
+              spreadsheet_dataset_region->v2d.scroll = (V2D_SCROLL_RIGHT | V2D_SCROLL_BOTTOM);
             }
           }
         }
       }
     }
+  }
 
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 6)) {
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 6)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
+          /* Disable View Layers filter. */
+          if (space->spacetype == SPACE_OUTLINER) {
+            SpaceOutliner *space_outliner = (SpaceOutliner *)space;
+            space_outliner->filter |= SO_FILTER_NO_VIEW_LAYERS;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 7)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      ToolSettings *tool_settings = scene->toolsettings;
+      tool_settings->snap_flag |= SCE_SNAP_SEQ;
+      short snap_mode = tool_settings->snap_mode;
+      short snap_node_mode = tool_settings->snap_node_mode;
+      short snap_uv_mode = tool_settings->snap_uv_mode;
+      tool_settings->snap_mode &= ~((1 << 4) | (1 << 5) | (1 << 6));
+      tool_settings->snap_node_mode &= ~((1 << 5) | (1 << 6));
+      tool_settings->snap_uv_mode &= ~(1 << 4);
+      if (snap_mode & (1 << 4)) {
+        tool_settings->snap_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+      }
+      if (snap_mode & (1 << 5)) {
+        tool_settings->snap_mode |= (1 << 4); /* SCE_SNAP_MODE_EDGE_MIDPOINT */
+      }
+      if (snap_mode & (1 << 6)) {
+        tool_settings->snap_mode |= (1 << 5); /* SCE_SNAP_MODE_EDGE_PERPENDICULAR */
+      }
+      if (snap_node_mode & (1 << 5)) {
+        tool_settings->snap_node_mode |= (1 << 0); /* SCE_SNAP_MODE_NODE_X */
+      }
+      if (snap_node_mode & (1 << 6)) {
+        tool_settings->snap_node_mode |= (1 << 1); /* SCE_SNAP_MODE_NODE_Y */
+      }
+      if (snap_uv_mode & (1 << 4)) {
+        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+      }
+
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->snap_mode = SEQ_SNAP_TO_STRIPS | SEQ_SNAP_TO_CURRENT_FRAME |
+                                           SEQ_SNAP_TO_STRIP_HOLD;
+      sequencer_tool_settings->snap_distance = 15;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 8)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->master_collection != NULL) {
+        BLI_strncpy(scene->master_collection->id.name + 2,
+                    BKE_SCENE_COLLECTION_NAME,
+                    sizeof(scene->master_collection->id.name) - 2);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 9)) {
+    /* Fix a bug where reordering FCurves and bActionGroups could cause some corruption. Just
+     * reconstruct all the action groups & ensure that the FCurves of a group are continuously
+     * stored (i.e. not mixed with other groups) to be sure. See T89435. */
+    LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
+      BKE_action_groups_reconstruct(act);
+    }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == GEO_NODE_MESH_SUBDIVIDE) {
+            strcpy(node->idname, "GeometryNodeMeshSubdivide");
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 10)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      ToolSettings *tool_settings = scene->toolsettings;
+      if (tool_settings->snap_uv_mode & (1 << 4)) {
+        tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
+        tool_settings->snap_uv_mode &= ~(1 << 4);
+      }
+    }
+    LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+      if (!(mat->lineart.flags & LRT_MATERIAL_CUSTOM_OCCLUSION_EFFECTIVENESS)) {
+        mat->lineart.mat_occlusion = 1;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 13)) {
+    /* Convert Surface Deform to sparse-capable bind structure. */
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "SurfaceDeformModifierData", "int", "num_mesh_verts")) {
+      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+        LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+          if (md->type == eModifierType_SurfaceDeform) {
+            SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)md;
+            if (smd->num_bind_verts && smd->verts) {
+              smd->num_mesh_verts = smd->num_bind_verts;
+
+              for (unsigned int i = 0; i < smd->num_bind_verts; i++) {
+                smd->verts[i].vertex_idx = i;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library")) {
+      LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
+        BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
+      }
+    }
+
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
         LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
           LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
-            /* Disable View Layers filter. */
-            if (space->spacetype == SPACE_OUTLINER) {
-              SpaceOutliner *space_outliner = (SpaceOutliner *)space;
-              space_outliner->filter |= SO_FILTER_NO_VIEW_LAYERS;
-            }
-          }
-        }
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 7)) {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        ToolSettings *tool_settings = scene->toolsettings;
-        tool_settings->snap_flag |= SCE_SNAP_SEQ;
-        short snap_mode = tool_settings->snap_mode;
-        short snap_node_mode = tool_settings->snap_node_mode;
-        short snap_uv_mode = tool_settings->snap_uv_mode;
-        tool_settings->snap_mode &= ~((1 << 4) | (1 << 5) | (1 << 6));
-        tool_settings->snap_node_mode &= ~((1 << 5) | (1 << 6));
-        tool_settings->snap_uv_mode &= ~(1 << 4);
-        if (snap_mode & (1 << 4)) {
-          tool_settings->snap_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
-        }
-        if (snap_mode & (1 << 5)) {
-          tool_settings->snap_mode |= (1 << 4); /* SCE_SNAP_MODE_EDGE_MIDPOINT */
-        }
-        if (snap_mode & (1 << 6)) {
-          tool_settings->snap_mode |= (1 << 5); /* SCE_SNAP_MODE_EDGE_PERPENDICULAR */
-        }
-        if (snap_node_mode & (1 << 5)) {
-          tool_settings->snap_node_mode |= (1 << 0); /* SCE_SNAP_MODE_NODE_X */
-        }
-        if (snap_node_mode & (1 << 6)) {
-          tool_settings->snap_node_mode |= (1 << 1); /* SCE_SNAP_MODE_NODE_Y */
-        }
-        if (snap_uv_mode & (1 << 4)) {
-          tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
-        }
-
-        SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
-        sequencer_tool_settings->snap_mode = SEQ_SNAP_TO_STRIPS | SEQ_SNAP_TO_CURRENT_FRAME |
-                                             SEQ_SNAP_TO_STRIP_HOLD;
-        sequencer_tool_settings->snap_distance = 15;
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 8)) {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        if (scene->master_collection != NULL) {
-          BLI_strncpy(scene->master_collection->id.name + 2,
-                      BKE_SCENE_COLLECTION_NAME,
-                      sizeof(scene->master_collection->id.name) - 2);
-        }
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 9)) {
-      /* Fix a bug where reordering FCurves and bActionGroups could cause some corruption. Just
-       * reconstruct all the action groups & ensure that the FCurves of a group are continuously
-       * stored (i.e. not mixed with other groups) to be sure. See T89435. */
-      LISTBASE_FOREACH (bAction *, act, &bmain->actions) {
-        BKE_action_groups_reconstruct(act);
-      }
-
-      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-        if (ntree->type == NTREE_GEOMETRY) {
-          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-            if (node->type == GEO_NODE_MESH_SUBDIVIDE) {
-              strcpy(node->idname, "GeometryNodeMeshSubdivide");
-            }
-          }
-        }
-      }
-      FOREACH_NODETREE_END;
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 10)) {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        ToolSettings *tool_settings = scene->toolsettings;
-        if (tool_settings->snap_uv_mode & (1 << 4)) {
-          tool_settings->snap_uv_mode |= (1 << 6); /* SCE_SNAP_MODE_INCREMENT */
-          tool_settings->snap_uv_mode &= ~(1 << 4);
-        }
-      }
-      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
-        if (!(mat->lineart.flags & LRT_MATERIAL_CUSTOM_OCCLUSION_EFFECTIVENESS)) {
-          mat->lineart.mat_occlusion = 1;
-        }
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 13)) {
-      /* Convert Surface Deform to sparse-capable bind structure. */
-      if (!DNA_struct_elem_find(
-              fd->filesdna, "SurfaceDeformModifierData", "int", "num_mesh_verts")) {
-        LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-          LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-            if (md->type == eModifierType_SurfaceDeform) {
-              SurfaceDeformModifierData *smd = (SurfaceDeformModifierData *)md;
-              if (smd->num_bind_verts && smd->verts) {
-                smd->num_mesh_verts = smd->num_bind_verts;
-
-                for (unsigned int i = 0; i < smd->num_bind_verts; i++) {
-                  smd->verts[i].vertex_idx = i;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      if (!DNA_struct_elem_find(
-              fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library")) {
-        LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
-          BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
-        }
-      }
-
-      if (!DNA_struct_elem_find(fd->filesdna,
-                                "FileAssetSelectParams",
-                                "AssetLibraryReference",
-                                "asset_library_ref")) {
-        LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-          LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-            LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
-              if (space->spacetype == SPACE_FILE) {
-                SpaceFile *sfile = (SpaceFile *)space;
-                if (sfile->browse_mode != FILE_BROWSE_MODE_ASSETS) {
-                  continue;
-                }
-                BKE_asset_library_reference_init_default(&sfile->asset_params->asset_library_ref);
-              }
-            }
-          }
-        }
-      }
-
-      /* Set default 2D annotation placement. */
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        ToolSettings *ts = scene->toolsettings;
-        ts->gpencil_v2d_align = GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR;
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 14)) {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        ToolSettings *tool_settings = scene->toolsettings;
-        tool_settings->snap_flag &= ~SCE_SNAP_SEQ;
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 15)) {
-      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-            if (sl->spacetype == SPACE_SEQ) {
-              SpaceSeq *sseq = (SpaceSeq *)sl;
-              sseq->flag |= SEQ_SHOW_GRID;
-            }
-          }
-        }
-      }
-    }
-
-    /* Font names were copied directly into ID names, see: T90417. */
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 16)) {
-      ListBase *lb = which_libbase(bmain, ID_VF);
-      BKE_main_id_repair_duplicate_names_listbase(lb);
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
-      if (!DNA_struct_elem_find(
-              fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size")) {
-        LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-          LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-            LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-              if (sl->spacetype == SPACE_VIEW3D) {
-                View3D *v3d = (View3D *)sl;
-                v3d->overlay.normals_constant_screen_size = 7.0f;
-              }
-            }
-          }
-        }
-      }
-
-      /* Fix SplineIK constraint's inconsistency between binding points array and its stored size.
-       */
-      LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-        /* NOTE: Objects should never have SplineIK constraint, so no need to apply this fix on
-         * their constraints. */
-        if (ob->pose) {
-          LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
-            do_version_constraints_spline_ik_joint_bindings(&pchan->constraints);
-          }
-        }
-      }
-    }
-
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 18)) {
-      if (!DNA_struct_elem_find(
-              fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
-        LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
-          BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
-        }
-      }
-
-      if (!DNA_struct_elem_find(fd->filesdna,
-                                "FileAssetSelectParams",
-                                "AssetLibraryReference",
-                                "asset_library_ref")) {
-        LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
-          LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-            LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
-              if (space->spacetype != SPACE_FILE) {
-                continue;
-              }
-
+            if (space->spacetype == SPACE_FILE) {
               SpaceFile *sfile = (SpaceFile *)space;
               if (sfile->browse_mode != FILE_BROWSE_MODE_ASSETS) {
                 continue;
@@ -1144,118 +1051,207 @@ static void version_geometry_nodes_change_legacy_names(bNodeTree *ntree)
           }
         }
       }
-
-      /* Previously, only text ending with `.py` would run, apply this logic
-       * to existing files so text that happens to have the "Register" enabled
-       * doesn't suddenly start running code on startup that was previously ignored. */
-      LISTBASE_FOREACH (Text *, text, &bmain->texts) {
-        if ((text->flags & TXT_ISSCRIPT) && !BLI_path_extension_check(text->id.name + 2, ".py")) {
-          text->flags &= ~TXT_ISSCRIPT;
-        }
-      }
     }
 
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 19)) {
-      /* Add node storage for subdivision surface node. */
-      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-        if (ntree->type == NTREE_GEOMETRY) {
-          LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-            if (node->type == GEO_NODE_SUBDIVISION_SURFACE) {
-              if (node->storage == NULL) {
-                NodeGeometrySubdivisionSurface *data = MEM_callocN(
-                    sizeof(NodeGeometrySubdivisionSurface), __func__);
-                data->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES;
-                data->boundary_smooth = SUBSURF_BOUNDARY_SMOOTH_ALL;
-                node->storage = data;
-              }
-            }
-          }
-        }
-      }
-      FOREACH_NODETREE_END;
-
-      /* Disable Fade Inactive Overlay by default as it is redundant after introducing flash on
-       * mode transfer. */
-      for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
-        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
-          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-            if (sl->spacetype == SPACE_VIEW3D) {
-              View3D *v3d = (View3D *)sl;
-              v3d->overlay.flag &= ~V3D_OVERLAY_FADE_INACTIVE;
-            }
-          }
-        }
-      }
-
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
-        sequencer_tool_settings->overlap_mode = SEQ_OVERLAP_SHUFFLE;
-      }
+    /* Set default 2D annotation placement. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      ToolSettings *ts = scene->toolsettings;
+      ts->gpencil_v2d_align = GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR;
     }
+  }
 
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 20)) {
-      /* Use new vector Size socket in Cube Mesh Primitive node. */
-      LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-        if (ntree->type != NTREE_GEOMETRY) {
-          continue;
-        }
-
-        LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
-          if (link->tonode->type == GEO_NODE_MESH_PRIMITIVE_CUBE) {
-            bNode *node = link->tonode;
-            if (STREQ(link->tosock->identifier, "Size") && link->tosock->type == SOCK_FLOAT) {
-              bNode *link_fromnode = link->fromnode;
-              bNodeSocket *link_fromsock = link->fromsock;
-              bNodeSocket *socket = link->tosock;
-              BLI_assert(socket);
-
-              bNodeSocket *new_socket = do_version_replace_float_size_with_vector(
-                  ntree, node, socket);
-              nodeAddLink(ntree, link_fromnode, link_fromsock, node, new_socket);
-            }
-          }
-        }
-
-        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-          if (node->type != GEO_NODE_MESH_PRIMITIVE_CUBE) {
-            continue;
-          }
-          LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
-            if (STREQ(socket->identifier, "Size") && (socket->type == SOCK_FLOAT)) {
-              do_version_replace_float_size_with_vector(ntree, node, socket);
-              break;
-            }
-          }
-        }
-      }
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 14)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      ToolSettings *tool_settings = scene->toolsettings;
+      tool_settings->snap_flag &= ~SCE_SNAP_SEQ;
     }
+  }
 
-    if (!MAIN_VERSION_ATLEAST(bmain, 300, 22)) {
-      LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-        if (ntree->type == NTREE_GEOMETRY) {
-          version_geometry_nodes_change_legacy_names(ntree);
-        }
-      }
-    }
-
-    /**
-     * Versioning code until next subversion bump goes here.
-     *
-     * \note Be sure to check when bumping the version:
-     * - "versioning_userdef.c", #blo_do_versions_userdef
-     * - "versioning_userdef.c", #do_versions_theme
-     *
-     * \note Keep this message at the bottom of the function.
-     */
-    {
-      /* Keep this block, even when empty. */
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
-        sequencer_tool_settings->pivot_point = V3D_AROUND_LOCAL_ORIGINS;
-
-        if (scene->ed != NULL) {
-          SEQ_for_each_callback(&scene->ed->seqbase, seq_transform_origin_set, NULL);
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 15)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SEQ) {
+            SpaceSeq *sseq = (SpaceSeq *)sl;
+            sseq->flag |= SEQ_SHOW_GRID;
+          }
         }
       }
     }
   }
+
+  /* Font names were copied directly into ID names, see: T90417. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 16)) {
+    ListBase *lb = which_libbase(bmain, ID_VF);
+    BKE_main_id_repair_duplicate_names_listbase(lb);
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "View3DOverlay", "float", "normals_constant_screen_size")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              v3d->overlay.normals_constant_screen_size = 7.0f;
+            }
+          }
+        }
+      }
+    }
+
+    /* Fix SplineIK constraint's inconsistency between binding points array and its stored size.
+     */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      /* NOTE: Objects should never have SplineIK constraint, so no need to apply this fix on
+       * their constraints. */
+      if (ob->pose) {
+        LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+          do_version_constraints_spline_ik_joint_bindings(&pchan->constraints);
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 18)) {
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library_ref")) {
+      LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
+        BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
+      }
+    }
+
+    if (!DNA_struct_elem_find(
+            fd->filesdna, "FileAssetSelectParams", "AssetLibraryReference", "asset_library_ref")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
+            if (space->spacetype != SPACE_FILE) {
+              continue;
+            }
+
+            SpaceFile *sfile = (SpaceFile *)space;
+            if (sfile->browse_mode != FILE_BROWSE_MODE_ASSETS) {
+              continue;
+            }
+            BKE_asset_library_reference_init_default(&sfile->asset_params->asset_library_ref);
+          }
+        }
+      }
+    }
+
+    /* Previously, only text ending with `.py` would run, apply this logic
+     * to existing files so text that happens to have the "Register" enabled
+     * doesn't suddenly start running code on startup that was previously ignored. */
+    LISTBASE_FOREACH (Text *, text, &bmain->texts) {
+      if ((text->flags & TXT_ISSCRIPT) && !BLI_path_extension_check(text->id.name + 2, ".py")) {
+        text->flags &= ~TXT_ISSCRIPT;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 19)) {
+    /* Add node storage for subdivision surface node. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == GEO_NODE_SUBDIVISION_SURFACE) {
+            if (node->storage == NULL) {
+              NodeGeometrySubdivisionSurface *data = MEM_callocN(
+                  sizeof(NodeGeometrySubdivisionSurface), __func__);
+              data->uv_smooth = SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES;
+              data->boundary_smooth = SUBSURF_BOUNDARY_SMOOTH_ALL;
+              node->storage = data;
+            }
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    /* Disable Fade Inactive Overlay by default as it is redundant after introducing flash on
+     * mode transfer. */
+    for (bScreen *screen = bmain->screens.first; screen; screen = screen->id.next) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = (View3D *)sl;
+            v3d->overlay.flag &= ~V3D_OVERLAY_FADE_INACTIVE;
+          }
+        }
+      }
+    }
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->overlap_mode = SEQ_OVERLAP_SHUFFLE;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 20)) {
+    /* Use new vector Size socket in Cube Mesh Primitive node. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+
+      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
+        if (link->tonode->type == GEO_NODE_MESH_PRIMITIVE_CUBE) {
+          bNode *node = link->tonode;
+          if (STREQ(link->tosock->identifier, "Size") && link->tosock->type == SOCK_FLOAT) {
+            bNode *link_fromnode = link->fromnode;
+            bNodeSocket *link_fromsock = link->fromsock;
+            bNodeSocket *socket = link->tosock;
+            BLI_assert(socket);
+
+            bNodeSocket *new_socket = do_version_replace_float_size_with_vector(
+                ntree, node, socket);
+            nodeAddLink(ntree, link_fromnode, link_fromsock, node, new_socket);
+          }
+        }
+      }
+
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != GEO_NODE_MESH_PRIMITIVE_CUBE) {
+          continue;
+        }
+        LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+          if (STREQ(socket->identifier, "Size") && (socket->type == SOCK_FLOAT)) {
+            do_version_replace_float_size_with_vector(ntree, node, socket);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 22)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_geometry_nodes_change_legacy_names(ntree);
+      }
+    }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - "versioning_userdef.c", #blo_do_versions_userdef
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->pivot_point = V3D_AROUND_CENTER_MEDIAN;
+
+      if (scene->ed != NULL) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_transform_origin_set, NULL);
+      }
+    }
+  }
+}
