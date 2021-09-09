@@ -68,8 +68,7 @@ class VertBuf {
   void upload(void);
   virtual void bind_as_ssbo(uint binding) = 0;
 
-  virtual uint get_device_ptr(void) const = 0;
-  virtual void wrap_device_ptr(uint device_ptr) = 0;
+  virtual void wrap_handle(uint64_t handle) = 0;
 
   VertBuf *duplicate(void);
 

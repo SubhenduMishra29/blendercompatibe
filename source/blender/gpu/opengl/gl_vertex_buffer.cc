@@ -49,6 +49,10 @@ void GLVertBuf::resize_data()
 
 void GLVertBuf::release_data()
 {
+  if (is_wrapper_) {
+    return;
+  }
+
   if (vbo_id_ != 0) {
     GLContext::buf_free(vbo_id_);
     vbo_id_ = 0;
@@ -137,11 +141,12 @@ void *GLVertBuf::unmap(const void *mapped_data) const
   return result;
 }
 
-void GLVertBuf::wrap_device_ptr(uint device_ptr)
+void GLVertBuf::wrap_handle(uint64_t handle)
 {
-  /* Setting a device_ptr to 0 means to not free the buffer, as we do might not own it. */
-  BLI_assert(vbo_id_ == 0 || device_ptr == 0);
-  vbo_id_ = device_ptr;
+  BLI_assert(vbo_id_ == 0);
+  BLI_assert(glIsBuffer(static_cast<uint>(handle)));
+  is_wrapper_ = true;
+  vbo_id_ = static_cast<uint>(handle);
   /* We assume the data is already on the device, so no need to allocate or send it. */
   flag = GPU_VERTBUF_DATA_UPLOADED;
 }

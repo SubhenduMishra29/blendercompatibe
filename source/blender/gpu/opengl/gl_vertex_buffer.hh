@@ -39,6 +39,9 @@ class GLVertBuf : public VertBuf {
  private:
   /** OpenGL buffer handle. Init on first upload. Immutable after that. */
   GLuint vbo_id_ = 0;
+  /** Defines whether the buffer handle is wrapped by this GLVertBuf, i.e. we do not own it and
+   * should free it. */
+  bool is_wrapper_ = false;
   /** Size on the GPU. */
   size_t vbo_size_ = 0;
 
@@ -50,12 +53,7 @@ class GLVertBuf : public VertBuf {
   const void *read() const override;
   void *unmap(const void *mapped_data) const override;
 
-  uint get_device_ptr() const override
-  {
-    return vbo_id_;
-  }
-
-  void wrap_device_ptr(uint device_ptr) override;
+  void wrap_handle(uint64_t handle) override;
 
  protected:
   void acquire_data(void) override;

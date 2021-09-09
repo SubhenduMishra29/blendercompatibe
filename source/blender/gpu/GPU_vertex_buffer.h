@@ -154,8 +154,7 @@ GPUUsageType GPU_vertbuf_get_usage(GPUVertBuf *verts);
 void GPU_vertbuf_use(GPUVertBuf *);
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding);
 
-uint GPU_vertbuf_get_device_ptr(GPUVertBuf *verts);
-void GPU_vertbuf_wrap_device_ptr(GPUVertBuf *verts, uint device_ptr);
+GPUVertBuf *GPU_vertbuf_wrap(uint64_t handle);
 
 /* XXX do not use. */
 void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, const void *data);

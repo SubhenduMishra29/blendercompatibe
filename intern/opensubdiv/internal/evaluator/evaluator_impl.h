@@ -28,7 +28,7 @@
 
 #include "internal/base/memory.h"
 
-struct OpenSubdiv_BufferInterface;
+struct GPUVertBuf;
 struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 
@@ -116,10 +116,6 @@ class EvalOutputAPI {
                                    float face_v,
                                    float face_varying[2]) = 0;
 
-  virtual void evaluateFaceVarying(const int face_varying_channel,
-                                   const OpenSubdiv_BufferInterface *patch_coords_buffer,
-                                   OpenSubdiv_BufferInterface *face_varying);
-
   // Batched evaluation of multiple input coordinates.
 
   // Evaluate given ptex face at given bilinear coordinate.
@@ -132,14 +128,9 @@ class EvalOutputAPI {
                                     float *dPdu,
                                     float *dPdv) = 0;
 
-  virtual void evaluatePatchesLimit(const OpenSubdiv_BufferInterface *patch_coords,
-                                    OpenSubdiv_BufferInterface *P,
-                                    OpenSubdiv_BufferInterface *dPdu,
-                                    OpenSubdiv_BufferInterface *dPdv);
-
   // Fill the output buffers and variables with data from the PatchMap.
-  virtual void getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
-                           OpenSubdiv_BufferInterface *patch_map_quadtree,
+  virtual void getPatchMap(GPUVertBuf **patch_map_handles,
+                           GPUVertBuf **patch_map_quadtree,
                            int *min_patch_face,
                            int *max_patch_face,
                            int *max_depth,
@@ -147,38 +138,34 @@ class EvalOutputAPI {
 
   // Wrap the patch arrays buffer used by OpenSubDiv for the source data with the given buffer
   // interface.
-  virtual void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer);
+  virtual GPUVertBuf *getPatchArraysBuffer();
 
   // Wrap the patch index buffer used by OpenSubDiv for the source data with the given buffer
   // interface.
-  virtual void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer);
+  virtual GPUVertBuf *getWrappedPatchIndexBuffer();
 
   // Wrap the patch param buffer used by OpenSubDiv for the source data with the given buffer
   // interface.
-  virtual void wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer);
+  virtual GPUVertBuf *getWrappedPatchParamBuffer();
 
   // Wrap the buffer used by OpenSubDiv for the source data with the given buffer interface.
-  virtual void wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer);
+  virtual GPUVertBuf *getWrappedSrcBuffer();
 
   // Wrap the patch arrays buffer used by OpenSubDiv for the face varying channel with the given
   // buffer interface.
-  virtual void wrapFVarPatchArraysBuffer(const int face_varying_channel,
-                                         OpenSubdiv_BufferInterface *patch_arrays_buffer);
+  virtual GPUVertBuf *getFVarPatchArraysBuffer(const int face_varying_channel);
 
   // Wrap the patch index buffer used by OpenSubDiv for the face varying channel with the given
   // buffer interface.
-  virtual void wrapFVarPatchIndexBuffer(const int face_varying_channel,
-                                        OpenSubdiv_BufferInterface *patch_index_buffer);
+  virtual GPUVertBuf *getWrappedFVarPatchIndexBuffer(const int face_varying_channel);
 
   // Wrap the patch param buffer used by OpenSubDiv for the face varying channel with the given
   // buffer interface.
-  virtual void wrapFVarPatchParamBuffer(const int face_varying_channel,
-                                        OpenSubdiv_BufferInterface *patch_param_buffer);
+  virtual GPUVertBuf *getWrappedFVarPatchParamBuffer(const int face_varying_channel);
 
   // Wrap thebuffer used by OpenSubDiv for the face varying channel with the given buffer
   // interface.
-  virtual void wrapFVarSrcBuffer(const int face_varying_channel,
-                                 OpenSubdiv_BufferInterface *src_buffer);
+  virtual GPUVertBuf *getWrappedFVarSrcBuffer(const int face_varying_channel, int *buffer_offset);
 
  protected:
   PatchMap *patch_map_;
@@ -312,47 +299,34 @@ class GpuEvalOutputAPI final : public EvalOutputAPI {
                            float face_v,
                            float face_varying[2]) override;
 
-  void evaluateFaceVarying(const int face_varying_channel,
-                           const OpenSubdiv_BufferInterface *patch_coords_buffer,
-                           OpenSubdiv_BufferInterface *face_varying) override;
-
   void evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
                             const int num_patch_coords,
                             float *P,
                             float *dPdu,
                             float *dPdv) override;
 
-  void evaluatePatchesLimit(const OpenSubdiv_BufferInterface *patch_coords,
-                            OpenSubdiv_BufferInterface *P,
-                            OpenSubdiv_BufferInterface *dPdu,
-                            OpenSubdiv_BufferInterface *dPdv) override;
-
-  void getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
-                   OpenSubdiv_BufferInterface *patch_map_quadtree,
+  void getPatchMap(GPUVertBuf **patch_map_handles,
+                   GPUVertBuf **patch_map_quadtree,
                    int *min_patch_face,
                    int *max_patch_face,
                    int *max_depth,
                    int *patches_are_triangular) override;
 
-  void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer) override;
+  GPUVertBuf *getPatchArraysBuffer() override;
 
-  void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer) override;
+  GPUVertBuf *getWrappedPatchIndexBuffer() override;
 
-  void wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer) override;
+  GPUVertBuf *getWrappedPatchParamBuffer() override;
 
-  void wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer) override;
+  GPUVertBuf *getWrappedSrcBuffer() override;
 
-  void wrapFVarPatchArraysBuffer(const int face_varying_channel,
-                                 OpenSubdiv_BufferInterface *patch_arrays_buffer) override;
+  GPUVertBuf *getFVarPatchArraysBuffer(const int face_varying_channel) override;
 
-  void wrapFVarPatchIndexBuffer(const int face_varying_channel,
-                                OpenSubdiv_BufferInterface *patch_index_buffer) override;
+  GPUVertBuf *getWrappedFVarPatchIndexBuffer(const int face_varying_channel) override;
 
-  void wrapFVarPatchParamBuffer(const int face_varying_channel,
-                                OpenSubdiv_BufferInterface *patch_param_buffer) override;
+  GPUVertBuf *getWrappedFVarPatchParamBuffer(const int face_varying_channel) override;
 
-  void wrapFVarSrcBuffer(const int face_varying_channel,
-                         OpenSubdiv_BufferInterface *src_buffer) override;
+  GPUVertBuf *getWrappedFVarSrcBuffer(const int face_varying_channel, int *buffer_offset) override;
 
  protected:
   GpuEvalOutput *implementation_;

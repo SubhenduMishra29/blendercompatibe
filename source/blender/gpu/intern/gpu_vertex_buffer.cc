@@ -350,14 +350,11 @@ void GPU_vertbuf_use(GPUVertBuf *verts)
   unwrap(verts)->upload();
 }
 
-uint GPU_vertbuf_get_device_ptr(GPUVertBuf *verts)
+GPUVertBuf *GPU_vertbuf_wrap(uint64_t handle)
 {
-  return unwrap(verts)->get_device_ptr();
-}
-
-void GPU_vertbuf_wrap_device_ptr(GPUVertBuf *verts, uint device_ptr)
-{
-  unwrap(verts)->wrap_device_ptr(device_ptr);
+  GPUVertBuf *verts = GPU_vertbuf_calloc();
+  unwrap(verts)->wrap_handle(handle);
+  return verts;
 }
 
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)

@@ -114,15 +114,6 @@ void evaluatePatchesLimit(OpenSubdiv_Evaluator *evaluator,
       patch_coords, num_patch_coords, P, dPdu, dPdv);
 }
 
-void evaluatePatchesLimitFromBuffer(OpenSubdiv_Evaluator *evaluator,
-                                    const OpenSubdiv_BufferInterface *patch_coords,
-                                    OpenSubdiv_BufferInterface *P,
-                                    OpenSubdiv_BufferInterface *dPdu,
-                                    OpenSubdiv_BufferInterface *dPdv)
-{
-  evaluator->impl->eval_output->evaluatePatchesLimit(patch_coords, P, dPdu, dPdv);
-}
-
 void evaluateVarying(OpenSubdiv_Evaluator *evaluator,
                      const int ptex_face_index,
                      float face_u,
@@ -143,18 +134,9 @@ void evaluateFaceVarying(OpenSubdiv_Evaluator *evaluator,
       face_varying_channel, ptex_face_index, face_u, face_v, face_varying);
 }
 
-void evaluateFaceVaryingFromBuffer(OpenSubdiv_Evaluator *evaluator,
-                                   const int face_varying_channel,
-                                   const OpenSubdiv_BufferInterface *patch_coords_buffer,
-                                   OpenSubdiv_BufferInterface *face_varying_buffer)
-{
-  evaluator->impl->eval_output->evaluateFaceVarying(
-      face_varying_channel, patch_coords_buffer, face_varying_buffer);
-}
-
 void getPatchMap(struct OpenSubdiv_Evaluator *evaluator,
-                 struct OpenSubdiv_BufferInterface *patch_map_handles,
-                 struct OpenSubdiv_BufferInterface *patch_map_quadtree,
+                 struct GPUVertBuf **patch_map_handles,
+                 struct GPUVertBuf **patch_map_quadtree,
                  int *min_patch_face,
                  int *max_patch_face,
                  int *max_depth,
@@ -168,57 +150,50 @@ void getPatchMap(struct OpenSubdiv_Evaluator *evaluator,
                                             patches_are_triangular);
 }
 
-void wrapPatchArraysBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                           struct OpenSubdiv_BufferInterface *patch_array_buffer)
+GPUVertBuf *getPatchArraysBuffer(struct OpenSubdiv_Evaluator *evaluator)
 {
-  evaluator->impl->eval_output->wrapPatchArraysBuffer(patch_array_buffer);
+  return evaluator->impl->eval_output->getPatchArraysBuffer();
 }
 
-void wrapPatchIndexBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                          struct OpenSubdiv_BufferInterface *patch_index_buffer)
+GPUVertBuf *getWrappedPatchIndexBuffer(struct OpenSubdiv_Evaluator *evaluator)
 {
-  evaluator->impl->eval_output->wrapPatchIndexBuffer(patch_index_buffer);
+  return evaluator->impl->eval_output->getWrappedPatchIndexBuffer();
 }
 
-void wrapPatchParamBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                          struct OpenSubdiv_BufferInterface *patch_param_buffer)
+GPUVertBuf *getWrappedPatchParamBuffer(struct OpenSubdiv_Evaluator *evaluator)
 {
-  evaluator->impl->eval_output->wrapPatchParamBuffer(patch_param_buffer);
+  return evaluator->impl->eval_output->getWrappedPatchParamBuffer();
 }
 
-void wrapSrcBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                   struct OpenSubdiv_BufferInterface *src_buffer)
+GPUVertBuf *getWrappedSrcBuffer(struct OpenSubdiv_Evaluator *evaluator)
 {
-  evaluator->impl->eval_output->wrapSrcBuffer(src_buffer);
+  return evaluator->impl->eval_output->getWrappedSrcBuffer();
 }
 
-void wrapFVarPatchArraysBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                               const int face_varying_channel,
-                               struct OpenSubdiv_BufferInterface *patch_array_buffer)
+GPUVertBuf *getFVarPatchArraysBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                                     const int face_varying_channel)
 {
-  evaluator->impl->eval_output->wrapFVarPatchArraysBuffer(face_varying_channel,
-                                                          patch_array_buffer);
+  return evaluator->impl->eval_output->getFVarPatchArraysBuffer(face_varying_channel);
 }
 
-void wrapFVarPatchIndexBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                              const int face_varying_channel,
-                              struct OpenSubdiv_BufferInterface *patch_index_buffer)
+GPUVertBuf *getWrappedFVarPatchIndexBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                                           const int face_varying_channel)
 {
-  evaluator->impl->eval_output->wrapFVarPatchIndexBuffer(face_varying_channel, patch_index_buffer);
+  return evaluator->impl->eval_output->getWrappedFVarPatchIndexBuffer(face_varying_channel);
 }
 
-void wrapFVarPatchParamBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                              const int face_varying_channel,
-                              struct OpenSubdiv_BufferInterface *patch_param_buffer)
+GPUVertBuf *getWrappedFVarPatchParamBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                                           const int face_varying_channel)
 {
-  evaluator->impl->eval_output->wrapFVarPatchParamBuffer(face_varying_channel, patch_param_buffer);
+  return evaluator->impl->eval_output->getWrappedFVarPatchParamBuffer(face_varying_channel);
 }
 
-void wrapFVarSrcBuffer(struct OpenSubdiv_Evaluator *evaluator,
-                       const int face_varying_channel,
-                       struct OpenSubdiv_BufferInterface *src_buffer)
+GPUVertBuf *getWrappedFVarSrcBuffer(struct OpenSubdiv_Evaluator *evaluator,
+                                    const int face_varying_channel,
+                                    int *buffer_offset)
 {
-  evaluator->impl->eval_output->wrapFVarSrcBuffer(face_varying_channel, src_buffer);
+  return evaluator->impl->eval_output->getWrappedFVarSrcBuffer(face_varying_channel,
+                                                               buffer_offset);
 }
 
 void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
@@ -238,21 +213,18 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
   evaluator->evaluateFaceVarying = evaluateFaceVarying;
 
   evaluator->evaluatePatchesLimit = evaluatePatchesLimit;
-  evaluator->evaluatePatchesLimitFromBuffer = evaluatePatchesLimitFromBuffer;
-
-  evaluator->evaluateFaceVaryingFromBuffer = evaluateFaceVaryingFromBuffer;
 
   evaluator->getPatchMap = getPatchMap;
 
-  evaluator->wrapPatchArraysBuffer = wrapPatchArraysBuffer;
-  evaluator->wrapPatchIndexBuffer = wrapPatchIndexBuffer;
-  evaluator->wrapPatchParamBuffer = wrapPatchParamBuffer;
-  evaluator->wrapSrcBuffer = wrapSrcBuffer;
+  evaluator->getPatchArraysBuffer = getPatchArraysBuffer;
+  evaluator->getWrappedPatchIndexBuffer = getWrappedPatchIndexBuffer;
+  evaluator->getWrappedPatchParamBuffer = getWrappedPatchParamBuffer;
+  evaluator->getWrappedSrcBuffer = getWrappedSrcBuffer;
 
-  evaluator->wrapFVarPatchArraysBuffer = wrapFVarPatchArraysBuffer;
-  evaluator->wrapFVarPatchIndexBuffer = wrapFVarPatchIndexBuffer;
-  evaluator->wrapFVarPatchParamBuffer = wrapFVarPatchParamBuffer;
-  evaluator->wrapFVarSrcBuffer = wrapFVarSrcBuffer;
+  evaluator->getFVarPatchArraysBuffer = getFVarPatchArraysBuffer;
+  evaluator->getWrappedFVarPatchIndexBuffer = getWrappedFVarPatchIndexBuffer;
+  evaluator->getWrappedFVarPatchParamBuffer = getWrappedFVarPatchParamBuffer;
+  evaluator->getWrappedFVarSrcBuffer = getWrappedFVarSrcBuffer;
 }
 
 }  // namespace
