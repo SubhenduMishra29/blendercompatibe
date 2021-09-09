@@ -38,7 +38,7 @@ TEST(AssetLibraryTest, load_and_free_c_functions)
 
   /* Load the asset library. */
   const fs::path library_path = test_files_dir / "asset_library";
-  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.c_str());
+  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.string().c_str());
   ASSERT_NE(nullptr, library_c_ptr);
 
   /* Check that it can be cast to the C++ type and has a Catalog Service. */
@@ -66,7 +66,7 @@ TEST(AssetLibraryTest, load_nonexistent_directory)
 
   /* Load the asset library. */
   const fs::path library_path = test_files_dir / "asset_library/this/subdir/does/not/exist";
-  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.c_str());
+  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.string().c_str());
   ASSERT_NE(nullptr, library_c_ptr);
 
   /* Check that it can be cast to the C++ type and has a Catalog Service. */
