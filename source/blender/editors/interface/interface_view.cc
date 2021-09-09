@@ -38,10 +38,11 @@ struct uiViewLink : public Link {
   using TreeViewPtr = std::unique_ptr<uiAbstractTreeView>;
 
   std::string idname;
+  /* Note: Can't use std::get() on this until minimum macOS deployment target is 10.14. */
   std::variant<TreeViewPtr> view;
 };
 
-uiAbstractTreeView &UI_block_add_view(uiBlock *block,
+uiAbstractTreeView *UI_block_add_view(uiBlock *block,
                                       StringRef idname,
                                       std::unique_ptr<uiAbstractTreeView> tree_view)
 {
@@ -51,7 +52,8 @@ uiAbstractTreeView &UI_block_add_view(uiBlock *block,
   view_link->view = std::move(tree_view);
   view_link->idname = idname;
 
-  return *std::get<uiViewLink::TreeViewPtr>(view_link->view);
+  auto view = std::get_if<uiViewLink::TreeViewPtr>(&view_link->view);
+  return view ? view->get() : nullptr;
 }
 
 void ui_block_free_views(uiBlock *block)

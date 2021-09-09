@@ -29,7 +29,7 @@ namespace blender::ui {
 class uiAbstractTreeView;
 }
 
-blender::ui::uiAbstractTreeView &UI_block_add_view(
+blender::ui::uiAbstractTreeView *UI_block_add_view(
     uiBlock *block,
     blender::StringRef idname,
     std::unique_ptr<blender::ui::uiAbstractTreeView> tree_view);
