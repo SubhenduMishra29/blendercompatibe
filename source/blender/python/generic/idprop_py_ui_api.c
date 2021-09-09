@@ -183,7 +183,7 @@ static bool idprop_ui_data_update_int(IDProperty *idprop, PyObject *args, PyObje
     }
   }
 
-  /* Write back to the proeprty's UI data. */
+  /* Write back to the property's UI data. */
   IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
   *ui_data_orig = ui_data;
   return true;
@@ -310,7 +310,7 @@ static bool idprop_ui_data_update_float(IDProperty *idprop, PyObject *args, PyOb
     }
   }
 
-  /* Write back to the proeprty's UI data. */
+  /* Write back to the property's UI data. */
   IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
   *ui_data_orig = ui_data;
   return true;
@@ -348,7 +348,7 @@ static bool idprop_ui_data_update_string(IDProperty *idprop, PyObject *args, PyO
     ui_data.default_value = BLI_strdup(default_value);
   }
 
-  /* Write back to the proeprty's UI data. */
+  /* Write back to the property's UI data. */
   IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
   *ui_data_orig = ui_data;
   return true;
@@ -376,7 +376,7 @@ static bool idprop_ui_data_update_id(IDProperty *idprop, PyObject *args, PyObjec
     return false;
   }
 
-  /* Write back to the proeprty's UI data. */
+  /* Write back to the property's UI data. */
   IDP_ui_data_free_unique_contents(&ui_data_orig->base, IDP_ui_data_type(idprop), &ui_data.base);
   *ui_data_orig = ui_data;
   return true;
@@ -468,7 +468,7 @@ static void idprop_ui_data_to_dict_int(IDProperty *property, PyObject *dict)
     Py_DECREF(list);
   }
   else {
-    PyDict_SetItemString(dict, "default", item = PyLong_FromLong(ui_data->step));
+    PyDict_SetItemString(dict, "default", item = PyLong_FromLong(ui_data->default_value));
     Py_DECREF(item);
   }
 }
@@ -499,7 +499,7 @@ static void idprop_ui_data_to_dict_float(IDProperty *property, PyObject *dict)
     Py_DECREF(list);
   }
   else {
-    PyDict_SetItemString(dict, "default", item = PyFloat_FromDouble(ui_data->step));
+    PyDict_SetItemString(dict, "default", item = PyFloat_FromDouble(ui_data->default_value));
     Py_DECREF(item);
   }
 }

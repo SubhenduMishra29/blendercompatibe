@@ -4919,6 +4919,7 @@ static void registerCompositNodes()
   register_node_type_cmp_inpaint();
   register_node_type_cmp_despeckle();
   register_node_type_cmp_defocus();
+  register_node_type_cmp_posterize();
   register_node_type_cmp_sunbeams();
   register_node_type_cmp_denoise();
   register_node_type_cmp_antialiasing();
@@ -5139,6 +5140,7 @@ static void registerGeometryNodes()
   register_node_type_geo_attribute_convert();
   register_node_type_geo_attribute_curve_map();
   register_node_type_geo_attribute_fill();
+  register_node_type_geo_attribute_capture();
   register_node_type_geo_attribute_map_range();
   register_node_type_geo_attribute_math();
   register_node_type_geo_attribute_mix();
@@ -5173,7 +5175,10 @@ static void registerGeometryNodes()
   register_node_type_geo_curve_trim();
   register_node_type_geo_delete_geometry();
   register_node_type_geo_edge_split();
+  register_node_type_geo_input_index();
   register_node_type_geo_input_material();
+  register_node_type_geo_input_normal();
+  register_node_type_geo_input_position();
   register_node_type_geo_is_viewport();
   register_node_type_geo_join_geometry();
   register_node_type_geo_material_assign();
@@ -5201,6 +5206,7 @@ static void registerGeometryNodes()
   register_node_type_geo_select_by_handle_type();
   register_node_type_geo_select_by_material();
   register_node_type_geo_separate_components();
+  register_node_type_geo_set_position();
   register_node_type_geo_subdivision_surface();
   register_node_type_geo_switch();
   register_node_type_geo_transform();
