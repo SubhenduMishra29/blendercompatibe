@@ -334,11 +334,6 @@ void GPU_vertbuf_tag_dirty(GPUVertBuf *verts)
   unwrap(verts)->flag |= GPU_VERTBUF_DATA_DIRTY;
 }
 
-GPUUsageType GPU_vertbuf_get_usage(GPUVertBuf *verts)
-{
-  return unwrap(verts)->usage_get();
-}
-
 uint GPU_vertbuf_get_memory_usage()
 {
   return VertBuf::memory_usage;
