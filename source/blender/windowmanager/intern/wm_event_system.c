@@ -383,7 +383,6 @@ void wm_event_do_depsgraph(bContext *C, bool is_after_open_file)
     Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
     if (is_after_open_file) {
       DEG_graph_tag_on_visible_update(depsgraph, true);
-      DEG_graph_tag_for_subdivision_evaluation(depsgraph);
     }
     DEG_make_active(depsgraph);
     BKE_scene_graph_update_tagged(depsgraph, bmain);
