@@ -57,16 +57,16 @@
 #include "draw_cache_inline.h"
 #include "mesh_extractors/extract_mesh.h"
 
-extern char datatoc_common_subdiv_custom_data_interp_comp_glsl[];
-extern char datatoc_common_subdiv_ibo_lines_comp_glsl[];
-extern char datatoc_common_subdiv_ibo_points_comp_glsl[];
-extern char datatoc_common_subdiv_ibo_tris_comp_glsl[];
-extern char datatoc_common_subdiv_lib_glsl[];
-extern char datatoc_common_subdiv_normals_accumulate_comp_glsl[];
-extern char datatoc_common_subdiv_normals_finalize_comp_glsl[];
-extern char datatoc_common_subdiv_patch_evaluation_comp_glsl[];
-extern char datatoc_common_subdiv_vbo_edge_fac_comp_glsl[];
-extern char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
+extern "C" char datatoc_common_subdiv_custom_data_interp_comp_glsl[];
+extern "C" char datatoc_common_subdiv_ibo_lines_comp_glsl[];
+extern "C" char datatoc_common_subdiv_ibo_points_comp_glsl[];
+extern "C" char datatoc_common_subdiv_ibo_tris_comp_glsl[];
+extern "C" char datatoc_common_subdiv_lib_glsl[];
+extern "C" char datatoc_common_subdiv_normals_accumulate_comp_glsl[];
+extern "C" char datatoc_common_subdiv_normals_finalize_comp_glsl[];
+extern "C" char datatoc_common_subdiv_patch_evaluation_comp_glsl[];
+extern "C" char datatoc_common_subdiv_vbo_edge_fac_comp_glsl[];
+extern "C" char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
 
 enum {
   SHADER_BUFFER_LINES,
