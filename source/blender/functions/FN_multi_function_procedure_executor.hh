@@ -12,36 +12,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2021 Blender Foundation.
- * All rights reserved.
  */
+
 #pragma once
 
-#include "usd_reader_xform.h"
+/** \file
+ * \ingroup fn
+ */
 
-#include <pxr/usd/usdGeom/xform.h>
+#include "FN_multi_function_procedure.hh"
 
-struct Collection;
+namespace blender::fn {
 
-namespace blender::io::usd {
-
-/* Wraps the UsdGeomXform schema. Creates a Blender Empty object. */
-
-class USDInstanceReader : public USDXformReader {
+/** A multi-function that executes a procedure internally. */
+class MFProcedureExecutor : public MultiFunction {
+ private:
+  MFSignature signature_;
+  const MFProcedure &procedure_;
 
  public:
-  USDInstanceReader(const pxr::UsdPrim &prim,
-                    const USDImportParams &import_params,
-                    const ImportSettings &settings);
+  MFProcedureExecutor(std::string name, const MFProcedure &procedure);
 
-  bool valid() const override;
-
-  void create_object(Main *bmain, double motionSampleTime) override;
-
-  void set_instance_collection(Collection *coll);
-
-  pxr::SdfPath proto_path() const;
+  void call(IndexMask mask, MFParams params, MFContext context) const override;
 };
 
-}  // namespace blender::io::usd
+}  // namespace blender::fn
