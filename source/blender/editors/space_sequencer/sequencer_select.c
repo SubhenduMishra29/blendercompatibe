@@ -626,6 +626,96 @@ static void sequencer_select_linked_handle(const bContext *C,
   }
 }
 
+static bool seq_select_point_image_isect(const Scene *scene,
+                                         const Sequence *seq,
+                                         const float click_x,
+                                         const float click_y)
+{
+  StripTransform *transform = seq->strip->transform;
+  StripCrop *crop = seq->strip->crop;
+  rctf r_rctf;
+
+  float transform_matrix[3][3];
+  loc_rot_size_to_mat3(transform_matrix,
+                       (const float[]){transform->xofs, transform->yofs},
+                       transform->rotation,
+                       (const float[]){1, 1});
+  transform_pivot_set_m3(transform_matrix, (const float[]){0, 0});
+
+  /* Calculated image position is without rotation. Apply reverse rotation to mouse cursor, so
+   * `BLI_rctf_isect_pt` can be used to check for intersection. */
+  float point[2] = {click_x, click_y};
+  invert_m3(transform_matrix);
+  mul_m3_v2(transform_matrix, point);
+
+  /* With rotation also translation is applied... This is garbage code... */
+  point[0] += transform->xofs;
+  point[1] += transform->yofs;
+
+  int img_x = scene->r.xsch;
+  int img_y = scene->r.ysch;
+
+  if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
+    img_x = seq->strip->stripdata->orig_width;
+    img_y = seq->strip->stripdata->orig_height;
+  }
+  else {
+    img_x = scene->r.xsch;
+    img_y = scene->r.ysch;
+  }
+
+  /* Set center. Both view and sequencer image 0 coord is in center of preview screen. */
+  r_rctf.xmin = r_rctf.xmax = transform->xofs;
+  r_rctf.ymin = r_rctf.ymax = transform->yofs;
+  /* Calculate rect */
+  r_rctf.xmin -= ((img_x / 2) - crop->left) * transform->scale_x;
+  r_rctf.xmax += ((img_x / 2) - crop->right) * transform->scale_x;
+  r_rctf.ymin -= ((img_y / 2) - crop->bottom) * transform->scale_y;
+  r_rctf.ymax += ((img_y / 2) - crop->top) * transform->scale_y;
+
+  return BLI_rctf_isect_pt(&r_rctf, point[0], point[1]);
+}
+
+/* Tl;dr:
+ * - get list of rendered seqs
+ * - for each unselected if click is in image boundary, return seq
+ * - else for each selected if click is in image boundary, return seq */
+static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2])
+{
+  Scene *scene = CTX_data_scene(C);
+  Editing *ed = SEQ_editing_get(scene, false);
+  ListBase *seqbase = SEQ_active_seqbase_get(ed);
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  View2D *v2d = UI_view2d_fromcontext(C);
+
+  float click_x, click_y;
+  UI_view2d_region_to_view(v2d, mval[0], mval[1], &click_x, &click_y);
+
+  SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, sseq->chanshown);
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    if ((seq->flag & SELECT) != 0) {
+      continue;
+    }
+
+    if (seq_select_point_image_isect(scene, seq, click_x, click_y)) {
+      SEQ_collection_free(strips);
+      return seq;
+    }
+  }
+
+  SEQ_filter_selected_strips(strips);
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    if (seq_select_point_image_isect(scene, seq, click_x, click_y)) {
+      SEQ_collection_free(strips);
+      return seq;
+    }
+  }
+
+  SEQ_collection_free(strips);
+  return NULL;
+}
+
 static bool element_already_selected(const Sequence *seq, const int handle_clicked)
 {
   const bool handle_already_selected = ((handle_clicked == SEQ_SIDE_LEFT) &&
@@ -680,8 +770,15 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
 
-  int handle_clicked;
-  Sequence *seq = find_nearest_seq(scene, v2d, &handle_clicked, mval);
+  ARegion *region = CTX_wm_region(C);
+  int handle_clicked = SEQ_SIDE_NONE;
+  Sequence *seq = NULL;
+  if (region->regiontype == RGN_TYPE_PREVIEW) {
+    seq = seq_select_seq_from_preview(C, mval);
+  }
+  else {
+    seq = find_nearest_seq(scene, v2d, &handle_clicked, mval);
+  }
 
   /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one keymap,
    * therefore both properties can be true at the same time. */
