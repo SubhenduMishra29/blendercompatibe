@@ -664,10 +664,10 @@ static bool seq_select_point_image_isect(const Scene *scene,
     img_y = scene->r.ysch;
   }
 
-  /* Set center. Both view and sequencer image 0 coord is in center of preview screen. */
+  /* Set center. Both view and sequencer image 0 coord is in center of preview area. */
   r_rctf.xmin = r_rctf.xmax = transform->xofs;
   r_rctf.ymin = r_rctf.ymax = transform->yofs;
-  /* Calculate rect */
+  /* Calculate rect for strip image. */
   r_rctf.xmin -= ((img_x / 2) - crop->left) * transform->scale_x;
   r_rctf.xmax += ((img_x / 2) - crop->right) * transform->scale_x;
   r_rctf.ymin -= ((img_y / 2) - crop->bottom) * transform->scale_y;
@@ -676,10 +676,8 @@ static bool seq_select_point_image_isect(const Scene *scene,
   return BLI_rctf_isect_pt(&r_rctf, point[0], point[1]);
 }
 
-/* Tl;dr: (XXX improve function and explain how it works) 
- * - get list of rendered seqs
- * - for each unselected if click is in image boundary, return seq
- * - else for each selected if click is in image boundary, return seq */
+/* Check if click happened on image which belongs to strip. Unselected strips are prioritized.
+ * Overlapping strips are not ordered. */
 static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
