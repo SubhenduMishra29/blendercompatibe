@@ -11,6 +11,7 @@ layout(std430, binding = 1) writeonly buffer outputLinesIndices
   uint output_lines[];
 };
 
+#ifndef LINES_LOOSE
 void emit_line(uint line_offset, uint start_loop_index, uint corner_index)
 {
   uint vertex_index = start_loop_index + corner_index;
@@ -27,9 +28,17 @@ void emit_line(uint line_offset, uint start_loop_index, uint corner_index)
     output_lines[line_offset + 1] = next_vertex_index;
   }
 }
+#endif
 
 void main()
 {
+#ifdef LINES_LOOSE
+  /* In the loose lines case, we execute for each line, with two vertices per line. */
+  uint line_offset = edge_loose_offset + gl_GlobalInvocationID.x * 2;
+  uint loop_index = num_subdiv_loops + gl_GlobalInvocationID.x * 2;
+  output_lines[line_offset] = loop_index;
+  output_lines[line_offset + 1] = loop_index + 1;
+#else
   /* We execute for each quad, so the start index of the loop is quad_index * 4. */
   uint start_loop_index = gl_GlobalInvocationID.x * 4;
   /* We execute for each quad, so the start index of the line is quad_index * 8 (with 2 vertices
@@ -39,4 +48,5 @@ void main()
   for (int i = 0; i < 4; i++) {
     emit_line(start_line_index + i * 2, start_loop_index, i);
   }
+#endif
 }

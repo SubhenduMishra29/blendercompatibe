@@ -13,6 +13,10 @@ layout(std140) uniform shader_data
 
   /* Coarse topology information. */
   int coarse_poly_count;
+  uint edge_loose_offset;
+
+  /* Subdiv topology information. */
+  uint num_subdiv_loops;
 
   /* Subdivision settings. */
   bool optimal_display;

@@ -181,18 +181,7 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache,
   }
 
   GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
-  /* Make sure buffer is active for sending loose data. */
-  GPU_indexbuf_use(ibo);
-
-  uint offset = subdiv_cache->num_subdiv_loops * 2;
-  uint loop_index = subdiv_cache->num_subdiv_loops;
-  for (int i = 0; i < loose_geom->edge_len; i++) {
-    GPU_indexbuf_update_sub(ibo, (offset) * sizeof(uint), sizeof(uint), &loop_index);
-    loop_index += 1;
-    GPU_indexbuf_update_sub(ibo, (offset + 1) * sizeof(uint), sizeof(uint), &loop_index);
-    loop_index += 1;
-    offset += 2;
-  }
+  draw_subdiv_build_lines_loose_buffer(subdiv_cache, ibo, static_cast<uint>(loose_geom->edge_len));
 }
 
 constexpr MeshExtract create_extractor_lines()

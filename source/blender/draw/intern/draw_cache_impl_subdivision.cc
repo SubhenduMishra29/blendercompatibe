@@ -70,6 +70,7 @@ extern "C" char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
 
 enum {
   SHADER_BUFFER_LINES,
+  SHADER_BUFFER_LINES_LOOSE,
   SHADER_BUFFER_EDGE_FAC,
   SHADER_BUFFER_LNOR,
   SHADER_BUFFER_TRIS,
@@ -91,7 +92,8 @@ static GPUShader *g_subdiv_shaders[NUM_SHADERS];
 static const char *get_shader_code(int shader_type)
 {
   switch (shader_type) {
-    case SHADER_BUFFER_LINES: {
+    case SHADER_BUFFER_LINES:
+    case SHADER_BUFFER_LINES_LOOSE: {
       return datatoc_common_subdiv_ibo_lines_comp_glsl;
     }
     case SHADER_BUFFER_EDGE_FAC: {
@@ -129,6 +131,9 @@ static const char *get_shader_name(int shader_type)
   switch (shader_type) {
     case SHADER_BUFFER_LINES: {
       return "subdiv lines build";
+    }
+    case SHADER_BUFFER_LINES_LOOSE: {
+      return "subdiv lines loose build";
     }
     case SHADER_BUFFER_LNOR: {
       return "subdiv lnor build";
@@ -786,6 +791,10 @@ typedef struct DRWSubdivUboStorage {
 
   /* Coarse topology information. */
   int coarse_poly_count;
+  uint edge_loose_offset;
+
+  /* Refined topology information. */
+  uint num_subdiv_loops;
 
   /* Subdivision settings, is int in C but bool in the GLSL code, as there, bools have the same
    * size as ints, so we should use int in C to ensure that the size of the structure is what GLSL
@@ -806,6 +815,8 @@ static void draw_subdiv_init_ubo_storage(const DRWSubdivCache *cache,
   ubo->patches_are_triangular = cache->gpu_patch_map.patches_are_triangular;
   ubo->coarse_poly_count = cache->num_coarse_poly;
   ubo->optimal_display = cache->optimal_display;
+  ubo->num_subdiv_loops = cache->num_subdiv_loops;
+  ubo->edge_loose_offset = cache->num_subdiv_loops * 2;
 }
 
 static void draw_subdiv_ubo_update_and_bind(const DRWSubdivCache *cache,
@@ -1106,6 +1117,25 @@ void draw_subdiv_build_lines_buffer(const DRWSubdivCache *cache, GPUIndexBuf *li
   draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
 
   GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
+
+  GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+
+  /* Cleanup. */
+  GPU_shader_unbind();
+}
+
+void draw_subdiv_build_lines_loose_buffer(const DRWSubdivCache *cache,
+                                          GPUIndexBuf *lines_indices,
+                                          uint num_loose_edges)
+{
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_LINES_LOOSE, "#define LINES_LOOSE\n");
+  GPU_shader_bind(shader);
+
+  GPU_indexbuf_bind_as_ssbo(lines_indices, 1);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0);
+
+  GPU_compute_dispatch(shader, num_loose_edges, 1, 1);
 
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
