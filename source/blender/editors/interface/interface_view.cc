@@ -16,6 +16,11 @@
 
 /** \file
  * \ingroup edinterface
+ *
+ * This part of the UI-View API is mostly needed to support persistent state of items within the
+ * view. Views are stored in #uiBlock's, and kept alive with it until after the next redraw. So we
+ * can compare the old view items with the new view items and keep state persistent for matching
+ * ones.
  */
 
 #include <memory>
@@ -32,7 +37,8 @@ using namespace blender;
 using namespace blender::ui;
 
 /**
- * Wrapper to store views in a #ListBase.
+ * Wrapper to store views in a #ListBase. There's no `uiView` base class, we just store views as a
+ * #std::variant.
  */
 struct uiViewLink : public Link {
   using TreeViewPtr = std::unique_ptr<uiAbstractTreeView>;
@@ -42,6 +48,15 @@ struct uiViewLink : public Link {
   std::variant<TreeViewPtr> view;
 };
 
+template<class T> T *get_view_from_link(uiViewLink &link)
+{
+  auto *t_uptr = std::get_if<std::unique_ptr<T>>(&link.view);
+  return t_uptr ? t_uptr->get() : nullptr;
+}
+
+/**
+ * Override this for all available tree types available.
+ */
 uiAbstractTreeView *UI_block_add_view(uiBlock *block,
                                       StringRef idname,
                                       std::unique_ptr<uiAbstractTreeView> tree_view)
@@ -52,8 +67,7 @@ uiAbstractTreeView *UI_block_add_view(uiBlock *block,
   view_link->view = std::move(tree_view);
   view_link->idname = idname;
 
-  auto view = std::get_if<uiViewLink::TreeViewPtr>(&view_link->view);
-  return view ? view->get() : nullptr;
+  return get_view_from_link<uiAbstractTreeView>(*view_link);
 }
 
 void ui_block_free_views(uiBlock *block)
@@ -61,4 +75,42 @@ void ui_block_free_views(uiBlock *block)
   LISTBASE_FOREACH_MUTABLE (uiViewLink *, link, &block->views) {
     OBJECT_GUARDED_DELETE(link, uiViewLink);
   }
+}
+
+static StringRef ui_block_view_find_idname(const uiBlock &block, const uiAbstractTreeView &view)
+{
+  /* First get the idname the of the view we're looking for. */
+  LISTBASE_FOREACH (uiViewLink *, view_link, &block.views) {
+    if (get_view_from_link<uiAbstractTreeView>(*view_link) == &view) {
+      return view_link->idname;
+    }
+  }
+
+  return {};
+}
+
+uiTreeViewHandle *ui_block_view_find_matching_in_old_block(const uiBlock *new_block,
+                                                           const uiTreeViewHandle *new_view_handle)
+{
+  const uiAbstractTreeView &needle_view = reinterpret_cast<const uiAbstractTreeView &>(
+      *new_view_handle);
+
+  uiBlock *old_block = new_block->oldblock;
+  if (!old_block) {
+    return nullptr;
+  }
+
+  StringRef idname = ui_block_view_find_idname(*new_block, needle_view);
+  if (idname.is_empty()) {
+    return nullptr;
+  }
+
+  LISTBASE_FOREACH (uiViewLink *, old_view_link, &old_block->views) {
+    if (old_view_link->idname == idname) {
+      return reinterpret_cast<uiTreeViewHandle *>(
+          get_view_from_link<uiAbstractTreeView>(*old_view_link));
+    }
+  }
+
+  return nullptr;
 }

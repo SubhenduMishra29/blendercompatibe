@@ -73,11 +73,65 @@ void uiAbstractTreeView::build_layout_from_tree_recursive(const uiTreeViewLayout
 {
   for (const auto &item : items.children_) {
     builder.build_row(*item);
+    if (!item->is_open_) {
+      continue;
+    }
     build_layout_from_tree_recursive(builder, *item);
   }
 }
 
+void uiAbstractTreeView::update_from_old(uiBlock &new_block)
+{
+  uiBlock *old_block = new_block.oldblock;
+  if (!old_block) {
+    return;
+  }
+
+  uiTreeViewHandle *old_view_handle = ui_block_view_find_matching_in_old_block(
+      &new_block, reinterpret_cast<uiTreeViewHandle *>(this));
+  if (!old_view_handle) {
+    return;
+  }
+
+  uiAbstractTreeView &old_view = reinterpret_cast<uiAbstractTreeView &>(*old_view_handle);
+  update_children_from_old_recursive(*this, old_view);
+}
+
+void uiAbstractTreeView::update_children_from_old_recursive(
+    const uiTreeViewItemContainer &new_items, const uiTreeViewItemContainer &old_items)
+{
+  for (const auto &new_item : new_items.children_) {
+    uiAbstractTreeViewItem *matching_old_item = find_matching_child(*new_item, old_items);
+    if (!matching_old_item) {
+      continue;
+    }
+
+    new_item->update_from_old(*matching_old_item);
+
+    /* Recurse into children of the matched item. */
+    update_children_from_old_recursive(*new_item, *matching_old_item);
+  }
+}
+
+uiAbstractTreeViewItem *uiAbstractTreeView::find_matching_child(
+    const uiAbstractTreeViewItem &lookup_item, const uiTreeViewItemContainer &items)
+{
+  for (const auto &iter_item : items.children_) {
+    if (lookup_item.label_ == iter_item->label_) {
+      /* We have a matching item! */
+      return iter_item.get();
+    }
+  }
+
+  return nullptr;
+}
+
 /* ---------------------------------------------------------------------- */
+
+void uiAbstractTreeViewItem::update_from_old(uiAbstractTreeViewItem &old)
+{
+  is_open_ = old.is_open_;
+}
 
 int uiAbstractTreeViewItem::count_parents() const
 {
@@ -88,16 +142,37 @@ int uiAbstractTreeViewItem::count_parents() const
   return i;
 }
 
+bool uiAbstractTreeViewItem::is_collapsed() const
+{
+  return is_collapsible() && !is_open_;
+}
+
 void uiAbstractTreeViewItem::toggle_collapsed()
 {
-  if (is_collapsible()) {
-    is_open_ = !is_open_;
-  }
+  is_open_ = !is_open_;
+}
+
+void uiAbstractTreeViewItem::set_collapsed(bool collapsed)
+{
+  is_open_ = !collapsed;
 }
 
 bool uiAbstractTreeViewItem::is_collapsible() const
 {
-  return children_.is_empty();
+  return !children_.is_empty();
+}
+
+/* ---------------------------------------------------------------------- */
+
+uiTreeViewBuilder::uiTreeViewBuilder(uiBlock &block) : block_(block)
+{
+}
+
+void uiTreeViewBuilder::build_tree_view(uiAbstractTreeView &tree_view)
+{
+  tree_view.build_tree();
+  tree_view.update_from_old(block_);
+  tree_view.build_layout_from_tree(uiTreeViewLayoutBuilder(block_));
 }
 
 /* ---------------------------------------------------------------------- */
@@ -113,7 +188,7 @@ void uiTreeViewLayoutBuilder::build_row(uiAbstractTreeViewItem &item) const
 
   item.build_row(*row);
 
-  UI_block_layout_set_current(&block_, prev_layout);
+  UI_block_layout_set_current(&block(), prev_layout);
 }
 
 uiBlock &uiTreeViewLayoutBuilder::block() const
@@ -123,14 +198,23 @@ uiBlock &uiTreeViewLayoutBuilder::block() const
 
 uiLayout *uiTreeViewLayoutBuilder::current_layout() const
 {
-  return block_.curlayout;
+  return block().curlayout;
 }
 
 /* ---------------------------------------------------------------------- */
 
-uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label_, BIFIconID icon_)
-    : label(label_), icon(icon_)
+uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label, BIFIconID icon_) : icon(icon_)
 {
+  label_ = label;
+}
+
+static void but_collapsed_toggle_fn(struct bContext *UNUSED(C), void *but_arg1, void *UNUSED(arg2))
+{
+  uiButTreeRow *tree_row_but = (uiButTreeRow *)but_arg1;
+  uiAbstractTreeViewItem &tree_item = reinterpret_cast<uiAbstractTreeViewItem &>(
+      *tree_row_but->tree_item);
+
+  tree_item.toggle_collapsed();
 }
 
 void uiBasicTreeViewItem::build_row(uiLayout &row)
@@ -139,9 +223,9 @@ void uiBasicTreeViewItem::build_row(uiLayout &row)
   tree_row_but_ = (uiButTreeRow *)uiDefIconTextBut(block,
                                                    UI_BTYPE_TREEROW,
                                                    0,
-                                                   /* TODO set open/closed icon here? */
-                                                   icon,
-                                                   label.data(),
+                                                   /* TODO allow icon despite the chevron icon? */
+                                                   get_draw_icon(),
+                                                   label_.data(),
                                                    0,
                                                    0,
                                                    UI_UNIT_X,
@@ -153,7 +237,22 @@ void uiBasicTreeViewItem::build_row(uiLayout &row)
                                                    0,
                                                    nullptr);
 
+  tree_row_but_->tree_item = reinterpret_cast<uiTreeViewItemHandle *>(this);
+  UI_but_func_set(&tree_row_but_->but, but_collapsed_toggle_fn, tree_row_but_, nullptr);
   UI_but_treerow_indentation_set(&tree_row_but_->but, count_parents());
+}
+
+BIFIconID uiBasicTreeViewItem::get_draw_icon() const
+{
+  if (icon) {
+    return icon;
+  }
+
+  if (is_collapsible()) {
+    return is_collapsed() ? ICON_TRIA_RIGHT : ICON_TRIA_DOWN;
+  }
+
+  return ICON_NONE;
 }
 
 uiBut *uiBasicTreeViewItem::button()

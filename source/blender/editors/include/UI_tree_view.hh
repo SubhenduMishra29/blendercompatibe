@@ -36,6 +36,7 @@ struct uiLayout;
 
 namespace blender::ui {
 
+class uiAbstractTreeView;
 class uiAbstractTreeViewItem;
 
 /* ---------------------------------------------------------------------- */
@@ -83,29 +84,56 @@ class uiTreeViewItemContainer {
 /** \} */
 
 /* ---------------------------------------------------------------------- */
-/** \name Tree-View Base Class
+/** \name Tree-View Builders
  * \{ */
+
+class uiTreeViewBuilder {
+  uiBlock &block_;
+
+ public:
+  uiTreeViewBuilder(uiBlock &block);
+
+  void build_tree_view(uiAbstractTreeView &tree_view);
+};
 
 class uiTreeViewLayoutBuilder {
   uiBlock &block_;
 
- public:
-  uiTreeViewLayoutBuilder(uiBlock &);
+  friend uiTreeViewBuilder;
 
+ public:
   void build_row(uiAbstractTreeViewItem &item) const;
   uiBlock &block() const;
   uiLayout *current_layout() const;
+
+ private:
+  /* Created through #uiTreeViewBuilder. */
+  uiTreeViewLayoutBuilder(uiBlock &block);
 };
 
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Tree-View Base Class
+ * \{ */
+
 class uiAbstractTreeView : public uiTreeViewItemContainer {
+  friend uiTreeViewBuilder;
+  friend uiTreeViewLayoutBuilder;
+
  public:
   virtual ~uiAbstractTreeView() = default;
 
+ protected:
   virtual void build_tree() = 0;
 
-  void build_layout_from_tree(const uiTreeViewLayoutBuilder &builder);
-
  private:
+  void update_from_old(uiBlock &new_block);
+  static void update_children_from_old_recursive(const uiTreeViewItemContainer &new_items,
+                                                 const uiTreeViewItemContainer &old_items);
+  static uiAbstractTreeViewItem *find_matching_child(const uiAbstractTreeViewItem &lookup_item,
+                                                     const uiTreeViewItemContainer &items);
+  void build_layout_from_tree(const uiTreeViewLayoutBuilder &builder);
   void build_layout_from_tree_recursive(const uiTreeViewLayoutBuilder &builder,
                                         const uiTreeViewItemContainer &items);
 };
@@ -126,15 +154,26 @@ class uiAbstractTreeView : public uiTreeViewItemContainer {
 class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
   friend class uiAbstractTreeView;
 
-  bool is_open_;
+  bool is_open_ = false;
+
+ protected:
+  /** This label is used for identifying an item (together with its parents labels). */
+  std::string label_{};
 
  public:
   virtual ~uiAbstractTreeViewItem() = default;
 
   virtual void build_row(uiLayout &row) = 0;
 
+  /** Copy persistent state (e.g. is-collapsed flag, selection, etc.) from a matching item of the
+   * last redraw to this item. If sub-classes introduce more advanced state they should override
+   * this and make update their state accordingly. */
+  virtual void update_from_old(uiAbstractTreeViewItem &old);
+
   int count_parents() const;
   void toggle_collapsed();
+  bool is_collapsed() const;
+  void set_collapsed(bool collapsed);
   bool is_collapsible() const;
 };
 
@@ -151,7 +190,6 @@ class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
  */
 class uiBasicTreeViewItem : public uiAbstractTreeViewItem {
  public:
-  std::string label;
   BIFIconID icon;
 
   uiBasicTreeViewItem(StringRef label, BIFIconID icon = ICON_NONE);
@@ -161,7 +199,9 @@ class uiBasicTreeViewItem : public uiAbstractTreeViewItem {
  protected:
   /** Created in the #build() function. */
   uiButTreeRow *tree_row_but_ = nullptr;
+
   uiBut *button();
+  BIFIconID get_draw_icon() const;
 };
 
 /** \} */

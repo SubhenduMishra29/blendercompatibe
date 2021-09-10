@@ -364,6 +364,7 @@ typedef struct uiButDatasetRow {
 typedef struct uiButTreeRow {
   uiBut but;
 
+  uiTreeViewItemHandle *tree_item;
   int indentation;
 } uiButTreeRow;
 
@@ -1288,6 +1289,8 @@ void ui_interface_tag_script_reload_queries(void);
 
 /* interface_view.cc */
 void ui_block_free_views(struct uiBlock *block);
+uiTreeViewHandle *ui_block_view_find_matching_in_old_block(const uiBlock *new_block,
+                                                           const uiTreeViewHandle *new_view);
 
 #ifdef __cplusplus
 }
