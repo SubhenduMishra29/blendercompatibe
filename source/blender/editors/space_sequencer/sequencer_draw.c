@@ -2210,7 +2210,6 @@ void sequencer_draw_preview(const bContext *C,
     IMB_freeImBuf(ibuf);
   }
 
-  /* Image origins, may be only visible for development. */
   SeqCollection *collection = Seq_query_rendered_strips(&scene->ed->seqbase, timeline_frame, 0);
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, collection) {

@@ -648,7 +648,7 @@ static bool seq_select_point_image_isect(const Scene *scene,
   invert_m3(transform_matrix);
   mul_m3_v2(transform_matrix, point);
 
-  /* With rotation also translation is applied... This is garbage code... */
+  /* With rotation also translation is applied. Offset mouse position by same amount. */
   point[0] += transform->xofs;
   point[1] += transform->yofs;
 
@@ -676,7 +676,7 @@ static bool seq_select_point_image_isect(const Scene *scene,
   return BLI_rctf_isect_pt(&r_rctf, point[0], point[1]);
 }
 
-/* Tl;dr:
+/* Tl;dr: (XXX improve function and explain how it works) 
  * - get list of rendered seqs
  * - for each unselected if click is in image boundary, return seq
  * - else for each selected if click is in image boundary, return seq */
