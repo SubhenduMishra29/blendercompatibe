@@ -71,7 +71,11 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   catalog_definition_file_->add_new(catalog_ptr);
   catalog_definition_file_->write_to_disk();
 
-  catalog_tree_->insert_item(catalog_ptr->path);
+  /* Null when the service only writes, but didn't load anything
+   * (#AssetCatalogService::load_from_disk() not called). */
+  if (catalog_tree_) {
+    catalog_tree_->insert_item(catalog_ptr->path);
+  }
 
   return catalog_ptr;
 }
