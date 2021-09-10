@@ -2048,9 +2048,19 @@ static int sequencer_draw_get_transform_preview_frame(Scene *scene)
   return preview_frame;
 }
 
-static void seq_draw_origins(const bContext *C, Sequence *seq)
+static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
 {
+  Editing *ed = SEQ_editing_get(CTX_data_scene(C));
+  if ((seq->flag & SELECT) == 0 && seq != ed->act_seq) {
+    return;
+  }
+  if (ED_screen_animation_no_scrub(CTX_wm_manager(C))) {
+    return;
+  }
+
   const StripTransform *transform = seq->strip->transform;
+
+  /* Origin. */
   float x = transform->xofs + transform->origin[0];
   float y = transform->yofs + transform->origin[1];
 
@@ -2060,11 +2070,56 @@ static void seq_draw_origins(const bContext *C, Sequence *seq)
   immUniform1f("outlineWidth", 1.5f);
   immUniformColor3f(1.0f, 1.0f, 1.0f);
   immUniform4f("outlineColor", 0.0f, 0.0f, 0.0f, 1.0f);
-  immUniform1f("size", 12.0f);
+  immUniform1f("size", 15.0f * U.pixelsize);
   immBegin(GPU_PRIM_POINTS, 1);
   immVertex2f(pos, x, y);
   immEnd();
   immUnbindProgram();
+
+  /* Outline. */
+  StripElem *strip_elem = seq->strip->stripdata;
+  float transform_matrix[3][3];
+  loc_rot_size_to_mat3(transform_matrix,
+                       (const float[]){transform->xofs, transform->yofs},
+                       transform->rotation,
+                       (const float[]){transform->scale_x, transform->scale_y});
+  transform_pivot_set_m3(transform_matrix, transform->origin);
+
+  float image_size[2] = {strip_elem->orig_height, strip_elem->orig_height};
+  mul_v2_fl(image_size, 0.5f);
+  float a[2] = {image_size[0], image_size[1]};
+  float b[2] = {image_size[0], -image_size[1]};
+  float c[2] = {-image_size[0], -image_size[1]};
+  float d[2] = {-image_size[0], image_size[1]};
+  mul_m3_v2(transform_matrix, a);
+  mul_m3_v2(transform_matrix, b);
+  mul_m3_v2(transform_matrix, c);
+  mul_m3_v2(transform_matrix, d);
+
+  GPU_line_smooth(true);
+  GPU_blend(GPU_BLEND_ALPHA);
+  GPU_line_width(2);
+  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+
+  float col[3];
+  if (seq == ed->act_seq) {
+    UI_GetThemeColor3fv(TH_SEQ_ACTIVE, col);
+  }
+  else {
+    UI_GetThemeColor3fv(TH_SEQ_SELECTED, col);
+  }
+  immUniformColor3fv(col);
+  immUniform1f("lineWidth", U.pixelsize);
+  immBegin(GPU_PRIM_LINE_LOOP, 4);
+  immVertex2f(pos, a[0], a[1]);
+  immVertex2f(pos, b[0], b[1]);
+  immVertex2f(pos, c[0], c[1]);
+  immVertex2f(pos, d[0], d[1]);
+  immEnd();
+  immUnbindProgram();
+  GPU_line_width(1);
+  GPU_blend(GPU_BLEND_NONE);
+  GPU_line_smooth(false);
 }
 
 void sequencer_draw_preview(const bContext *C,
@@ -2156,10 +2211,10 @@ void sequencer_draw_preview(const bContext *C,
   }
 
   /* Image origins, may be only visible for development. */
-  SeqCollection *collection = SEQ_query_all_strips(&scene->ed->seqbase);
+  SeqCollection *collection = Seq_query_rendered_strips(&scene->ed->seqbase, timeline_frame, 0);
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, collection) {
-    seq_draw_origins(C, seq);
+    seq_draw_image_origin_and_outline(C, seq);
   }
   SEQ_collection_free(collection);
 

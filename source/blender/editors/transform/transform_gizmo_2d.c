@@ -391,6 +391,11 @@ static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
       }
     }
 
+    ScrArea *area = CTX_wm_area(C);
+    if (area->spacetype == SPACE_SEQ) {
+      RNA_boolean_set(ptr, "sequencer_image", true);
+    }
+
     RNA_boolean_set(ptr, "release_confirm", true);
   }
 
