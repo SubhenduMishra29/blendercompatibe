@@ -1693,8 +1693,6 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   initTransInfo(C, t, op, event);
 
-  DEG_graph_tag_for_subdivision_evaluation(t->depsgraph);
-
   if (t->spacetype == SPACE_VIEW3D) {
     t->draw_handle_apply = ED_region_draw_cb_activate(
         t->region->type, drawTransformApply, t, REGION_DRAW_PRE_VIEW);
@@ -1778,6 +1776,11 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   initSnapping(t, op); /* Initialize snapping data AFTER mode flags */
 
   initSnapSpatial(t, t->snap_spatial);
+
+  /* For snapping, we need subdivision surfaces on the CPU side as well. */
+  if (t->spacetype == SPACE_VIEW3D && activeSnap(t)) {
+    DEG_graph_tag_for_subdivision_evaluation(t->depsgraph);
+  }
 
   /* EVIL! posemode code can switch translation to rotate when 1 bone is selected.
    * will be removed (ton) */
