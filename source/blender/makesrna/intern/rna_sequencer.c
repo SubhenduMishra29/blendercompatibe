@@ -1445,7 +1445,7 @@ static void rna_def_strip_transform(BlenderRNA *brna)
   prop = RNA_def_property(srna, "origin", PROP_FLOAT, PROP_PIXEL);
   RNA_def_property_float_sdna(prop, NULL, "origin");
   RNA_def_property_ui_text(prop, "Origin", "Origin of image for transformation");
-  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 100, 2);
+  RNA_def_property_ui_range(prop, 0, 1, 1, 3);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceTransform_update");
 
   RNA_def_struct_path_func(srna, "rna_SequenceTransform_path");

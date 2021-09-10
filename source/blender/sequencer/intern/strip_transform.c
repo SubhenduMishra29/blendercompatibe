@@ -421,3 +421,30 @@ void SEQ_transform_offset_after_frame(Scene *scene,
     }
   }
 }
+
+/**
+ * Get strip transform origin offset from image center
+ *
+ * \param scene: Scene in which strips are located
+ * \param seq: Sequence to calculate image transform origin
+ * \param r_origin: return value
+ */
+void SEQ_image_transform_origin_offset_get(const Scene *scene,
+                                           const Sequence *seq,
+                                           float r_origin[2])
+{
+  float image_size[2];
+  StripElem *strip_elem = seq->strip->stripdata;
+  if (strip_elem == NULL) {
+    image_size[0] = scene->r.xsch;
+    image_size[1] = scene->r.ysch;
+  }
+  else {
+    image_size[0] = strip_elem->orig_height;
+    image_size[1] = strip_elem->orig_height;
+  }
+
+  const StripTransform *transform = seq->strip->transform;
+  r_origin[0] = (image_size[0] * transform->origin[0]) - (image_size[0] * 0.5f);
+  r_origin[1] = (image_size[1] * transform->origin[1]) - (image_size[1] * 0.5f);
+}

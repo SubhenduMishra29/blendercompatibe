@@ -51,12 +51,17 @@ typedef struct TransDataSeq {
   float orig_rotation;
 } TransDataSeq;
 
-static TransData *SeqToTransData(
-    Sequence *seq, TransData *td, TransData2D *td2d, TransDataSeq *tdseq, int vert_index)
+static TransData *SeqToTransData(const Scene *scene,
+                                 Sequence *seq,
+                                 TransData *td,
+                                 TransData2D *td2d,
+                                 TransDataSeq *tdseq,
+                                 int vert_index)
 {
   const StripTransform *transform = seq->strip->transform;
-  float vertex[2] = {transform->xofs + transform->origin[0],
-                     transform->yofs + transform->origin[1]};
+  float origin[2];
+  SEQ_image_transform_origin_offset_get(scene, seq, origin);
+  float vertex[2] = {transform->xofs + origin[0], transform->yofs + origin[1]};
 
   /* Add control vertex, so rotation and scale can be calculated. */
   if (vert_index == 1) {
@@ -72,8 +77,8 @@ static TransData *SeqToTransData(
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
 
-  td->center[0] = transform->xofs + transform->origin[0];
-  td->center[1] = transform->yofs + transform->origin[1];
+  td->center[0] = transform->xofs + origin[0];
+  td->center[1] = transform->yofs + origin[1];
 
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
@@ -115,9 +120,9 @@ void createTransSeqImageData(TransInfo *t)
 
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
-    SeqToTransData(seq, td++, td2d++, tdseq++, 0);
-    SeqToTransData(seq, td++, td2d++, tdseq++, 1);
-    SeqToTransData(seq, td++, td2d++, tdseq++, 2);
+    SeqToTransData(t->scene, seq, td++, td2d++, tdseq++, 0);
+    SeqToTransData(t->scene, seq, td++, td2d++, tdseq++, 1);
+    SeqToTransData(t->scene, seq, td++, td2d++, tdseq++, 2);
   }
 
   SEQ_collection_free(strips);
@@ -148,8 +153,10 @@ void recalcData_sequencer_image(TransInfo *t)
     TransDataSeq *tdseq = td->extra;
     Sequence *seq = tdseq->seq;
     StripTransform *transform = seq->strip->transform;
-    transform->xofs = round_fl_to_int(loc[0] - transform->origin[0]);
-    transform->yofs = round_fl_to_int(loc[1] - transform->origin[1]);
+    float origin[2];
+    SEQ_image_transform_origin_offset_get(t->scene, seq, origin);
+    transform->xofs = round_fl_to_int(loc[0] - origin[0]);
+    transform->yofs = round_fl_to_int(loc[1] - origin[1]);
     transform->scale_x = tdseq->orig_scale_x * fabs(len_v2(handle_x));
     transform->scale_y = tdseq->orig_scale_y * fabs(len_v2(handle_y));
     /* Scaling can cause negative rotation. */

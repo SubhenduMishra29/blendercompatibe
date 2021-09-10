@@ -2050,8 +2050,7 @@ static int sequencer_draw_get_transform_preview_frame(Scene *scene)
 
 static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
 {
-  Editing *ed = SEQ_editing_get(CTX_data_scene(C));
-  if ((seq->flag & SELECT) == 0 && seq != ed->act_seq) {
+  if ((seq->flag & SELECT) == 0) {
     return;
   }
   if (ED_screen_animation_no_scrub(CTX_wm_manager(C))) {
@@ -2060,9 +2059,12 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
 
   const StripTransform *transform = seq->strip->transform;
 
+  float origin[2];
+  SEQ_image_transform_origin_offset_get(CTX_data_scene(C), seq, origin);
+
   /* Origin. */
-  float x = transform->xofs + transform->origin[0];
-  float y = transform->yofs + transform->origin[1];
+  float x = transform->xofs + origin[0];
+  float y = transform->yofs + origin[1];
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -2083,9 +2085,19 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
                        (const float[]){transform->xofs, transform->yofs},
                        transform->rotation,
                        (const float[]){transform->scale_x, transform->scale_y});
-  transform_pivot_set_m3(transform_matrix, transform->origin);
+  transform_pivot_set_m3(transform_matrix, origin);
 
-  float image_size[2] = {strip_elem->orig_height, strip_elem->orig_height};
+  float image_size[2];
+  if (strip_elem == NULL) {
+    Scene *scene = CTX_data_scene(C);
+    image_size[0] = scene->r.xsch;
+    image_size[1] = scene->r.ysch;
+  }
+  else {
+    image_size[0] = strip_elem->orig_height;
+    image_size[1] = strip_elem->orig_height;
+  }
+
   mul_v2_fl(image_size, 0.5f);
   float a[2] = {image_size[0], image_size[1]};
   float b[2] = {image_size[0], -image_size[1]};
@@ -2102,12 +2114,7 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 
   float col[3];
-  if (seq == ed->act_seq) {
-    UI_GetThemeColor3fv(TH_SEQ_ACTIVE, col);
-  }
-  else {
-    UI_GetThemeColor3fv(TH_SEQ_SELECTED, col);
-  }
+  UI_GetThemeColor3fv(TH_SEQ_SELECTED, col);
   immUniformColor3fv(col);
   immUniform1f("lineWidth", U.pixelsize);
   immBegin(GPU_PRIM_LINE_LOOP, 4);

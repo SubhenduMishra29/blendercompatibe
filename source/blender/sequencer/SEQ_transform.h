@@ -60,6 +60,9 @@ void SEQ_transform_offset_after_frame(struct Scene *scene,
                                       struct ListBase *seqbase,
                                       const int delta,
                                       const int timeline_frame);
+void SEQ_image_transform_origin_offset_get(const struct Scene *scene,
+                                           const struct Sequence *seq,
+                                           float r_origin[2]);
 
 #ifdef __cplusplus
 }

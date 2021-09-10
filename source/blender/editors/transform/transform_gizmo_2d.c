@@ -52,6 +52,7 @@
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
+#include "SEQ_transform.h"
 
 #include "transform.h" /* own include */
 
@@ -290,8 +291,10 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
     Sequence *seq;
     SEQ_ITERATOR_FOREACH (seq, strips) {
       StripTransform *transform = seq->strip->transform;
-      r_center[0] += transform->xofs + transform->origin[0];
-      r_center[1] += transform->yofs + transform->origin[1];
+      float origin[2];
+      SEQ_image_transform_origin_offset_get(CTX_data_scene(C), seq, origin);
+      r_center[0] += transform->xofs + origin[0];
+      r_center[1] += transform->yofs + origin[1];
     }
     r_center[0] /= SEQ_collection_len(strips);
     r_center[1] /= SEQ_collection_len(strips);
