@@ -2685,12 +2685,9 @@ def km_sequencerpreview(params):
         ("sequencer.view_zoom_ratio", {"type": 'NUMPAD_8', "value": 'PRESS'},
          {"properties": [("ratio", 0.125)]}),
         ("sequencer.sample", {"type": params.action_mouse, "value": 'PRESS'}, None),
-        ("transform.translate", {"type": 'G', "value": 'PRESS'},
-         {"properties": [("sequencer_image", True)]}),
-        ("transform.resize", {"type": 'S', "value": 'PRESS'},
-         {"properties": [("sequencer_image", True)]}),
-        ("transform.rotate", {"type": 'R', "value": 'PRESS'},
-         {"properties": [("sequencer_image", True)]}),
+        ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
+        ("transform.resize", {"type": 'S', "value": 'PRESS'}, None),
+        ("transform.rotate", {"type": 'R', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -7051,7 +7048,7 @@ def km_sequencer_editor_tool_move(params):
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("transform.translate", {"type": params.tool_tweak, "value": 'ANY'},
-             {"properties": [("sequencer_image", True), ("release_confirm", True)]}),
+             {"properties": [("release_confirm", True)]}),
         ]},
     )
 
@@ -7062,7 +7059,7 @@ def km_sequencer_editor_tool_rotate(params):
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("transform.rotate", {"type": params.tool_tweak, "value": 'ANY'},
-             {"properties": [("sequencer_image", True), ("release_confirm", True)]}),
+             {"properties": [("release_confirm", True)]}),
         ]},
     )
 
@@ -7073,7 +7070,7 @@ def km_sequencer_editor_tool_scale(params):
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("transform.resize", {"type": params.tool_tweak, "value": 'ANY'},
-             {"properties": [("sequencer_image", True), ("release_confirm", True)]}),
+             {"properties": [("release_confirm", True)]}),
         ]},
     )
 

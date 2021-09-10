@@ -346,6 +346,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   else if (t->spacetype == SPACE_SEQ && region->regiontype == RGN_TYPE_PREVIEW) {
     t->view = &region->v2d;
     t->around = SEQ_tool_settings_pivot_point_get(t->scene);
+    t->options |= CTX_SEQUENCER_IMAGE;
   }
   else {
     if (region) {

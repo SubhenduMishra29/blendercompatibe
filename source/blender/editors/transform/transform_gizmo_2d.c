@@ -391,11 +391,6 @@ static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
       }
     }
 
-    ScrArea *area = CTX_wm_area(C);
-    if (area->spacetype == SPACE_SEQ) {
-      RNA_boolean_set(ptr, "sequencer_image", true);
-    }
-
     RNA_boolean_set(ptr, "release_confirm", true);
   }
 
@@ -726,11 +721,6 @@ static void gizmo2d_resize_setup(const bContext *C, wmGizmoGroup *gzgroup)
       }
     }
     RNA_boolean_set(ptr, "release_confirm", true);
-
-    ScrArea *area = CTX_wm_area(C);
-    if (area->spacetype == SPACE_SEQ) {
-      RNA_boolean_set(ptr, "sequencer_image", true);
-    }
   }
 }
 
@@ -848,14 +838,9 @@ static void gizmo2d_rotate_setup(const bContext *C, wmGizmoGroup *gzgroup)
       WM_gizmo_set_color_highlight(gz, color);
     }
 
-    ScrArea *area = CTX_wm_area(C);
-
     /* Assign operator. */
     PointerRNA *ptr = WM_gizmo_operator_set(gz, 0, ot_resize, NULL);
     RNA_boolean_set(ptr, "release_confirm", true);
-    if (area->spacetype == SPACE_SEQ) {
-      RNA_boolean_set(ptr, "sequencer_image", true);
-    }
   }
 }
 

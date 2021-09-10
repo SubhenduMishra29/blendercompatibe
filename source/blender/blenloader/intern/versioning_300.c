@@ -1248,10 +1248,6 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
       sequencer_tool_settings->pivot_point = V3D_AROUND_CENTER_MEDIAN;
-
-      if (scene->ed != NULL) {
-        SEQ_for_each_callback(&scene->ed->seqbase, seq_transform_origin_set, NULL);
-      }
     }
   }
 }
