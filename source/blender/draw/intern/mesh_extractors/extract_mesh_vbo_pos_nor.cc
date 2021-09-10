@@ -271,31 +271,43 @@ static void extract_pos_nor_loose_geom_subdiv(const DRWSubdivCache *subdiv_cache
   const MVert *coarse_verts = coarse_mesh->mvert;
   uint offset = subdiv_cache->num_subdiv_loops;
 
-  PosNorLoop edge_data[2];
+  /* TODO(kevindietrich) : replace this when compressed normals are supported. */
+  struct SubdivPosNorLoop {
+    float pos[3];
+    float nor[3];
+    float flag;
+  };
+
+  SubdivPosNorLoop edge_data[2];
   for (int i = 0; i < loose_geom->edge_len; i++) {
     const MEdge *loose_edge = &coarse_edges[loose_geom->edges[i]];
     const MVert *loose_vert1 = &coarse_verts[loose_edge->v1];
-    const MVert *loose_vert2 = &coarse_verts[loose_edge->v1];
+    const MVert *loose_vert2 = &coarse_verts[loose_edge->v2];
 
     copy_v3_v3(edge_data[0].pos, loose_vert1->co);
-    edge_data[0].nor = GPU_normal_convert_i10_s3(loose_vert1->no);
+    normal_short_to_float_v3(edge_data[0].nor, loose_vert1->no);
+    edge_data[0].flag = 0.0f;
 
     copy_v3_v3(edge_data[1].pos, loose_vert2->co);
-    edge_data[1].nor = GPU_normal_convert_i10_s3(loose_vert2->no);
+    normal_short_to_float_v3(edge_data[1].nor, loose_vert2->no);
+    edge_data[1].flag = 0.0f;
 
-    GPU_vertbuf_update_sub(vbo, offset * sizeof(PosNorLoop), sizeof(PosNorLoop) * 2, &edge_data);
+    GPU_vertbuf_update_sub(
+        vbo, offset * sizeof(SubdivPosNorLoop), sizeof(SubdivPosNorLoop) * 2, &edge_data);
 
     offset += 2;
   }
 
-  PosNorLoop vert_data;
+  SubdivPosNorLoop vert_data;
+  vert_data.flag = 0.0f;
   for (int i = 0; i < loose_geom->vert_len; i++) {
     const MVert *loose_vertex = &coarse_verts[loose_geom->verts[i]];
 
     copy_v3_v3(vert_data.pos, loose_vertex->co);
-    vert_data.nor = GPU_normal_convert_i10_s3(loose_vertex->no);
+    normal_short_to_float_v3(vert_data.nor, loose_vertex->no);
 
-    GPU_vertbuf_update_sub(vbo, offset * sizeof(PosNorLoop), sizeof(PosNorLoop), &vert_data);
+    GPU_vertbuf_update_sub(
+        vbo, offset * sizeof(SubdivPosNorLoop), sizeof(SubdivPosNorLoop), &vert_data);
 
     offset += 1;
   }
