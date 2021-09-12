@@ -44,6 +44,7 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
+#include "SEQ_utils.h"
 
 /* For menu, popup, icons, etc. */
 
@@ -676,12 +677,12 @@ static bool seq_select_point_image_isect(const Scene *scene,
   return BLI_rctf_isect_pt(&r_rctf, point[0], point[1]);
 }
 
-/* Check if click happened on image which belongs to strip. Unselected strips are prioritized.
- * Overlapping strips are not ordered. */
+/* Check if click happened on image which belongs to strip. If multiple strips are found, loop
+ * through them in order. */
 static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
-  Editing *ed = SEQ_editing_get(scene, false);
+  Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   View2D *v2d = UI_view2d_fromcontext(C);
@@ -689,29 +690,25 @@ static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2
   float click_x, click_y;
   UI_view2d_region_to_view(v2d, mval[0], mval[1], &click_x, &click_y);
 
-  SeqCollection *strips = Seq_query_rendered_strips(seqbase, scene->r.cfra, sseq->chanshown);
+  SeqCollection *strips = SEQ_query_rendered_strips(seqbase, scene->r.cfra, sseq->chanshown);
+  ListBase strips_ordered = {NULL};
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
-    if ((seq->flag & SELECT) != 0) {
-      continue;
-    }
-
     if (seq_select_point_image_isect(scene, seq, click_x, click_y)) {
-      SEQ_collection_free(strips);
-      return seq;
+      BLI_addtail(&strips_ordered, seq);
     }
   }
-
-  SEQ_filter_selected_strips(strips);
-  SEQ_ITERATOR_FOREACH (seq, strips) {
-    if (seq_select_point_image_isect(scene, seq, click_x, click_y)) {
-      SEQ_collection_free(strips);
-      return seq;
-    }
-  }
-
   SEQ_collection_free(strips);
-  return NULL;
+  SEQ_sort(&strips_ordered);
+
+  Sequence *seq_active = SEQ_select_active_get(scene);
+  LISTBASE_FOREACH (Sequence *, seq_select, &strips_ordered) {
+    if (seq_select == seq_active && seq_select->next != NULL) {
+      return seq_select->next;
+    }
+  }
+
+  return strips_ordered.first;
 }
 
 static bool element_already_selected(const Sequence *seq, const int handle_clicked)

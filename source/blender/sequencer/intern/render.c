@@ -273,7 +273,7 @@ int seq_get_shown_sequences(ListBase *seqbase,
                             const int chanshown,
                             Sequence **r_seq_arr)
 {
-  SeqCollection *collection = Seq_query_rendered_strips(seqbase, timeline_frame, chanshown);
+  SeqCollection *collection = SEQ_query_rendered_strips(seqbase, timeline_frame, chanshown);
   const int strip_count = BLI_gset_len(collection->set);
 
   if (strip_count > MAXSEQ) {

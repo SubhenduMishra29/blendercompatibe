@@ -102,7 +102,7 @@ void createTransSeqImageData(TransInfo *t)
 {
   Editing *ed = SEQ_editing_get(t->scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
-  SeqCollection *strips = Seq_query_rendered_strips(seqbase, t->scene->r.cfra, 0);
+  SeqCollection *strips = SEQ_query_rendered_strips(seqbase, t->scene->r.cfra, 0);
   SEQ_filter_selected_strips(strips);
 
   const int count = SEQ_collection_len(strips);

@@ -438,7 +438,7 @@ static void collection_filter_rendered_strips(SeqCollection *collection)
  * \param displayed_channel: viewed channel. when set to 0, no channel filter is applied
  * \return strip collection
  */
-SeqCollection *Seq_query_rendered_strips(ListBase *seqbase,
+SeqCollection *SEQ_query_rendered_strips(ListBase *seqbase,
                                          const int timeline_frame,
                                          const int displayed_channel)
 {
