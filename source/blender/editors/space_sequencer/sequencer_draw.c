@@ -2050,10 +2050,14 @@ static int sequencer_draw_get_transform_preview_frame(Scene *scene)
 
 static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
 {
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
   if ((seq->flag & SELECT) == 0) {
     return;
   }
   if (ED_screen_animation_no_scrub(CTX_wm_manager(C))) {
+    return;
+  }
+  if ((sseq->flag & SEQ_SHOW_STRIP_OVERLAY) == 0 || (sseq->flag & SEQ_SHOW_IMAGE_OUTLINE) == 0) {
     return;
   }
 
