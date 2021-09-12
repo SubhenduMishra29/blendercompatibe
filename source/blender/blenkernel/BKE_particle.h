@@ -629,6 +629,8 @@ extern void (*BKE_particle_batch_cache_dirty_tag_cb)(struct ParticleSystem *psys
 extern void (*BKE_particle_batch_cache_free_cb)(struct ParticleSystem *psys);
 
 /* .blend file I/O */
+void BKE_particle_partdeflect_blend_write(struct BlendWriter *writer,
+                                          const struct PartDeflect *pd);
 void BKE_particle_partdeflect_blend_read_data(struct BlendDataReader *reader,
                                               struct PartDeflect *pd);
 void BKE_particle_partdeflect_blend_read_lib(struct BlendLibReader *reader,
