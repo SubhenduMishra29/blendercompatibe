@@ -695,6 +695,7 @@ static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
     if (seq_select_point_image_isect(scene, seq, click_x, click_y)) {
+      BLI_remlink(seqbase, seq);
       BLI_addtail(&strips_ordered, seq);
     }
   }
@@ -702,13 +703,17 @@ static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2
   SEQ_sort(&strips_ordered);
 
   Sequence *seq_active = SEQ_select_active_get(scene);
-  LISTBASE_FOREACH (Sequence *, seq_select, &strips_ordered) {
-    if (seq_select == seq_active && seq_select->next != NULL) {
-      return seq_select->next;
+  Sequence *seq_select = strips_ordered.first;
+  LISTBASE_FOREACH (Sequence *, seq_iter, &strips_ordered) {
+    if (seq_iter == seq_active && seq_iter->next != NULL) {
+      seq_select = seq_iter->next;
+      break;
     }
   }
 
-  return strips_ordered.first;
+  BLI_movelisttolist(seqbase, &strips_ordered);
+
+  return seq_select;
 }
 
 static bool element_already_selected(const Sequence *seq, const int handle_clicked)
