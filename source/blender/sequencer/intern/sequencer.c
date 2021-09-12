@@ -79,6 +79,8 @@ static Strip *seq_strip_alloc(int type)
     strip->transform = MEM_callocN(sizeof(struct StripTransform), "StripTransform");
     strip->transform->scale_x = 1;
     strip->transform->scale_y = 1;
+    strip->transform->origin[0] = 0.5f;
+    strip->transform->origin[1] = 0.5f;
     strip->crop = MEM_callocN(sizeof(struct StripCrop), "StripCrop");
   }
 
