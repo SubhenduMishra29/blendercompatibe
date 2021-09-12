@@ -2094,7 +2094,7 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
     image_size[1] = scene->r.ysch;
   }
   else {
-    image_size[0] = strip_elem->orig_height;
+    image_size[0] = strip_elem->orig_width;
     image_size[1] = strip_elem->orig_height;
   }
 
