@@ -682,11 +682,6 @@ static void gizmo2d_resize_setup(const bContext *C, wmGizmoGroup *gzgroup)
 
       /* set up widget data */
       RNA_float_set(gz->ptr, "length", 1.0f);
-
-      /*      float axis[3] = {0.0f};
-            axis[i] = 1.0f;
-            WM_gizmo_set_matrix_rotation_from_z_axis(gz, axis);*/
-
       RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_ARROW_STYLE_BOX);
 
       WM_gizmo_set_line_width(gz, GIZMO_AXIS_LINE_WIDTH);
