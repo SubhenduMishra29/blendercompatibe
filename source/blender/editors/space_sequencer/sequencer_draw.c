@@ -2091,26 +2091,8 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
                        (const float[]){transform->scale_x, transform->scale_y});
   transform_pivot_set_m3(transform_matrix, origin);
 
-  float image_size[2];
-  if (strip_elem == NULL) {
-    Scene *scene = CTX_data_scene(C);
-    image_size[0] = scene->r.xsch;
-    image_size[1] = scene->r.ysch;
-  }
-  else {
-    image_size[0] = strip_elem->orig_width;
-    image_size[1] = strip_elem->orig_height;
-  }
-
-  mul_v2_fl(image_size, 0.5f);
-  float a[2] = {image_size[0], image_size[1]};
-  float b[2] = {image_size[0], -image_size[1]};
-  float c[2] = {-image_size[0], -image_size[1]};
-  float d[2] = {-image_size[0], image_size[1]};
-  mul_m3_v2(transform_matrix, a);
-  mul_m3_v2(transform_matrix, b);
-  mul_m3_v2(transform_matrix, c);
-  mul_m3_v2(transform_matrix, d);
+  float seq_image_quad[4][2];
+  SEQ_image_transform_final_quad_get(CTX_data_scene(C), seq, seq_image_quad);
 
   GPU_line_smooth(true);
   GPU_blend(GPU_BLEND_ALPHA);
@@ -2122,10 +2104,10 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
   immUniformColor3fv(col);
   immUniform1f("lineWidth", U.pixelsize);
   immBegin(GPU_PRIM_LINE_LOOP, 4);
-  immVertex2f(pos, a[0], a[1]);
-  immVertex2f(pos, b[0], b[1]);
-  immVertex2f(pos, c[0], c[1]);
-  immVertex2f(pos, d[0], d[1]);
+  immVertex2f(pos, seq_image_quad[0][0], seq_image_quad[0][1]);
+  immVertex2f(pos, seq_image_quad[1][0], seq_image_quad[1][1]);
+  immVertex2f(pos, seq_image_quad[2][0], seq_image_quad[2][1]);
+  immVertex2f(pos, seq_image_quad[3][0], seq_image_quad[3][1]);
   immEnd();
   immUnbindProgram();
   GPU_line_width(1);

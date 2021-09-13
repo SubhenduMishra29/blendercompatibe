@@ -448,3 +448,40 @@ void SEQ_image_transform_origin_offset_get(const Scene *scene,
   r_origin[0] = (image_size[0] * transform->origin[0]) - (image_size[0] * 0.5f);
   r_origin[1] = (image_size[1] * transform->origin[1]) - (image_size[1] * 0.5f);
 }
+
+void SEQ_image_transform_final_quad_get(const Scene *scene,
+                                        const Sequence *seq,
+                                        float r_quad[4][2])
+{
+  StripTransform *transform = seq->strip->transform;
+  StripCrop *crop = seq->strip->crop;
+
+  int img_x = scene->r.xsch;
+  int img_y = scene->r.ysch;
+  if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
+    img_x = seq->strip->stripdata->orig_width;
+    img_y = seq->strip->stripdata->orig_height;
+  }
+
+  float transform_matrix[3][3];
+  loc_rot_size_to_mat3(transform_matrix,
+                       (const float[]){transform->xofs, transform->yofs},
+                       transform->rotation,
+                       (const float[]){transform->scale_x, transform->scale_y});
+  float origin[2];
+  SEQ_image_transform_origin_offset_get(scene, seq, origin);
+  transform_pivot_set_m3(transform_matrix, origin);
+
+  r_quad[0][0] = (img_x / 2) - crop->right;
+  r_quad[0][1] = (img_y / 2) - crop->top;
+  r_quad[1][0] = (img_x / 2) - crop->right;
+  r_quad[1][1] = (-img_y / 2) + crop->bottom;
+  r_quad[2][0] = (-img_x / 2) + crop->left;
+  r_quad[2][1] = (-img_y / 2) + crop->bottom;
+  r_quad[3][0] = (-img_x / 2) + crop->left;
+  r_quad[3][1] = (img_y / 2) - crop->top;
+  mul_m3_v2(transform_matrix, r_quad[0]);
+  mul_m3_v2(transform_matrix, r_quad[1]);
+  mul_m3_v2(transform_matrix, r_quad[2]);
+  mul_m3_v2(transform_matrix, r_quad[3]);
+}

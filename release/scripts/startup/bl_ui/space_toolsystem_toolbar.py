@@ -3063,7 +3063,7 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
         None: [
         ],
         'PREVIEW': [
-            # *_tools_select,
+            *_tools_select,
             _defs_sequencer_generic.sample,
             _defs_sequencer_generic.translate,
             _defs_sequencer_generic.rotate,
