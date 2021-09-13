@@ -394,6 +394,12 @@ static bool seq_point_image_isect(const Scene *scene, const Sequence *seq, float
       point, seq_image_quad[0], seq_image_quad[1], seq_image_quad[2], seq_image_quad[3]);
 }
 
+static void sequencer_select_do_updates(bContext *C, Scene *scene)
+{
+  ED_outliner_select_sync_from_sequence_tag(C);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -530,12 +536,6 @@ static void sequencer_select_set_active(Scene *scene, Sequence *seq)
     }
   }
   recurs_sel_seq(seq);
-}
-
-static void sequencer_select_do_updates(bContext *C, Scene *scene)
-{
-  ED_outliner_select_sync_from_sequence_tag(C);
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
 }
 
 static void sequencer_select_side_of_frame(const bContext *C,
@@ -1438,6 +1438,7 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
   ARegion *region = CTX_wm_region(C);
   if (region->regiontype == RGN_TYPE_PREVIEW) {
     seq_box_select_seq_from_preview(C, &rectf);
+    sequencer_select_do_updates(C, scene);
     return OPERATOR_FINISHED;
   }
 
@@ -1486,9 +1487,7 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  ED_outliner_select_sync_from_sequence_tag(C);
-
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER | NA_SELECTED, scene);
+  sequencer_select_do_updates(C, scene);
 
   return OPERATOR_FINISHED;
 }
