@@ -440,7 +440,7 @@ void SEQ_image_transform_origin_offset_get(const Scene *scene,
     image_size[1] = scene->r.ysch;
   }
   else {
-    image_size[0] = strip_elem->orig_height;
+    image_size[0] = strip_elem->orig_width;
     image_size[1] = strip_elem->orig_height;
   }
 

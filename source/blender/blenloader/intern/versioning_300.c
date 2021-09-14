@@ -768,7 +768,9 @@ static void version_geometry_nodes_change_legacy_names(bNodeTree *ntree)
 static bool seq_transform_origin_set(Sequence *seq, void *UNUSED(user_data))
 {
   StripTransform *transform = seq->strip->transform;
-  transform->origin[0] = transform->origin[1] = 0.5f;
+  if (seq->strip->transform != NULL) {
+    transform->origin[0] = transform->origin[1] = 0.5f;
+  }
   return true;
 }
 
