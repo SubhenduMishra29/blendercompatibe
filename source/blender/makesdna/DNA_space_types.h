@@ -578,6 +578,7 @@ typedef enum eSpaceNla_Flag {
 
 typedef struct SpaceSeqRuntime {
   struct rctf last_thumbnail_area;
+  struct GHash *last_displayed_thumbnails;
 } SpaceSeqRuntime;
 
 /* Sequencer */

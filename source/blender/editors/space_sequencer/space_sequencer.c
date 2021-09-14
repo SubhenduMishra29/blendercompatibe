@@ -32,6 +32,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -105,6 +106,7 @@ static SpaceLink *sequencer_create(const ScrArea *UNUSED(area), const Scene *sce
 
   struct rctf temp = {0, 0, 0, 0};
   sseq->runtime.last_thumbnail_area = temp;
+  sseq->runtime.last_displayed_thumbnails = NULL;
   /* Tool header. */
   region = MEM_callocN(sizeof(ARegion), "tool header for sequencer");
 
@@ -217,6 +219,11 @@ static void sequencer_free(SpaceLink *sl)
 
   if (scopes->histogram_ibuf) {
     IMB_freeImBuf(scopes->histogram_ibuf);
+  }
+
+  if (sseq->runtime.last_displayed_thumbnails) {
+    BLI_ghash_free(sseq->runtime.last_displayed_thumbnails, NULL, NULL);
+    sseq->runtime.last_displayed_thumbnails = NULL;
   }
 }
 

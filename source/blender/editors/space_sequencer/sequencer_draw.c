@@ -1544,6 +1544,52 @@ static bool sequencer_thumbnail_v2d_is_navigating(const bContext *C)
   return x_diff > 0.01 || y_diff > 0.01;
 }
 
+typedef struct DisplayedThumbnailData {
+  // float thumb_x_start, time_step;
+  GSet *displayed_thumbnails;
+} DisplayedThumbnailData;
+
+static DisplayedThumbnailData *displayed_thumbnails_cache_ensure(const bContext *C, Sequence *seq)
+{
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  if (sseq->runtime.last_displayed_thumbnails == NULL) {
+    sseq->runtime.last_displayed_thumbnails = BLI_ghash_ptr_new(__func__);
+  }
+
+  DisplayedThumbnailData *data = BLI_ghash_lookup(sseq->runtime.last_displayed_thumbnails, seq);
+  if (data == NULL) {
+    data = MEM_callocN(sizeof(DisplayedThumbnailData), __func__);
+    data->displayed_thumbnails = BLI_gset_int_new(__func__);
+    BLI_ghash_insert(sseq->runtime.last_displayed_thumbnails, seq, data);
+  }
+
+  if (!sequencer_thumbnail_v2d_is_navigating(C)) {
+    BLI_gset_clear(data->displayed_thumbnails, NULL);
+  }
+
+  return data;
+}
+
+static int sequencer_thumbnail_closest_guaranteed_image(int timeline_frame,
+                                                        GSet *previously_displayed)
+{
+  int best_diff = INT_MAX;
+  int best_frame = timeline_frame;
+
+  GSetIterator gset_iter;
+  BLI_gsetIterator_init(&gset_iter, previously_displayed);
+  while (!BLI_gsetIterator_done(&gset_iter)) {
+    int frame = POINTER_AS_INT(BLI_gsetIterator_getKey(&gset_iter));
+    int diff = abs(frame - timeline_frame);
+    if (diff < best_diff) {
+      best_diff = diff;
+      best_frame = frame;
+    }
+    BLI_gsetIterator_step(&gset_iter);
+  }
+  return best_frame;
+}
+
 static void draw_seq_strip_thumbnail(View2D *v2d,
                                      const bContext *C,
                                      Scene *scene,
@@ -1561,11 +1607,6 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
   if ((y2 - y1) / pixely <= 40 * U.dpi_fac)
     return;
 
-  if (sequencer_thumbnail_v2d_is_navigating(C)) {
-    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, NULL);
-    return;
-  }
-
   SeqRenderData context = sequencer_thumbnail_context_init(C);
   seq_get_thumb_image_dimensions(
       seq, pixelx, pixely, &thumb_width, &thumb_height, &image_width, &image_height);
@@ -1579,10 +1620,12 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     upper_thumb_bound = seq->enddisp;
   }
 
-  /* Start drawing. */
+  DisplayedThumbnailData *data = displayed_thumbnails_cache_ensure(C, seq);
 
   thumb_x_start = seq_thumbnail_get_start_frame(seq, thumb_width, &v2d->cur);
   float thumb_x_end;
+
+  /* Start drawing. */
   while (thumb_x_start < upper_thumb_bound) {
     thumb_x_end = thumb_x_start + thumb_width;
     clipped = false;
@@ -1628,12 +1671,27 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     }
     BLI_rcti_init(&crop, (int)(cropx_min), (int)cropx_max, 0, (int)(image_height)-1);
 
+    int timeline_frame = round_fl_to_int(thumb_x_start);
+
+    /* Store displayed thumbnails so they can be reused for zooming. */
+    if (sequencer_thumbnail_v2d_is_navigating(C)) {
+      int new_timeline_frame = sequencer_thumbnail_closest_guaranteed_image(
+          timeline_frame, data->displayed_thumbnails);
+      timeline_frame = new_timeline_frame;
+      printf(" Overriding frame %d to %d\n", timeline_frame, new_timeline_frame);
+    }
+
     /* Get the image. */
-    ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, roundf(thumb_x_start), &crop, clipped);
+    ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
 
     if (!ibuf) {
       sequencer_thumbnail_start_job_if_necessary(C, scene->ed, v2d, true);
       break;
+    }
+
+    /* Override timeline frame when zooming. */
+    if (!sequencer_thumbnail_v2d_is_navigating(C)) {
+      BLI_gset_add(data->displayed_thumbnails, POINTER_FROM_INT(timeline_frame));
     }
 
     /* Transparency on overlap. */
@@ -1659,7 +1717,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     IMB_freeImBuf(ibuf);
     GPU_blend(GPU_BLEND_NONE);
     cut_off = 0;
-    thumb_x_start = thumb_x_end;
+    thumb_x_start += thumb_width;
   }
 }
 
