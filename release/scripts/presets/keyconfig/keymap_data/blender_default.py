@@ -2688,6 +2688,12 @@ def km_sequencerpreview(params):
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
         ("transform.resize", {"type": 'S', "value": 'PRESS'}, None),
         ("transform.rotate", {"type": 'R', "value": 'PRESS'}, None),
+        ("sequencer.strip_transform_clear", {"type": 'G', "alt": True, "value": 'PRESS'},
+         {"properties": [("property", 'POSITION')]}),
+        ("sequencer.strip_transform_clear", {"type": 'S', "alt": True, "value": 'PRESS'},
+         {"properties": [("property", 'SCALE')]}),
+        ("sequencer.strip_transform_clear", {"type": 'R', "alt": True, "value": 'PRESS'},
+         {"properties": [("property", 'ROTATION')]}),
     ])
 
     return keymap
