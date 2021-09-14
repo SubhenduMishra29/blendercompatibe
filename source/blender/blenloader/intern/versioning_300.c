@@ -54,6 +54,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_workspace.h"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
@@ -1263,6 +1264,14 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
             sseq->flag |= SEQ_SHOW_IMAGE_OUTLINE;
           }
         }
+      }
+    }
+  }
+  LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
+    if (STREQ(workspace->id.name + 2, "Video Editing")) {
+      LISTBASE_FOREACH_MUTABLE (bToolRef *, tool_ref, &workspace->tools) {
+        if (STREQ(tool_ref->idname, "builtin.sample"))
+          BKE_workspace_tool_remove(workspace, tool_ref);
       }
     }
   }
