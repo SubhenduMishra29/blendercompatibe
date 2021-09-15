@@ -63,7 +63,7 @@ class AssetBrowserSpecificCategoryPanel(AssetBrowserPanel):
     def poll(cls, context):
         return (
             SpaceAssetInfo.is_asset_browser_poll(context)
-            and context.space_data.params.asset_category in cls.asset_categories
+#            and context.space_data.params.asset_category in cls.asset_categories
         )
 
 
