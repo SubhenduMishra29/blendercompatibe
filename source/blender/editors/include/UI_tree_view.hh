@@ -180,6 +180,8 @@ class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
 
   virtual void build_row(uiLayout &row) = 0;
 
+  virtual void onActivate();
+
   /** Copy persistent state (e.g. is-collapsed flag, selection, etc.) from a matching item of the
    * last redraw to this item. If sub-classes introduce more advanced state they should override
    * this and make update their state accordingly. */
@@ -208,15 +210,21 @@ class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
  */
 class uiBasicTreeViewItem : public uiAbstractTreeViewItem {
  public:
+  using ActivateFn = std::function<void(uiBasicTreeViewItem &new_active)>;
   BIFIconID icon;
 
-  uiBasicTreeViewItem(StringRef label, BIFIconID icon = ICON_NONE);
+  uiBasicTreeViewItem(StringRef label,
+                      BIFIconID icon = ICON_NONE,
+                      ActivateFn activate_fn = nullptr);
 
   void build_row(uiLayout &row) override;
+  void onActivate() override;
 
  protected:
   /** Created in the #build() function. */
   uiButTreeRow *tree_row_but_ = nullptr;
+  /** Called when activating this tree view item. */
+  ActivateFn activate_fn_;
 
   uiBut *button();
   BIFIconID get_draw_icon() const;

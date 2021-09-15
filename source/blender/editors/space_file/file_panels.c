@@ -235,8 +235,11 @@ static void file_panel_asset_catalog_buttons_draw(const bContext *C, Panel *pane
   SpaceFile *sfile = CTX_wm_space_file(C);
   /* May be null! */
   struct AssetLibrary *asset_library = filelist_asset_library(sfile->files);
+  /* May not be null! */
+  FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);
+  BLI_assert(params != NULL);
 
-  file_draw_asset_catalog_tree_view_in_layout(asset_library, panel->layout);
+  file_create_asset_catalog_tree_view_in_layout(asset_library, panel->layout, params);
 }
 
 void file_tools_region_panels_register(ARegionType *art)

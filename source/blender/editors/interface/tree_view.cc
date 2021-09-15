@@ -134,6 +134,11 @@ uiAbstractTreeViewItem *uiAbstractTreeView::find_matching_child(
 
 /* ---------------------------------------------------------------------- */
 
+void uiAbstractTreeViewItem::onActivate()
+{
+  /* Do nothing by default. */
+}
+
 void uiAbstractTreeViewItem::update_from_old(uiAbstractTreeViewItem &old)
 {
   is_open_ = old.is_open_;
@@ -156,9 +161,10 @@ int uiAbstractTreeViewItem::count_parents() const
 
 void uiAbstractTreeViewItem::set_active(bool value)
 {
-  if (value) {
+  if (value && !is_active()) {
     /* Deactivate other items in the tree. */
     get_tree_view().foreach_item([](auto &item) { item.set_active(false); });
+    onActivate();
   }
   is_active_ = value;
 }
@@ -229,7 +235,8 @@ uiLayout *uiTreeViewLayoutBuilder::current_layout() const
 
 /* ---------------------------------------------------------------------- */
 
-uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label, BIFIconID icon_) : icon(icon_)
+uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label, BIFIconID icon_, ActivateFn activate_fn)
+    : icon(icon_), activate_fn_(activate_fn)
 {
   label_ = label;
 }
@@ -271,6 +278,13 @@ void uiBasicTreeViewItem::build_row(uiLayout &row)
   tree_row_but_->tree_item = reinterpret_cast<uiTreeViewItemHandle *>(this);
   UI_but_func_set(&tree_row_but_->but, tree_row_click_fn, tree_row_but_, nullptr);
   UI_but_treerow_indentation_set(&tree_row_but_->but, count_parents());
+}
+
+void uiBasicTreeViewItem::onActivate()
+{
+  if (activate_fn_) {
+    activate_fn_(*this);
+  }
 }
 
 BIFIconID uiBasicTreeViewItem::get_draw_icon() const

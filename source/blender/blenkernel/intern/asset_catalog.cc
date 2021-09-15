@@ -74,7 +74,7 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   /* Null when the service only writes, but didn't load anything
    * (#AssetCatalogService::load_from_disk() not called). */
   if (catalog_tree_) {
-    catalog_tree_->insert_item(catalog_ptr->path);
+    catalog_tree_->insert_item(*catalog_ptr);
   }
 
   return catalog_ptr;
@@ -244,7 +244,7 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
   /* Go through the catalogs, insert each path component into the tree where needed. */
   for (auto &catalog : catalogs_.values()) {
-    tree->insert_item(catalog->path);
+    tree->insert_item(*catalog);
   }
 
   return tree;
@@ -252,14 +252,21 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
 /* ---------------------------------------------------------------------- */
 
-AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent)
-    : name_(name), parent_(parent)
+AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name,
+                                           StringRef catalog_id,
+                                           const AssetCatalogTreeItem *parent)
+    : name_(name), catalog_id_(catalog_id), parent_(parent)
 {
 }
 
 AssetCatalogTreeItemIterator AssetCatalogTreeItem::children()
 {
   return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
+}
+
+StringRef AssetCatalogTreeItem::get_catalog_id() const
+{
+  return catalog_id_;
 }
 
 StringRef AssetCatalogTreeItem::get_name() const
@@ -340,11 +347,11 @@ bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
 
 /* ---------------------------------------------------------------------- */
 
-void AssetCatalogTree::insert_item(StringRef catalog_path_str)
+void AssetCatalogTree::insert_item(AssetCatalog &catalog)
 {
   /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
    * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
-  fs::path catalog_path = std::string_view(catalog_path_str);
+  fs::path catalog_path = catalog.path;
 
   const AssetCatalogTreeItem *parent = nullptr;
   AssetCatalogTreeItem::ChildMap *insert_to_map = &children_;
@@ -357,7 +364,13 @@ void AssetCatalogTree::insert_item(StringRef catalog_path_str)
 
     /* Insert new tree element - if no matching one is there yet! */
     auto [item, was_inserted] = insert_to_map->emplace(
-        component_name, AssetCatalogTreeItem(component_name, parent));
+        component_name,
+        AssetCatalogTreeItem(
+            component_name,
+            /* TODO There may be components that don't relate to an actual
+               catalog, i.e. there's no catalog ID to set. This should be changed. */
+            catalog_path.filename() == component_name ? catalog.catalog_id : "",
+            parent));
 
     /* Walk further into the path (no matter if a new item was created or not). */
     parent = &item->second;

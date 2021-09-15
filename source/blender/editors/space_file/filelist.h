@@ -71,6 +71,10 @@ void filelist_setfilter_options(struct FileList *filelist,
                                 const bool filter_assets_only,
                                 const char *filter_glob,
                                 const char *filter_search);
+void filelist_set_asset_catalog_filter_options(
+    struct FileList *filelist,
+    eFileSel_Params_AssetCatalogVisibility catalog_visibility,
+    const char *catalog_id);
 void filelist_filter(struct FileList *filelist);
 void filelist_setlibrary(struct FileList *filelist,
                          const struct AssetLibraryReference *asset_library_ref);

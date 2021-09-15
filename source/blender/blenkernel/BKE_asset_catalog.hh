@@ -114,9 +114,12 @@ class AssetCatalogTreeItem {
   using ChildMap = std::map<std::string, AssetCatalogTreeItem>;
   using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
 
-  AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent = nullptr);
+  AssetCatalogTreeItem(StringRef name,
+                       StringRef catalog_id,
+                       const AssetCatalogTreeItem *parent = nullptr);
 
   AssetCatalogTreeItemIterator children();
+  StringRef get_catalog_id() const;
   StringRef get_name() const;
   /** Return the full catalog path, defined as the name of this catalog prefixed by the full
    * catalog path of its parent and a separator. */
@@ -131,6 +134,7 @@ class AssetCatalogTreeItem {
   ChildMap children_;
   /** The user visible name of this component. */
   CatalogPathComponent name_;
+  CatalogID catalog_id_;
 
   /** Pointer back to the parent item. Used to reconstruct the hierarchy from an item (e.g. to
    * build a path). */
@@ -148,7 +152,7 @@ class AssetCatalogTree {
 
  public:
   /** Ensure an item representing \a path is in the tree, adding it if necessary. */
-  void insert_item(StringRef catalog_path_str);
+  void insert_item(AssetCatalog &catalog);
 
   AssetCatalogTreeItemIterator children();
   void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const;

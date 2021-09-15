@@ -33,6 +33,7 @@ struct ARegion;
 struct ARegionType;
 struct AssetLibrary;
 struct FileSelectParams;
+struct FileAssetSelectParams;
 struct SpaceFile;
 struct uiLayout;
 struct View2D;
@@ -162,8 +163,9 @@ void file_path_to_ui_path(const char *path, char *r_pathi, int max_size);
 
 /* asset_catalog_tree_view.cc */
 
-void file_draw_asset_catalog_tree_view_in_layout(struct AssetLibrary *asset_library,
-                                                 struct uiLayout *layout);
+void file_create_asset_catalog_tree_view_in_layout(struct AssetLibrary *asset_library,
+                                                   struct uiLayout *layout,
+                                                   struct FileAssetSelectParams *params);
 
 #ifdef __cplusplus
 }

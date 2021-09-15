@@ -39,6 +39,7 @@
 #include "UI_resources.h"
 #include "UI_tree_view.hh"
 
+#include "WM_api.h"
 #include "WM_types.h"
 
 #include "file_intern.h"
@@ -47,6 +48,23 @@ using namespace blender;
 using namespace blender::ui;
 using namespace blender::bke;
 
+class AssetCatalogTreeView : public uiAbstractTreeView {
+  bke::AssetLibrary *library_;
+  FileAssetSelectParams *params_;
+
+  friend class AssetCatalogTreeViewItem;
+
+ public:
+  AssetCatalogTreeView(bke::AssetLibrary *library, FileAssetSelectParams *params);
+
+  void build_tree() override;
+
+ private:
+  uiBasicTreeViewItem &build_recursive(uiTreeViewItemContainer &view_parent_item,
+                                       AssetCatalogTreeItem &catalog);
+};
+/* ---------------------------------------------------------------------- */
+
 class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
   AssetCatalogTreeItem &catalog_;
 
@@ -54,6 +72,15 @@ class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
   AssetCatalogTreeViewItem(AssetCatalogTreeItem &catalog)
       : uiBasicTreeViewItem(catalog.get_name()), catalog_(catalog)
   {
+  }
+
+  void onActivate() override
+  {
+    const AssetCatalogTreeView &tree_view = static_cast<const AssetCatalogTreeView &>(
+        get_tree_view());
+    tree_view.params_->asset_catalog_visibility = FILE_SHOW_ASSETS_FROM_CATALOG;
+    tree_view.params_->catalog_id = catalog_.get_catalog_id().data();
+    WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
   }
 
   void build_row(uiLayout &row) override
@@ -66,48 +93,57 @@ class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
   }
 };
 
-class AssetCatalogTreeView : public uiAbstractTreeView {
-  bke::AssetLibrary *library_;
+AssetCatalogTreeView::AssetCatalogTreeView(bke::AssetLibrary *library,
+                                           FileAssetSelectParams *params)
+    : library_(library), params_(params)
+{
+}
 
- public:
-  AssetCatalogTreeView(bke::AssetLibrary *library) : library_(library)
-  {
-  }
+void AssetCatalogTreeView::build_tree()
+{
+  FileAssetSelectParams *params = params_;
 
-  void build_tree() override
-  {
-    add_tree_item<uiBasicTreeViewItem>(IFACE_("All"), ICON_HOME);
+  add_tree_item<uiBasicTreeViewItem>(IFACE_("All"), ICON_HOME, [params](uiBasicTreeViewItem &) {
+    params->asset_catalog_visibility = FILE_SHOW_ASSETS_ALL_CATALOGS;
+    WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+  });
 
-    if (library_) {
-      AssetCatalogTree *catalog_tree = library_->catalog_service->get_catalog_tree();
+  if (library_) {
+    AssetCatalogTree *catalog_tree = library_->catalog_service->get_catalog_tree();
 
-      for (AssetCatalogTreeItem &item : catalog_tree->children()) {
-        uiBasicTreeViewItem &child_view_item = build_recursive(*this, item);
+    for (AssetCatalogTreeItem &item : catalog_tree->children()) {
+      uiBasicTreeViewItem &child_view_item = build_recursive(*this, item);
 
-        /* Open root-level items by default. */
-        child_view_item.set_collapsed(false);
-      }
+      /* Open root-level items by default. */
+      child_view_item.set_collapsed(false);
     }
-
-    add_tree_item<uiBasicTreeViewItem>(IFACE_("Unassigned"), ICON_FILE_HIDDEN);
   }
 
- private:
-  uiBasicTreeViewItem &build_recursive(uiTreeViewItemContainer &view_parent_item,
-                                       AssetCatalogTreeItem &catalog)
-  {
-    uiBasicTreeViewItem &view_item = view_parent_item.add_tree_item<AssetCatalogTreeViewItem>(
-        catalog);
+  add_tree_item<uiBasicTreeViewItem>(
+      IFACE_("Unassigned"), ICON_FILE_HIDDEN, [params](uiBasicTreeViewItem &) {
+        params->asset_catalog_visibility = FILE_SHOW_ASSETS_WITHOUT_CATALOG;
+        WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+      });
+}
 
-    for (AssetCatalogTreeItem &child : catalog.children()) {
-      build_recursive(view_item, child);
-    }
+uiBasicTreeViewItem &AssetCatalogTreeView::build_recursive(
+    uiTreeViewItemContainer &view_parent_item, AssetCatalogTreeItem &catalog)
+{
+  uiBasicTreeViewItem &view_item = view_parent_item.add_tree_item<AssetCatalogTreeViewItem>(
+      catalog);
 
-    return view_item;
+  for (AssetCatalogTreeItem &child : catalog.children()) {
+    build_recursive(view_item, child);
   }
-};
 
-void file_draw_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c, uiLayout *layout)
+  return view_item;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void file_create_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c,
+                                                   uiLayout *layout,
+                                                   FileAssetSelectParams *params)
 {
   uiBlock *block = uiLayoutGetBlock(layout);
 
@@ -115,7 +151,9 @@ void file_draw_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library_c
       asset_library_c);
 
   uiAbstractTreeView *tree_view = UI_block_add_view(
-      block, "asset catalog tree view", std::make_unique<AssetCatalogTreeView>(asset_library));
+      block,
+      "asset catalog tree view",
+      std::make_unique<AssetCatalogTreeView>(asset_library, params));
 
   uiTreeViewBuilder builder(*block);
   builder.build_tree_view(*tree_view);
