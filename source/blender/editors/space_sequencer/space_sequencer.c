@@ -176,7 +176,7 @@ static SpaceLink *sequencer_create(const ScrArea *UNUSED(area), const Scene *sce
   region->v2d.cur = region->v2d.tot;
 
   region->v2d.min[0] = 10.0f;
-  region->v2d.min[1] = 0.5f;
+  region->v2d.min[1] = 2.0f;
 
   region->v2d.max[0] = MAXFRAMEF;
   region->v2d.max[1] = MAXSEQ;
@@ -222,7 +222,8 @@ static void sequencer_free(SpaceLink *sl)
   }
 
   if (sseq->runtime.last_displayed_thumbnails) {
-    BLI_ghash_free(sseq->runtime.last_displayed_thumbnails, NULL, NULL);
+    BLI_ghash_free(
+        sseq->runtime.last_displayed_thumbnails, NULL, last_displayed_thumbnails_list_free);
     sseq->runtime.last_displayed_thumbnails = NULL;
   }
 }

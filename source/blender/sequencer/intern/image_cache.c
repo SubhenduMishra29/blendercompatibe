@@ -104,7 +104,7 @@
 #define DCACHE_IMAGES_PER_FILE 100
 #define DCACHE_CURRENT_VERSION 2
 #define COLORSPACE_NAME_MAX 64 /* XXX: defined in imb intern */
-#define THUMB_CACHE_LIMIT 5000
+#define THUMB_CACHE_LIMIT 100
 
 typedef struct DiskCacheHeaderEntry {
   unsigned char encoding;
@@ -1368,15 +1368,22 @@ void seq_cache_thumbnail_cleanup(Scene *scene, rctf *view_area_safe)
     SeqCacheKey *key = BLI_ghashIterator_getKey(&gh_iter);
     BLI_ghashIterator_step(&gh_iter);
 
+    const int frame_index = key->timeline_frame - key->seq->startdisp;
+    const int frame_step = SEQ_render_thumbnails_guaranteed_set_frame_step_get(key->seq);
+    const int relative_base_frame = round_fl_to_int((frame_index / (float)frame_step)) *
+                                    frame_step;
+    const int nearest_guaranted_absolute_frame = relative_base_frame + key->seq->startdisp;
+
+    if (nearest_guaranted_absolute_frame == key->timeline_frame) {
+      continue;
+    }
+
     if ((key->type & SEQ_CACHE_STORE_THUMBNAIL) &&
         (key->timeline_frame > view_area_safe->xmax ||
          key->timeline_frame < view_area_safe->xmin || key->seq->machine > view_area_safe->ymax ||
          key->seq->machine < view_area_safe->ymin)) {
-      if (key->link_next || key->link_prev) {
-        seq_cache_relink_keys(key->link_next, key->link_prev);
-      }
-      cache->thumbnail_count--;
       BLI_ghash_remove(cache->hash, key, seq_cache_keyfree, seq_cache_valfree);
+      cache->thumbnail_count--;
     }
   }
   cache->last_key = NULL;

@@ -76,10 +76,13 @@ void SEQ_render_thumbnails(const struct SeqRenderData *context,
                            float frame_step,
                            rctf *view_area,
                            short *stop);
-struct ImBuf *SEQ_get_thumbnail(
-    const struct SeqRenderData *context, struct Sequence *seq, float timeline_frame, rcti *crop, bool clipped);
-int SEQ_render_thumbnails_base_set_get_frame_step(const struct Sequence *seq);
-void SEQ_render_thumbnails_base_set(const struct  SeqRenderData *context,
+struct ImBuf *SEQ_get_thumbnail(const struct SeqRenderData *context,
+                                struct Sequence *seq,
+                                float timeline_frame,
+                                rcti *crop,
+                                bool clipped);
+int SEQ_render_thumbnails_guaranteed_set_frame_step_get(const struct Sequence *seq);
+void SEQ_render_thumbnails_base_set(const struct SeqRenderData *context,
                                     struct Sequence *seq,
                                     struct Sequence *seq_orig,
                                     rctf *view_area,
