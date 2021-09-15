@@ -29,6 +29,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "BKE_modifier.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "subdiv_converter.h"
@@ -206,6 +208,11 @@ Subdiv *BKE_subdiv_update_from_mesh(Subdiv *subdiv,
 
 void BKE_subdiv_free(Subdiv *subdiv)
 {
+  if (subdiv->cache_.draw_cache != NULL) {
+    /* Let the draw code do the freeing, to ensure that the OpenGL context is valid. */
+    BKE_modifier_subsurf_free_gpu_cache_cb(subdiv);
+    return;
+  }
   if (subdiv->evaluator != NULL) {
     openSubdiv_deleteEvaluator(subdiv->evaluator);
   }
@@ -215,9 +222,6 @@ void BKE_subdiv_free(Subdiv *subdiv)
   BKE_subdiv_displacement_detach(subdiv);
   if (subdiv->cache_.face_ptex_offset != NULL) {
     MEM_freeN(subdiv->cache_.face_ptex_offset);
-  }
-  if (subdiv->free_draw_cache) {
-    subdiv->free_draw_cache(subdiv->draw_cache);
   }
   MEM_freeN(subdiv);
 }

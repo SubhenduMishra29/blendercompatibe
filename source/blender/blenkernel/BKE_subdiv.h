@@ -30,6 +30,7 @@
 extern "C" {
 #endif
 
+struct DRWSubdivCache;
 struct Mesh;
 struct MultiresModifierData;
 struct OpenSubdiv_Converter;
@@ -186,15 +187,14 @@ typedef struct Subdiv {
   /* Statistics for debugging. */
   SubdivStats stats;
 
-  /* Cached data for the draw code. */
-  void (*free_draw_cache)(void *);
-  void *draw_cache;
-
   /* Cached values, are not supposed to be accessed directly. */
   struct {
     /* Indexed by base face index, element indicates total number of ptex
      * faces created for preceding base faces. */
     int *face_ptex_offset;
+
+    /* Cached data for the draw code. */
+    struct DRWSubdivCache *draw_cache;
   } cache_;
 } Subdiv;
 

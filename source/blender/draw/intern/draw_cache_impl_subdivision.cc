@@ -418,22 +418,14 @@ static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cach
   GPU_vertbuf_tag_dirty(cache->extra_coarse_face_data);
 }
 
-static void free_draw_cache_from_subdiv_cb(void *ptr)
-{
-  DRWSubdivCache *cache = (DRWSubdivCache *)(ptr);
-  draw_subdiv_cache_free(cache);
-  MEM_freeN(cache);
-}
-
 static DRWSubdivCache *ensure_draw_cache(Subdiv *subdiv)
 {
-  DRWSubdivCache *draw_cache = static_cast<DRWSubdivCache *>(subdiv->draw_cache);
+  DRWSubdivCache *draw_cache = static_cast<DRWSubdivCache *>(subdiv->cache_.draw_cache);
   if (draw_cache == nullptr) {
     draw_cache = static_cast<DRWSubdivCache *>(
         MEM_callocN(sizeof(DRWSubdivCache), "DRWSubdivCache"));
   }
-  subdiv->draw_cache = draw_cache;
-  subdiv->free_draw_cache = free_draw_cache_from_subdiv_cb;
+  subdiv->cache_.draw_cache = draw_cache;
   return draw_cache;
 }
 
@@ -1472,6 +1464,12 @@ void DRW_cache_free_old_subdiv()
 
   while (gpu_subdiv_free_queue != nullptr) {
     Subdiv *subdiv = static_cast<Subdiv *>(BLI_linklist_pop(&gpu_subdiv_free_queue));
+    DRWSubdivCache *cache = static_cast<DRWSubdivCache *>(subdiv->cache_.draw_cache);
+
+    draw_subdiv_cache_free(cache);
+    MEM_freeN(cache);
+
+    subdiv->cache_.draw_cache = nullptr;
     BKE_subdiv_free(subdiv);
   }
 
