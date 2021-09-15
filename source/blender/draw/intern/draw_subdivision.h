@@ -24,6 +24,7 @@ extern "C" {
 
 #include "BLI_sys_types.h"
 
+struct BMesh;
 struct GPUIndexBuf;
 struct GPUUniformBuf;
 struct GPUVertBuf;
@@ -60,6 +61,7 @@ typedef struct DRWPatchMap {
 
 typedef struct DRWSubdivCache {
   struct Mesh *mesh;
+  struct BMesh *bm;
   struct Subdiv *subdiv;
   bool optimal_display;
   bool do_limit_normals;
@@ -141,7 +143,7 @@ void DRW_subdiv_free(void);
 
 void DRW_subdiv_cache_free(struct Subdiv *subdiv);
 
-void draw_subdiv_init_mesh_render_data(struct Mesh *mesh,
+void draw_subdiv_init_mesh_render_data(DRWSubdivCache *cache,
                                        struct MeshRenderData *mr,
                                        const struct ToolSettings *toolsettings);
 

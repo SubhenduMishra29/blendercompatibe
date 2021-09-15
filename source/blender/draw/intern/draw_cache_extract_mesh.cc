@@ -825,7 +825,7 @@ static void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
   }
 
   MeshRenderData mr;
-  draw_subdiv_init_mesh_render_data(subdiv_cache->mesh, &mr, ts);
+  draw_subdiv_init_mesh_render_data(subdiv_cache, &mr, ts);
   mesh_render_data_update_loose_geom(&mr, mbc, MR_ITER_LEDGE | MR_ITER_LVERT, MR_DATA_LOOSE_GEOM);
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);

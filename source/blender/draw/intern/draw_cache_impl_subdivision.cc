@@ -1202,10 +1202,12 @@ void draw_subdiv_build_lnor_buffer(const DRWSubdivCache *cache,
 
 /* -------------------------------------------------------------------- */
 
-void draw_subdiv_init_mesh_render_data(Mesh *mesh,
+void draw_subdiv_init_mesh_render_data(DRWSubdivCache *cache,
                                        MeshRenderData *mr,
                                        const ToolSettings *toolsettings)
 {
+  Mesh *mesh = cache->mesh;
+
   /* Setup required data for loose geometry. */
   mr->me = mesh;
   mr->medge = mesh->medge;
@@ -1219,11 +1221,11 @@ void draw_subdiv_init_mesh_render_data(Mesh *mesh,
   mr->extract_type = MR_EXTRACT_MESH;
 
   /* MeshRenderData is only used for generating edit mode data here. */
-  if (!mesh->edit_mesh) {
+  if (!cache->bm) {
     return;
   }
 
-  BMesh *bm = mesh->edit_mesh->bm;
+  BMesh *bm = cache->bm;
   BM_mesh_elem_table_ensure(bm, BM_EDGE | BM_FACE | BM_VERT);
 
   mr->bm = bm;
@@ -1238,6 +1240,9 @@ void draw_subdiv_init_mesh_render_data(Mesh *mesh,
   mr->freestyle_edge_ofs = CustomData_get_offset(&bm->edata, CD_FREESTYLE_EDGE);
   mr->freestyle_face_ofs = CustomData_get_offset(&bm->pdata, CD_FREESTYLE_FACE);
 #endif
+  mr->v_origindex = static_cast<int *>(CustomData_get_layer(&mr->me->vdata, CD_ORIGINDEX));
+  mr->e_origindex = static_cast<int *>(CustomData_get_layer(&mr->me->edata, CD_ORIGINDEX));
+  mr->p_origindex = static_cast<int *>(CustomData_get_layer(&mr->me->pdata, CD_ORIGINDEX));
 }
 
 /* For material assignements we want indices for triangles that share a common material to be laid
@@ -1356,8 +1361,10 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
   }
 
   Mesh *mesh_eval = mesh;
+  BMesh *bm = nullptr;
   if (mesh->edit_mesh) {
     mesh_eval = mesh->edit_mesh->mesh_eval_final;
+    bm = mesh->edit_mesh->bm;
   }
 
   BKE_modifier_subsurf_ensure_runtime(smd);
@@ -1379,6 +1386,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
 
   const bool optimal_display = (smd->flags & eSubsurfModifierFlag_ControlEdges);
 
+  draw_cache->bm = bm;
   draw_cache->mesh = mesh_eval;
   draw_cache->subdiv = subdiv;
   draw_cache->optimal_display = optimal_display;

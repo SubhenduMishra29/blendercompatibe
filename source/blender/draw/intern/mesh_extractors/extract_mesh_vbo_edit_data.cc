@@ -288,16 +288,16 @@ static void extract_edit_data_iter_subdiv(const DRWSubdivCache *subdiv_cache,
     memset(edit_loop_data, 0, sizeof(EditLoopData));
 
     if (vert_origindex != -1) {
-      const BMVert *eve = BM_vert_at_index(mr->bm, vert_origindex);
+      const BMVert *eve = bm_original_vert_get(mr, vert_origindex);
       mesh_render_data_vert_flag(mr, eve, edit_loop_data);
     }
 
     if (edge_origindex != -1) {
-      const BMEdge *eed = BM_edge_at_index(mr->bm, edge_origindex);
+      const BMEdge *eed = bm_original_edge_get(mr, edge_origindex);
       mesh_render_data_edge_flag(mr, eed, edit_loop_data);
     }
 
-    BMFace *efa = BM_face_at_index(mr->bm, poly_origindex);
+    BMFace *efa = bm_original_face_get(mr, poly_origindex);
     /* The -1 parameter is for edit_uvs, which we don't do here. */
     mesh_render_data_face_flag(mr, efa, -1, edit_loop_data);
   }
@@ -319,7 +319,7 @@ static void extract_edit_data_loose_geom_subdiv(const DRWSubdivCache *subdiv_cac
     const int offset = subdiv_cache->num_subdiv_loops + ledge_index * 2;
     EditLoopData *data = &vbo_data[offset];
     memset(data, 0, sizeof(EditLoopData));
-    BMEdge *eed = BM_edge_at_index(mr->bm, loose_geom->edges[ledge_index]);
+    BMEdge *eed = bm_original_edge_get(mr, loose_geom->edges[ledge_index]);
     mesh_render_data_edge_flag(mr, eed, &data[0]);
     data[1] = data[0];
     mesh_render_data_vert_flag(mr, eed->v1, &data[0]);
