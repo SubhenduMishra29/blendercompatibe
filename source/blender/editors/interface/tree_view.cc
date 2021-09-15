@@ -40,13 +40,13 @@ uiAbstractTreeViewItem &uiTreeViewItemContainer::add_tree_item(
   children_.append(std::move(item));
 
   /* The first item that will be added to the root sets this. */
-  if (root == nullptr) {
-    root = this;
+  if (root_ == nullptr) {
+    root_ = this;
   }
 
   uiAbstractTreeViewItem &added_item = *children_.last();
-  added_item.root = root;
-  if (root != this) {
+  added_item.root_ = root_;
+  if (root_ != this) {
     /* Any item that isn't the root can be assumed to the a #uiAbstractTreeViewItem. Not entirely
      * nice to static_cast this, but well... */
     added_item.parent_ = static_cast<uiAbstractTreeViewItem *>(this);
@@ -55,7 +55,24 @@ uiAbstractTreeViewItem &uiTreeViewItemContainer::add_tree_item(
   return added_item;
 }
 
+void uiTreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptions options) const
+{
+  for (auto &child : children_) {
+    iter_fn(*child);
+    if (bool(options & IterOptions::SkipCollapsed) && child->is_collapsed()) {
+      continue;
+    }
+
+    child->foreach_item_recursive(iter_fn, options);
+  }
+}
+
 /* ---------------------------------------------------------------------- */
+
+void uiAbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) const
+{
+  foreach_item_recursive(iter_fn, options);
+}
 
 void uiAbstractTreeView::build_layout_from_tree(const uiTreeViewLayoutBuilder &builder)
 {
@@ -63,21 +80,10 @@ void uiAbstractTreeView::build_layout_from_tree(const uiTreeViewLayoutBuilder &b
 
   uiLayoutColumn(prev_layout, true);
 
-  build_layout_from_tree_recursive(builder, *this);
+  foreach_item([&builder](uiAbstractTreeViewItem &item) { builder.build_row(item); },
+               IterOptions::SkipCollapsed);
 
   UI_block_layout_set_current(&builder.block(), prev_layout);
-}
-
-void uiAbstractTreeView::build_layout_from_tree_recursive(const uiTreeViewLayoutBuilder &builder,
-                                                          const uiTreeViewItemContainer &items)
-{
-  for (const auto &item : items.children_) {
-    builder.build_row(*item);
-    if (!item->is_open_) {
-      continue;
-    }
-    build_layout_from_tree_recursive(builder, *item);
-  }
 }
 
 void uiAbstractTreeView::update_from_old(uiBlock &new_block)

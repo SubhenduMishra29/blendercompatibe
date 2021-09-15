@@ -60,11 +60,19 @@ class uiTreeViewItemContainer {
  protected:
   Vector<std::unique_ptr<uiAbstractTreeViewItem>> children_;
   /** Adding the first item to the root will set this, then it's passed on to all children. */
-  uiTreeViewItemContainer *root = nullptr;
+  uiTreeViewItemContainer *root_ = nullptr;
   /** Pointer back to the owning item. */
   uiAbstractTreeViewItem *parent_ = nullptr;
 
  public:
+  enum class IterOptions {
+    None = 0,
+    SkipCollapsed = 1 << 0,
+
+    /* Keep ENUM_OPERATORS() below updated! */
+  };
+  using ItemIterFn = FunctionRef<void(uiAbstractTreeViewItem &)>;
+
   /**
    * Convenience wrapper taking the arguments needed to construct an item of type \a ItemT. Calls
    * the version just below.
@@ -79,7 +87,13 @@ class uiTreeViewItemContainer {
   }
 
   uiAbstractTreeViewItem &add_tree_item(std::unique_ptr<uiAbstractTreeViewItem> item);
+
+ protected:
+  void foreach_item_recursive(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
 };
+
+ENUM_OPERATORS(uiTreeViewItemContainer::IterOptions,
+               uiTreeViewItemContainer::IterOptions::SkipCollapsed);
 
 /** \} */
 
@@ -124,6 +138,8 @@ class uiAbstractTreeView : public uiTreeViewItemContainer {
  public:
   virtual ~uiAbstractTreeView() = default;
 
+  void foreach_item(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
+
  protected:
   virtual void build_tree() = 0;
 
@@ -134,8 +150,6 @@ class uiAbstractTreeView : public uiTreeViewItemContainer {
   static uiAbstractTreeViewItem *find_matching_child(const uiAbstractTreeViewItem &lookup_item,
                                                      const uiTreeViewItemContainer &items);
   void build_layout_from_tree(const uiTreeViewLayoutBuilder &builder);
-  void build_layout_from_tree_recursive(const uiTreeViewLayoutBuilder &builder,
-                                        const uiTreeViewItemContainer &items);
 };
 
 /** \} */
