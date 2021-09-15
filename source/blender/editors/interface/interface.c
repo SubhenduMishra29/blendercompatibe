@@ -2214,6 +2214,15 @@ int ui_but_is_pushed_ex(uiBut *but, double *value)
           }
         }
         break;
+      case UI_BTYPE_TREEROW: {
+        uiButTreeRow *tree_row_but = (uiButTreeRow *)but;
+
+        is_push = -1;
+        if (tree_row_but->tree_item) {
+          is_push = UI_tree_view_item_is_active(tree_row_but->tree_item);
+        }
+        break;
+      }
       default:
         is_push = -1;
         break;

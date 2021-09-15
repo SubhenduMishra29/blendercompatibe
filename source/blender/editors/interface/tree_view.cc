@@ -137,6 +137,12 @@ uiAbstractTreeViewItem *uiAbstractTreeView::find_matching_child(
 void uiAbstractTreeViewItem::update_from_old(uiAbstractTreeViewItem &old)
 {
   is_open_ = old.is_open_;
+  is_active_ = old.is_active_;
+}
+
+const uiAbstractTreeView &uiAbstractTreeViewItem::get_tree_view() const
+{
+  return static_cast<uiAbstractTreeView &>(*root_);
 }
 
 int uiAbstractTreeViewItem::count_parents() const
@@ -146,6 +152,20 @@ int uiAbstractTreeViewItem::count_parents() const
     i++;
   }
   return i;
+}
+
+void uiAbstractTreeViewItem::set_active(bool value)
+{
+  if (value) {
+    /* Deactivate other items in the tree. */
+    get_tree_view().foreach_item([](auto &item) { item.set_active(false); });
+  }
+  is_active_ = value;
+}
+
+bool uiAbstractTreeViewItem::is_active() const
+{
+  return is_active_;
 }
 
 bool uiAbstractTreeViewItem::is_collapsed() const
@@ -214,13 +234,18 @@ uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label, BIFIconID icon_) : ico
   label_ = label;
 }
 
-static void but_collapsed_toggle_fn(struct bContext *UNUSED(C), void *but_arg1, void *UNUSED(arg2))
+static void tree_row_click_fn(struct bContext *UNUSED(C), void *but_arg1, void *UNUSED(arg2))
 {
   uiButTreeRow *tree_row_but = (uiButTreeRow *)but_arg1;
   uiAbstractTreeViewItem &tree_item = reinterpret_cast<uiAbstractTreeViewItem &>(
       *tree_row_but->tree_item);
 
-  tree_item.toggle_collapsed();
+  /* Let a click on an opened item activate it, a second click will close it then.
+   * TODO Should this be for asset catalogs only? */
+  if (tree_item.is_collapsed() || tree_item.is_active()) {
+    tree_item.toggle_collapsed();
+  }
+  tree_item.set_active();
 }
 
 void uiBasicTreeViewItem::build_row(uiLayout &row)
@@ -244,7 +269,7 @@ void uiBasicTreeViewItem::build_row(uiLayout &row)
                                                    nullptr);
 
   tree_row_but_->tree_item = reinterpret_cast<uiTreeViewItemHandle *>(this);
-  UI_but_func_set(&tree_row_but_->but, but_collapsed_toggle_fn, tree_row_but_, nullptr);
+  UI_but_func_set(&tree_row_but_->but, tree_row_click_fn, tree_row_but_, nullptr);
   UI_but_treerow_indentation_set(&tree_row_but_->but, count_parents());
 }
 
@@ -267,3 +292,11 @@ uiBut *uiBasicTreeViewItem::button()
 }
 
 }  // namespace blender::ui
+
+using namespace blender::ui;
+
+bool UI_tree_view_item_is_active(uiTreeViewItemHandle *item_)
+{
+  uiAbstractTreeViewItem &item = reinterpret_cast<uiAbstractTreeViewItem &>(*item_);
+  return item.is_active();
+}

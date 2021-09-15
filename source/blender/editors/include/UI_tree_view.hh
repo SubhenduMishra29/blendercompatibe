@@ -169,6 +169,7 @@ class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
   friend class uiAbstractTreeView;
 
   bool is_open_ = false;
+  bool is_active_ = false;
 
  protected:
   /** This label is used for identifying an item (together with its parents labels). */
@@ -184,7 +185,10 @@ class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
    * this and make update their state accordingly. */
   virtual void update_from_old(uiAbstractTreeViewItem &old);
 
+  const uiAbstractTreeView &get_tree_view() const;
   int count_parents() const;
+  void set_active(bool value = true);
+  bool is_active() const;
   void toggle_collapsed();
   bool is_collapsed() const;
   void set_collapsed(bool collapsed);
