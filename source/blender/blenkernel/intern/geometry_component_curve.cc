@@ -64,6 +64,8 @@ void CurveComponent::clear()
       delete curve_;
     }
     if (curve_for_render_ != nullptr) {
+      /* The curve created by this component should not have any edit mode data. */
+      BLI_assert(curve_for_render_->editfont == nullptr && curve_for_render_->editnurb == nullptr);
       BKE_id_free(nullptr, curve_for_render_);
       curve_for_render_ = nullptr;
     }
@@ -218,6 +220,37 @@ static void adapt_curve_domain_point_to_spline_impl(const CurveEval &curve,
   }
 
   mixer.finalize();
+}
+
+/**
+ * A spline is selected if all of its control points were selected.
+ *
+ * \note Theoretically this interpolation does not need to compute all values at once.
+ * However, doing that makes the implementation simpler, and this can be optimized in the future if
+ * only some values are required.
+ */
+template<>
+void adapt_curve_domain_point_to_spline_impl(const CurveEval &curve,
+                                             const VArray<bool> &old_values,
+                                             MutableSpan<bool> r_values)
+{
+  const int splines_len = curve.splines().size();
+  Array<int> offsets = curve.control_point_offsets();
+  BLI_assert(r_values.size() == splines_len);
+
+  r_values.fill(true);
+
+  for (const int i_spline : IndexRange(splines_len)) {
+    const int spline_offset = offsets[i_spline];
+    const int spline_point_len = offsets[i_spline + 1] - spline_offset;
+
+    for (const int i_point : IndexRange(spline_point_len)) {
+      if (!old_values[spline_offset + i_point]) {
+        r_values[i_spline] = false;
+        break;
+      }
+    }
+  }
 }
 
 static GVArrayPtr adapt_curve_domain_point_to_spline(const CurveEval &curve, GVArrayPtr varray)
