@@ -1922,6 +1922,8 @@ static void scroller_activate_init(bContext *C,
     vsm->scrollbar_orig = ((scrollers.vert_max + scrollers.vert_min) / 2) + region->winrct.ymin;
   }
 
+  vsm->v2d->flag |= V2D_IS_NAVIGATING;
+
   ED_region_tag_redraw_no_rebuild(region);
 }
 
@@ -1932,6 +1934,7 @@ static void scroller_activate_exit(bContext *C, wmOperator *op)
     v2dScrollerMove *vsm = op->customdata;
 
     vsm->v2d->scroll_ui &= ~(V2D_SCROLL_H_ACTIVE | V2D_SCROLL_V_ACTIVE);
+    vsm->v2d->flag &= ~V2D_IS_NAVIGATING;
 
     MEM_freeN(op->customdata);
     op->customdata = NULL;
