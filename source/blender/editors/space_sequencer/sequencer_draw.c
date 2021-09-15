@@ -1403,6 +1403,7 @@ static void thumbnail_start_job(void *data, short *stop, short *do_update, float
       start_frame = seq_thumbnail_get_start_frame(seq_orig, frame_step, tj->view_area);
       SEQ_render_thumbnails(
           &tj->context, val->seq_dupli, seq_orig, start_frame, frame_step, tj->view_area, stop);
+      SEQ_render_thumbnails_base_set(&tj->context, val->seq_dupli, seq_orig, tj->view_area, stop);
     }
     BLI_ghashIterator_step(&gh_iter);
   }
@@ -1544,38 +1545,34 @@ static bool sequencer_thumbnail_v2d_is_navigating(const bContext *C)
   return x_diff > 0.01 || y_diff > 0.01;
 }
 
-typedef struct DisplayedThumbnailData {
-  // float thumb_x_start, time_step;
-  GSet *displayed_thumbnails;
-} DisplayedThumbnailData;
-
-static DisplayedThumbnailData *displayed_thumbnails_cache_ensure(const bContext *C, Sequence *seq)
+static GSet *displayed_thumbnails_cache_ensure(const bContext *C, Sequence *seq)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (sseq->runtime.last_displayed_thumbnails == NULL) {
     sseq->runtime.last_displayed_thumbnails = BLI_ghash_ptr_new(__func__);
   }
 
-  DisplayedThumbnailData *data = BLI_ghash_lookup(sseq->runtime.last_displayed_thumbnails, seq);
-  if (data == NULL) {
-    data = MEM_callocN(sizeof(DisplayedThumbnailData), __func__);
-    data->displayed_thumbnails = BLI_gset_int_new(__func__);
-    BLI_ghash_insert(sseq->runtime.last_displayed_thumbnails, seq, data);
+  GSet *displayed_thumbnails = BLI_ghash_lookup(sseq->runtime.last_displayed_thumbnails, seq);
+  if (displayed_thumbnails == NULL) {
+    displayed_thumbnails = BLI_gset_int_new(__func__);
+    BLI_ghash_insert(sseq->runtime.last_displayed_thumbnails, seq, displayed_thumbnails);
   }
 
   if (!sequencer_thumbnail_v2d_is_navigating(C)) {
-    BLI_gset_clear(data->displayed_thumbnails, NULL);
+    BLI_gset_clear(displayed_thumbnails, NULL);
   }
 
-  return data;
+  return displayed_thumbnails;
 }
 
-static int sequencer_thumbnail_closest_guaranteed_image(int timeline_frame,
+static int sequencer_thumbnail_closest_guaranteed_image(Sequence *seq,
+                                                        int timeline_frame,
                                                         GSet *previously_displayed)
 {
   int best_diff = INT_MAX;
   int best_frame = timeline_frame;
 
+  /* Previously displayed frames. */
   GSetIterator gset_iter;
   BLI_gsetIterator_init(&gset_iter, previously_displayed);
   while (!BLI_gsetIterator_done(&gset_iter)) {
@@ -1587,6 +1584,17 @@ static int sequencer_thumbnail_closest_guaranteed_image(int timeline_frame,
     }
     BLI_gsetIterator_step(&gset_iter);
   }
+
+  /* Guaranteed base set. */
+  const int relative_frame = timeline_frame - seq->startdisp;
+  const int frame_step = SEQ_render_thumbnails_base_set_get_frame_step(seq);
+  const int relative_base_frame = round_fl_to_int((relative_frame / (float)frame_step)) *
+                                  frame_step;
+  const int base_frame = relative_base_frame + seq->startdisp;
+  if (abs(base_frame - timeline_frame) < best_diff) {
+    return base_frame;
+  }
+
   return best_frame;
 }
 
@@ -1620,7 +1628,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     upper_thumb_bound = seq->enddisp;
   }
 
-  DisplayedThumbnailData *data = displayed_thumbnails_cache_ensure(C, seq);
+  GSet *displayed_thumbnails = displayed_thumbnails_cache_ensure(C, seq);
 
   thumb_x_start = seq_thumbnail_get_start_frame(seq, thumb_width, &v2d->cur);
   float thumb_x_end;
@@ -1675,10 +1683,8 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
 
     /* Store displayed thumbnails so they can be reused for zooming. */
     if (sequencer_thumbnail_v2d_is_navigating(C)) {
-      int new_timeline_frame = sequencer_thumbnail_closest_guaranteed_image(
-          timeline_frame, data->displayed_thumbnails);
-      timeline_frame = new_timeline_frame;
-      printf(" Overriding frame %d to %d\n", timeline_frame, new_timeline_frame);
+      timeline_frame = sequencer_thumbnail_closest_guaranteed_image(
+          seq, timeline_frame, displayed_thumbnails);
     }
 
     /* Get the image. */
@@ -1686,12 +1692,21 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
 
     if (!ibuf) {
       sequencer_thumbnail_start_job_if_necessary(C, scene->ed, v2d, true);
+
+      /* Render one of guaranteed frames, if image is not found. */
+      timeline_frame = sequencer_thumbnail_closest_guaranteed_image(
+          seq, timeline_frame, displayed_thumbnails);
+      ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
+    }
+
+    /* If there is no image still, abort. */
+    if (!ibuf) {
       break;
     }
 
     /* Override timeline frame when zooming. */
     if (!sequencer_thumbnail_v2d_is_navigating(C)) {
-      BLI_gset_add(data->displayed_thumbnails, POINTER_FROM_INT(timeline_frame));
+      BLI_gset_add(displayed_thumbnails, POINTER_FROM_INT(timeline_frame));
     }
 
     /* Transparency on overlap. */

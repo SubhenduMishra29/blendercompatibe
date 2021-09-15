@@ -69,7 +69,7 @@ struct ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context,
 struct ImBuf *SEQ_render_give_ibuf_direct(const SeqRenderData *context,
                                           float timeline_frame,
                                           struct Sequence *seq);
-void SEQ_render_thumbnails(struct SeqRenderData *context,
+void SEQ_render_thumbnails(const struct SeqRenderData *context,
                            struct Sequence *seq,
                            struct Sequence *seq_orig,
                            float start_frame,
@@ -77,7 +77,14 @@ void SEQ_render_thumbnails(struct SeqRenderData *context,
                            rctf *view_area,
                            short *stop);
 struct ImBuf *SEQ_get_thumbnail(
-    SeqRenderData *context, struct Sequence *seq, float timeline_frame, rcti *crop, bool clipped);
+    const struct SeqRenderData *context, struct Sequence *seq, float timeline_frame, rcti *crop, bool clipped);
+int SEQ_render_thumbnails_base_set_get_frame_step(const struct Sequence *seq);
+void SEQ_render_thumbnails_base_set(const struct  SeqRenderData *context,
+                                    struct Sequence *seq,
+                                    struct Sequence *seq_orig,
+                                    rctf *view_area,
+                                    short *stop);
+
 void SEQ_render_init_colorspace(struct Sequence *seq);
 void SEQ_render_new_render_data(struct Main *bmain,
                                 struct Depsgraph *depsgraph,

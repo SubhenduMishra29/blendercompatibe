@@ -2018,7 +2018,7 @@ ImBuf *SEQ_render_give_ibuf_direct(const SeqRenderData *context,
 }
 
 /* Gets the direct image from source and scales to thumbnail size. */
-static ImBuf *seq_get_uncached_thumbnail(SeqRenderData *context,
+static ImBuf *seq_get_uncached_thumbnail(const SeqRenderData *context,
                                          SeqRenderState *state,
                                          Sequence *seq,
                                          float timeline_frame)
@@ -2053,7 +2053,7 @@ static ImBuf *seq_get_uncached_thumbnail(SeqRenderData *context,
 
 /* Get cached thumbnails. */
 ImBuf *SEQ_get_thumbnail(
-    SeqRenderData *context, Sequence *seq, float timeline_frame, rcti *crop, bool clipped)
+    const SeqRenderData *context, Sequence *seq, float timeline_frame, rcti *crop, bool clipped)
 {
   ImBuf *ibuf = seq_cache_get(context, seq, roundf(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
 
@@ -2077,7 +2077,7 @@ ImBuf *SEQ_get_thumbnail(
 }
 
 /* Render the series of thumbnails and store in cache. */
-void SEQ_render_thumbnails(SeqRenderData *context,
+void SEQ_render_thumbnails(const SeqRenderData *context,
                            Sequence *seq,
                            Sequence *seq_orig,
                            float start_frame,
@@ -2113,4 +2113,47 @@ void SEQ_render_thumbnails(SeqRenderData *context,
     start_frame += frame_step;
   }
 }
+
+int SEQ_render_thumbnails_base_set_get_frame_step(const Sequence *seq)
+{
+  /* Arbitrary, but due to performance reasons should be as low as possible. */
+  const int thumbnails_base_set_count = 50;
+
+  const int seq_length = seq->enddisp - seq->startdisp;
+
+  return seq_length / thumbnails_base_set_count;
+}
+
+/* Render set of evenly spaced thumbnails that are drawn when zooming. */
+void SEQ_render_thumbnails_base_set(
+    const SeqRenderData *context, Sequence *seq, Sequence *seq_orig, rctf *view_area, short *stop)
+{
+  SeqRenderState state;
+  seq_render_state_init(&state);
+
+  int timeline_frame = seq->startdisp;
+  const int frame_step = SEQ_render_thumbnails_base_set_get_frame_step(seq);
+
+  while (timeline_frame < seq->enddisp && !*stop) {
+    printf("Rendering base frame %d\n", timeline_frame);
+
+    ImBuf *ibuf = seq_cache_get(
+        context, seq_orig, roundf(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
+    if (ibuf) {
+      IMB_freeImBuf(ibuf);
+      timeline_frame += frame_step;
+      continue;
+    }
+
+    ibuf = seq_get_uncached_thumbnail(context, &state, seq, roundf(timeline_frame));
+
+    if (ibuf) {
+      seq_cache_thumbnail_put(context, seq_orig, roundf(timeline_frame), ibuf, view_area);
+      IMB_freeImBuf(ibuf);
+    }
+
+    timeline_frame += frame_step;
+  }
+}
+
 /** \} */
