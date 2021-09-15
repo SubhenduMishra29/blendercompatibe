@@ -800,7 +800,13 @@ typedef struct DRWSubdivUboStorage {
    * size as ints, so we should use int in C to ensure that the size of the structure is what GLSL
    * expects. */
   int optimal_display;
+
+  /* Ensure we are padded to size of vec4 (16 bytes), as the GPU code assumes it. */
+  char _pad[8];
 } DRWSubdivUboStorage;
+
+static_assert((sizeof(DRWSubdivUboStorage) % 16) == 0,
+              "DRWSubdivUboStorage is not padded to a multiple of the size of vec4");
 
 static void draw_subdiv_init_ubo_storage(const DRWSubdivCache *cache,
                                          DRWSubdivUboStorage *ubo,
