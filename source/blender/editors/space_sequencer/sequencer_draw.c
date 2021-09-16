@@ -2190,6 +2190,16 @@ void sequencer_draw_preview(const bContext *C,
     sequencer_draw_borders_overlay(sseq, v2d, scene);
   }
 
+  SeqCollection *collection = SEQ_query_rendered_strips(&scene->ed->seqbase, timeline_frame, 0);
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, collection) {
+    seq_draw_image_origin_and_outline(C, seq);
+  }
+  SEQ_collection_free(collection);
+
+  UI_view2d_view_restore(C);
+  seq_prefetch_wm_notify(C, scene);
+
   if (draw_gpencil && show_imbuf && (sseq->flag & SEQ_SHOW_STRIP_OVERLAY)) {
     sequencer_draw_gpencil_overlay(C);
   }
@@ -2201,16 +2211,6 @@ void sequencer_draw_preview(const bContext *C,
   if (ibuf) {
     IMB_freeImBuf(ibuf);
   }
-
-  SeqCollection *collection = SEQ_query_rendered_strips(&scene->ed->seqbase, timeline_frame, 0);
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, collection) {
-    seq_draw_image_origin_and_outline(C, seq);
-  }
-  SEQ_collection_free(collection);
-
-  UI_view2d_view_restore(C);
-  seq_prefetch_wm_notify(C, scene);
 }
 
 /* Draw backdrop in sequencer timeline. */
