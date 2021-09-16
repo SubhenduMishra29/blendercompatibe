@@ -2057,7 +2057,8 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
   if (ED_screen_animation_no_scrub(CTX_wm_manager(C))) {
     return;
   }
-  if ((sseq->flag & SEQ_SHOW_STRIP_OVERLAY) == 0 || (sseq->flag & SEQ_SHOW_IMAGE_OUTLINE) == 0) {
+  if ((sseq->flag & SEQ_SHOW_STRIP_OVERLAY) == 0 ||
+      (sseq->flag & SEQ_SHOW_OUTLINE_SELECTED) == 0) {
     return;
   }
 
@@ -2205,13 +2206,13 @@ void sequencer_draw_preview(const bContext *C,
   sequencer_draw_maskedit(C, scene, region, sseq);
 #endif
 
-  UI_view2d_view_restore(C);
-  seq_prefetch_wm_notify(C, scene);
-
   /* Scope is freed in sequencer_check_scopes when `ibuf` changes and redraw is needed. */
   if (ibuf) {
     IMB_freeImBuf(ibuf);
   }
+
+  UI_view2d_view_restore(C);
+  seq_prefetch_wm_notify(C, scene);
 }
 
 /* Draw backdrop in sequencer timeline. */

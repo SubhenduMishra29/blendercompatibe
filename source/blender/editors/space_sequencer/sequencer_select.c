@@ -645,15 +645,14 @@ static Sequence *seq_select_seq_from_preview(const bContext *C, const int mval[2
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   View2D *v2d = UI_view2d_fromcontext(C);
 
-  float click_x, click_y;
-  UI_view2d_region_to_view(v2d, mval[0], mval[1], &click_x, &click_y);
+  float mouseco_view[2];
+  UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouseco_view[0], &mouseco_view[1]);
 
   SeqCollection *strips = SEQ_query_rendered_strips(seqbase, scene->r.cfra, sseq->chanshown);
   ListBase strips_ordered = {NULL};
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
-    float click_point[2] = {click_x, click_y};
-    if (seq_point_image_isect(scene, seq, click_point)) {
+    if (seq_point_image_isect(scene, seq, mouseco_view)) {
       BLI_remlink(seqbase, seq);
       BLI_addtail(&strips_ordered, seq);
     }
@@ -1371,15 +1370,10 @@ static bool seq_box_select_rect_image_isect(const Scene *scene, const Sequence *
 {
   float seq_image_quad[4][2];
   SEQ_image_transform_final_quad_get(scene, seq, seq_image_quad);
-  float rect_quad[4][2];
-  rect_quad[0][0] = rect->xmax;
-  rect_quad[0][1] = rect->ymax;
-  rect_quad[1][0] = rect->xmax;
-  rect_quad[1][1] = rect->ymin;
-  rect_quad[2][0] = rect->xmin;
-  rect_quad[2][1] = rect->ymin;
-  rect_quad[3][0] = rect->xmin;
-  rect_quad[3][1] = rect->ymax;
+  float rect_quad[4][2] = {{rect->xmax, rect->ymax},
+                           {rect->xmax, rect->ymin},
+                           {rect->xmin, rect->ymin},
+                           {rect->xmin, rect->ymax}};
 
   return seq_point_image_isect(scene, seq, rect_quad[0]) ||
          seq_point_image_isect(scene, seq, rect_quad[1]) ||
