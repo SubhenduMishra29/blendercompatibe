@@ -1442,7 +1442,7 @@ static void rna_def_strip_transform(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Rotation", "Rotate around image center");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceTransform_update");
 
-  prop = RNA_def_property(srna, "origin", PROP_FLOAT, PROP_PIXEL);
+  prop = RNA_def_property(srna, "origin", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "origin");
   RNA_def_property_ui_text(prop, "Origin", "Origin of image for transformation");
   RNA_def_property_ui_range(prop, 0, 1, 1, 3);
