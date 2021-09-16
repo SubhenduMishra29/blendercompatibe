@@ -104,7 +104,7 @@
 #define DCACHE_IMAGES_PER_FILE 100
 #define DCACHE_CURRENT_VERSION 2
 #define COLORSPACE_NAME_MAX 64 /* XXX: defined in imb intern */
-#define THUMB_CACHE_LIMIT 100
+#define THUMB_CACHE_LIMIT 5000
 
 typedef struct DiskCacheHeaderEntry {
   unsigned char encoding;

@@ -2090,23 +2090,24 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
 
   /* Adding the hold offset value (seq->anim_startofs) to the start frame. Position of image not
    * affected, but frame loaded affected. */
-  start_frame = start_frame - 5 * frame_step;
+  start_frame = start_frame - frame_step;
   float upper_thumb_bound = (seq->endstill) ? (seq->start + seq->len) : seq->enddisp;
-  upper_thumb_bound = (upper_thumb_bound > view_area->xmax) ? view_area->xmax + 5 * frame_step :
+  upper_thumb_bound = (upper_thumb_bound > view_area->xmax) ? view_area->xmax + frame_step :
                                                               upper_thumb_bound;
 
   while ((start_frame < upper_thumb_bound) & !*stop) {
-    ImBuf *ibuf = seq_cache_get(context, seq_orig, roundf(start_frame), SEQ_CACHE_STORE_THUMBNAIL);
+    ImBuf *ibuf = seq_cache_get(
+        context, seq_orig, round_fl_to_int(start_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {
       IMB_freeImBuf(ibuf);
       start_frame += frame_step;
       continue;
     }
 
-    ibuf = seq_get_uncached_thumbnail(context, &state, seq, roundf(start_frame));
+    ibuf = seq_get_uncached_thumbnail(context, &state, seq, round_fl_to_int(start_frame));
 
     if (ibuf) {
-      seq_cache_thumbnail_put(context, seq_orig, roundf(start_frame), ibuf, view_area);
+      seq_cache_thumbnail_put(context, seq_orig, round_fl_to_int(start_frame), ibuf, view_area);
       IMB_freeImBuf(ibuf);
     }
 
@@ -2147,10 +2148,10 @@ void SEQ_render_thumbnails_base_set(
       continue;
     }
 
-    ibuf = seq_get_uncached_thumbnail(context, &state, seq, roundf(timeline_frame));
+    ibuf = seq_get_uncached_thumbnail(context, &state, seq, timeline_frame);
 
     if (ibuf) {
-      seq_cache_thumbnail_put(context, seq_orig, roundf(timeline_frame), ibuf, view_area);
+      seq_cache_thumbnail_put(context, seq_orig, timeline_frame, ibuf, view_area);
       IMB_freeImBuf(ibuf);
     }
 

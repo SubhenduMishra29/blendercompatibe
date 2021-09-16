@@ -1499,24 +1499,11 @@ static void sequencer_thumbnail_init_job(const bContext *C, View2D *v2d, Editing
   ED_area_tag_redraw(area);
 }
 
-
-/* Don't display thumbnails only when zooming. Panning doesn't cause issues. */
 static bool sequencer_thumbnail_v2d_is_navigating(const bContext *C)
 {
   ARegion *region = CTX_wm_region(C);
   View2D *v2d = &region->v2d;
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-
-  if ((v2d->flag & V2D_IS_NAVIGATING) == 0) {
-    return false;
-  }
-  return true;
-
-  double x_diff = fabs(BLI_rctf_size_x(&sseq->runtime.last_thumbnail_area) -
-                       BLI_rctf_size_x(&v2d->cur));
-  double y_diff = fabs(BLI_rctf_size_y(&sseq->runtime.last_thumbnail_area) -
-                       BLI_rctf_size_y(&v2d->cur));
-  return x_diff > 0.01 || y_diff > 0.01;
+  return (v2d->flag & V2D_IS_NAVIGATING) != 0;
 }
 
 static void sequencer_thumbnail_start_job_if_necessary(const bContext *C,
@@ -1649,8 +1636,16 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
   thumb_x_start = seq_thumbnail_get_start_frame(seq, thumb_width, &v2d->cur);
   float thumb_x_end;
 
-  GSet *last_displayed_thumbnails = last_displayed_thumbnails_list_ensure(C, seq);
+  while (thumb_x_start + thumb_width < v2d->cur.xmin) {
+    thumb_x_start += thumb_width;
+  }
 
+  /* Ignore thumbs to the left of strip. */
+  while (thumb_x_start + thumb_width < seq->startdisp) {
+    thumb_x_start += thumb_width;
+  }
+
+  GSet *last_displayed_thumbnails = last_displayed_thumbnails_list_ensure(C, seq);
   /* Cleanup thumbnail list outside of rendered range, which is cleaned up one by one to prevent
    * flickering after zooming. */
   if (!sequencer_thumbnail_v2d_is_navigating(C)) {
@@ -1665,18 +1660,8 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     /* Checks to make sure that thumbs are loaded only when in view and within the confines of the
      * strip. Some may not be required but better to have conditions for safety as x1 here is
      * point to start caching from and not drawing. */
-    if (thumb_x_start > v2d->cur.xmax)
+    if (thumb_x_start > v2d->cur.xmax) {
       break;
-
-    if (thumb_x_end < v2d->cur.xmin) {
-      thumb_x_start = thumb_x_end;
-      continue;
-    }
-
-    /* Ignore thumbs to the left of strip. */
-    if (thumb_x_end < seq->startdisp) {
-      thumb_x_start = thumb_x_end;
-      continue;
     }
 
     /* Set the clipping bound to show the left handle moving over thumbs and not shift thumbs. */
@@ -1689,8 +1674,9 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     if (thumb_x_end > (upper_thumb_bound)) {
       thumb_x_end = upper_thumb_bound;
       clipped = true;
-      if (thumb_x_end - thumb_x_start < 1)
+      if (thumb_x_end - thumb_x_start < 1) {
         break;
+      }
     }
 
     float zoom_x = thumb_width / image_width;
@@ -1733,8 +1719,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
 
     /* If there is no image still, abort. */
     if (!ibuf) {
-      last_displayed_thumbnails_list_cleanup(last_displayed_thumbnails, thumb_x_start, FLT_MAX);
-      return;
+      break;
     }
 
     /* Transparency on overlap. */
@@ -1770,7 +1755,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     cut_off = 0;
     thumb_x_start += thumb_width;
   }
-  last_displayed_thumbnails_list_cleanup(last_displayed_thumbnails, thumb_x_start - thumb_width, FLT_MAX);
+  last_displayed_thumbnails_list_cleanup(last_displayed_thumbnails, thumb_x_start, FLT_MAX);
 }
 
 /* Draw visible strips. Bounds check are already made. */
