@@ -5576,7 +5576,7 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_image_outline", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_SHOW_GRID);
-  RNA_def_property_ui_text(prop, "Show Image Outline", "");
+  RNA_def_property_ui_text(prop, "Image Outline", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, NULL);
 }
 
