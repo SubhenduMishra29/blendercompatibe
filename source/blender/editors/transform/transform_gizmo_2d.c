@@ -268,16 +268,15 @@ static float gizmo2d_calc_rotation(const bContext *C)
 static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
 {
   ScrArea *area = CTX_wm_area(C);
+  Scene *scene = CTX_data_scene(C);
   bool has_select = false;
   zero_v2(r_center);
   if (area->spacetype == SPACE_IMAGE) {
     SpaceImage *sima = area->spacedata.first;
-    Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = CTX_data_view_layer(C);
     ED_uvedit_center_from_pivot_ex(sima, scene, view_layer, r_center, sima->around, &has_select);
   }
   else if (area->spacetype == SPACE_SEQ) {
-    Scene *scene = CTX_data_scene(C);
     ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
     SeqCollection *strips = SEQ_query_rendered_strips(seqbase, scene->r.cfra, 0);
     SEQ_filter_selected_strips(strips);
@@ -292,7 +291,7 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
     SEQ_ITERATOR_FOREACH (seq, strips) {
       StripTransform *transform = seq->strip->transform;
       float origin[2];
-      SEQ_image_transform_origin_offset_get(CTX_data_scene(C), seq, origin);
+      SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
       r_center[0] += transform->xofs + origin[0];
       r_center[1] += transform->yofs + origin[1];
     }
@@ -332,7 +331,7 @@ static int gizmo2d_modal(bContext *C,
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void gizmo2d_xform_setup(const bContext *C, wmGizmoGroup *gzgroup)
+static void gizmo2d_xform_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
 {
   wmOperatorType *ot_translate = WM_operatortype_find("TRANSFORM_OT_translate", true);
   GizmoGroup2D *ggd = gizmogroup2d_init(gzgroup);
@@ -663,7 +662,7 @@ static void gizmo2d_resize_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup
   }
 }
 
-static void gizmo2d_resize_setup(const bContext *C, wmGizmoGroup *gzgroup)
+static void gizmo2d_resize_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
 {
 
   wmOperatorType *ot_resize = WM_operatortype_find("TRANSFORM_OT_resize", true);
@@ -806,7 +805,7 @@ static void gizmo2d_rotate_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup
   WM_gizmo_set_matrix_location(gz, origin);
 }
 
-static void gizmo2d_rotate_setup(const bContext *C, wmGizmoGroup *gzgroup)
+static void gizmo2d_rotate_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
 {
 
   wmOperatorType *ot_resize = WM_operatortype_find("TRANSFORM_OT_rotate", true);

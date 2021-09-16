@@ -429,9 +429,9 @@ void SEQ_transform_offset_after_frame(Scene *scene,
  * \param seq: Sequence to calculate image transform origin
  * \param r_origin: return value
  */
-void SEQ_image_transform_origin_offset_get(const Scene *scene,
-                                           const Sequence *seq,
-                                           float r_origin[2])
+void SEQ_image_transform_origin_offset_pixelspace_get(const Scene *scene,
+                                                      const Sequence *seq,
+                                                      float r_origin[2])
 {
   float image_size[2];
   StripElem *strip_elem = seq->strip->stripdata;
@@ -469,7 +469,7 @@ void SEQ_image_transform_final_quad_get(const Scene *scene,
                        transform->rotation,
                        (const float[]){transform->scale_x, transform->scale_y});
   float origin[2];
-  SEQ_image_transform_origin_offset_get(scene, seq, origin);
+  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
   transform_pivot_set_m3(transform_matrix, origin);
 
   r_quad[0][0] = (img_x / 2) - crop->right;

@@ -2064,7 +2064,7 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
   const StripTransform *transform = seq->strip->transform;
 
   float origin[2];
-  SEQ_image_transform_origin_offset_get(CTX_data_scene(C), seq, origin);
+  SEQ_image_transform_origin_offset_pixelspace_get(CTX_data_scene(C), seq, origin);
 
   /* Origin. */
   float x = transform->xofs + origin[0];
@@ -2083,7 +2083,6 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
   immUnbindProgram();
 
   /* Outline. */
-  StripElem *strip_elem = seq->strip->stripdata;
   float transform_matrix[3][3];
   loc_rot_size_to_mat3(transform_matrix,
                        (const float[]){transform->xofs, transform->yofs},

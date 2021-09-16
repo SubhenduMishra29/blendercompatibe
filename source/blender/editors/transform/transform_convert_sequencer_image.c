@@ -60,7 +60,7 @@ static TransData *SeqToTransData(const Scene *scene,
 {
   const StripTransform *transform = seq->strip->transform;
   float origin[2];
-  SEQ_image_transform_origin_offset_get(scene, seq, origin);
+  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
   float vertex[2] = {transform->xofs + origin[0], transform->yofs + origin[1]};
 
   /* Add control vertex, so rotation and scale can be calculated. */
@@ -120,6 +120,9 @@ void createTransSeqImageData(TransInfo *t)
 
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
+    /* One `Sequence` needs 3 `TransData` entries - center point placed in image origin, then 2
+     * points offset by 1 in X and Y direction respectively, so rotation and scale can be
+     * calculated from these points. */
     SeqToTransData(t->scene, seq, td++, td2d++, tdseq++, 0);
     SeqToTransData(t->scene, seq, td++, td2d++, tdseq++, 1);
     SeqToTransData(t->scene, seq, td++, td2d++, tdseq++, 2);
@@ -154,7 +157,7 @@ void recalcData_sequencer_image(TransInfo *t)
     Sequence *seq = tdseq->seq;
     StripTransform *transform = seq->strip->transform;
     float origin[2];
-    SEQ_image_transform_origin_offset_get(t->scene, seq, origin);
+    SEQ_image_transform_origin_offset_pixelspace_get(t->scene, seq, origin);
     transform->xofs = round_fl_to_int(loc[0] - origin[0]);
     transform->yofs = round_fl_to_int(loc[1] - origin[1]);
     transform->scale_x = tdseq->orig_scale_x * fabs(len_v2(handle_x));
