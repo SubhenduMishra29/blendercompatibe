@@ -1499,6 +1499,26 @@ static void sequencer_thumbnail_init_job(const bContext *C, View2D *v2d, Editing
   ED_area_tag_redraw(area);
 }
 
+
+/* Don't display thumbnails only when zooming. Panning doesn't cause issues. */
+static bool sequencer_thumbnail_v2d_is_navigating(const bContext *C)
+{
+  ARegion *region = CTX_wm_region(C);
+  View2D *v2d = &region->v2d;
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
+
+  if ((v2d->flag & V2D_IS_NAVIGATING) == 0) {
+    return false;
+  }
+  return true;
+
+  double x_diff = fabs(BLI_rctf_size_x(&sseq->runtime.last_thumbnail_area) -
+                       BLI_rctf_size_x(&v2d->cur));
+  double y_diff = fabs(BLI_rctf_size_y(&sseq->runtime.last_thumbnail_area) -
+                       BLI_rctf_size_y(&v2d->cur));
+  return x_diff > 0.01 || y_diff > 0.01;
+}
+
 static void sequencer_thumbnail_start_job_if_necessary(const bContext *C,
                                                        Editing *ed,
                                                        View2D *v2d,
@@ -1506,13 +1526,13 @@ static void sequencer_thumbnail_start_job_if_necessary(const bContext *C,
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
 
-  if ((v2d->flag & V2D_IS_NAVIGATING) != 0) {
+  if (sequencer_thumbnail_v2d_is_navigating(C)) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, NULL);
     return;
   }
 
-  /* Leftover is set to true if missing image in strip. False when normal call to all strips done.
-   */
+  /* `thumbnail_is_missing` should be set to true if missing image in strip. False when normal call
+   * to all strips done.  */
   if (v2d->cur.xmax != sseq->runtime.last_thumbnail_area.xmax ||
       v2d->cur.ymax != sseq->runtime.last_thumbnail_area.ymax || thumbnail_is_missing) {
 
@@ -1525,24 +1545,6 @@ static void sequencer_thumbnail_start_job_if_necessary(const bContext *C,
     sequencer_thumbnail_init_job(C, v2d, ed);
     sseq->runtime.last_thumbnail_area = v2d->cur;
   }
-}
-
-/* Don't display thumbnails only when zooming. Panning doesn't cause issues. */
-static bool sequencer_thumbnail_v2d_is_navigating(const bContext *C)
-{
-  ARegion *region = CTX_wm_region(C);
-  View2D *v2d = &region->v2d;
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-
-  if ((v2d->flag & V2D_IS_NAVIGATING) == 0) {
-    return false;
-  }
-
-  double x_diff = fabs(BLI_rctf_size_x(&sseq->runtime.last_thumbnail_area) -
-                       BLI_rctf_size_x(&v2d->cur));
-  double y_diff = fabs(BLI_rctf_size_y(&sseq->runtime.last_thumbnail_area) -
-                       BLI_rctf_size_y(&v2d->cur));
-  return x_diff > 0.01 || y_diff > 0.01;
 }
 
 void last_displayed_thumbnails_list_free(void *val)
@@ -1563,11 +1565,23 @@ static GSet *last_displayed_thumbnails_list_ensure(const bContext *C, Sequence *
     BLI_ghash_insert(sseq->runtime.last_displayed_thumbnails, seq, displayed_thumbnails);
   }
 
-  if (!sequencer_thumbnail_v2d_is_navigating(C)) {
-    BLI_gset_clear(displayed_thumbnails, NULL);
-  }
-
   return displayed_thumbnails;
+}
+
+static void last_displayed_thumbnails_list_cleanup(GSet *previously_displayed,
+                                                   float range_start,
+                                                   float range_end)
+{
+  GSetIterator gset_iter;
+  BLI_gsetIterator_init(&gset_iter, previously_displayed);
+  while (!BLI_gsetIterator_done(&gset_iter)) {
+    int frame = (float)POINTER_AS_INT(BLI_gsetIterator_getKey(&gset_iter));
+    BLI_gsetIterator_step(&gset_iter);
+
+    if (frame > range_start && frame < range_end) {
+      BLI_gset_remove(previously_displayed, POINTER_FROM_INT(frame), NULL);
+    }
+  }
 }
 
 static int sequencer_thumbnail_closest_guaranteed_frame_get(Sequence *seq,
@@ -1632,10 +1646,16 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     upper_thumb_bound = seq->enddisp;
   }
 
-  GSet *last_displayed_thumbnails = last_displayed_thumbnails_list_ensure(C, seq);
-
   thumb_x_start = seq_thumbnail_get_start_frame(seq, thumb_width, &v2d->cur);
   float thumb_x_end;
+
+  GSet *last_displayed_thumbnails = last_displayed_thumbnails_list_ensure(C, seq);
+
+  /* Cleanup thumbnail list outside of rendered range, which is cleaned up one by one to prevent
+   * flickering after zooming. */
+  if (!sequencer_thumbnail_v2d_is_navigating(C)) {
+    last_displayed_thumbnails_list_cleanup(last_displayed_thumbnails, -FLT_MAX, thumb_x_start);
+  }
 
   /* Start drawing. */
   while (thumb_x_start < upper_thumb_bound) {
@@ -1685,7 +1705,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
 
     int timeline_frame = round_fl_to_int(thumb_x_start);
 
-    /* Store displayed thumbnails so they can be reused for zooming. */
+    /* Override timeline frame when zooming with closest that should be kept in memory. */
     if (sequencer_thumbnail_v2d_is_navigating(C)) {
       timeline_frame = sequencer_thumbnail_closest_guaranteed_frame_get(
           seq, timeline_frame, last_displayed_thumbnails);
@@ -1704,12 +1724,17 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     }
     /* Store recently rendered frames, so they can be reused when zooming. */
     else if (!sequencer_thumbnail_v2d_is_navigating(C)) {
+      /* Clear images in frame range occupied bynew thumbnail. */
+      last_displayed_thumbnails_list_cleanup(
+          last_displayed_thumbnails, thumb_x_start, thumb_x_end);
+      /* Insert new thumbnail frame to list. */
       BLI_gset_add(last_displayed_thumbnails, POINTER_FROM_INT(timeline_frame));
     }
 
     /* If there is no image still, abort. */
     if (!ibuf) {
-      break;
+      last_displayed_thumbnails_list_cleanup(last_displayed_thumbnails, thumb_x_start, FLT_MAX);
+      return;
     }
 
     /* Transparency on overlap. */
@@ -1745,6 +1770,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     cut_off = 0;
     thumb_x_start += thumb_width;
   }
+  last_displayed_thumbnails_list_cleanup(last_displayed_thumbnails, thumb_x_start - thumb_width, FLT_MAX);
 }
 
 /* Draw visible strips. Bounds check are already made. */
