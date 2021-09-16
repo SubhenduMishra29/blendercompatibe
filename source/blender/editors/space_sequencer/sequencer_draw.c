@@ -2197,15 +2197,16 @@ void sequencer_draw_preview(const bContext *C,
   }
   SEQ_collection_free(collection);
 
-  UI_view2d_view_restore(C);
-  seq_prefetch_wm_notify(C, scene);
-
   if (draw_gpencil && show_imbuf && (sseq->flag & SEQ_SHOW_STRIP_OVERLAY)) {
     sequencer_draw_gpencil_overlay(C);
   }
+
 #if 0
   sequencer_draw_maskedit(C, scene, region, sseq);
 #endif
+
+  UI_view2d_view_restore(C);
+  seq_prefetch_wm_notify(C, scene);
 
   /* Scope is freed in sequencer_check_scopes when `ibuf` changes and redraw is needed. */
   if (ibuf) {
