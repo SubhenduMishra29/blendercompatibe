@@ -2109,6 +2109,12 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
     if (ibuf) {
       seq_cache_thumbnail_put(context, seq_orig, round_fl_to_int(start_frame), ibuf, view_area);
       IMB_freeImBuf(ibuf);
+      seq_orig->flag &= ~SEQ_FLAG_SKIP_THUMBNAILS;
+    }
+    else {
+      /* Can not open source file. */
+      seq_orig->flag |= SEQ_FLAG_SKIP_THUMBNAILS;
+      return;
     }
 
     start_frame += frame_step;
@@ -2119,9 +2125,13 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
  * memory, so they can be used when zooming.*/
 int SEQ_render_thumbnails_guaranteed_set_frame_step_get(const Sequence *seq)
 {
-  /* Arbitrary, but due to performance reasons should be as low as possible. */
-  const int thumbnails_base_set_count = 50;
   const int content_len = (seq->enddisp - seq->startdisp - seq->startstill - seq->endstill);
+
+  /* Arbitrary, but due to performance reasons should be as low as possible. */
+  const int thumbnails_base_set_count = min_ii(content_len / 100, 30);
+  if (thumbnails_base_set_count <= 0) {
+    return 0;
+  }
   return content_len / thumbnails_base_set_count;
 }
 
@@ -2135,15 +2145,16 @@ void SEQ_render_thumbnails_base_set(
   int timeline_frame = seq->startdisp;
   const int frame_step = SEQ_render_thumbnails_guaranteed_set_frame_step_get(seq);
 
-  if (frame_step == 0) {
-    return;
-  }
-
   while (timeline_frame < seq->enddisp && !*stop) {
     ImBuf *ibuf = seq_cache_get(
         context, seq_orig, roundf(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {
       IMB_freeImBuf(ibuf);
+
+      if (frame_step == 0) {
+        return;
+      }
+
       timeline_frame += frame_step;
       continue;
     }
@@ -2153,6 +2164,10 @@ void SEQ_render_thumbnails_base_set(
     if (ibuf) {
       seq_cache_thumbnail_put(context, seq_orig, timeline_frame, ibuf, view_area);
       IMB_freeImBuf(ibuf);
+    }
+
+    if (frame_step == 0) {
+      return;
     }
 
     timeline_frame += frame_step;

@@ -190,6 +190,8 @@ static SpaceLink *sequencer_create(const ScrArea *UNUSED(area), const Scene *sce
   region->v2d.keeptot = 0;
   region->v2d.align = V2D_ALIGN_NO_NEG_Y;
 
+  sseq->runtime.last_displayed_thumbnails = NULL;
+
   return (SpaceLink *)sseq;
 }
 

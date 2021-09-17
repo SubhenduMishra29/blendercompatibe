@@ -45,6 +45,7 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
+#include "BKE_main.h"
 #include "BKE_scene.h"
 #include "BKE_sound.h"
 
@@ -1571,9 +1572,8 @@ static void last_displayed_thumbnails_list_cleanup(GSet *previously_displayed,
   }
 }
 
-static int sequencer_thumbnail_closest_guaranteed_frame_get(Sequence *seq,
-                                                            int timeline_frame,
-                                                            GSet *previously_displayed)
+static int sequencer_thumbnail_closest_previous_frame_get(int timeline_frame,
+                                                          GSet *previously_displayed)
 {
   int best_diff = INT_MAX;
   int best_frame = timeline_frame;
@@ -1590,17 +1590,55 @@ static int sequencer_thumbnail_closest_guaranteed_frame_get(Sequence *seq,
     }
     BLI_gsetIterator_step(&gset_iter);
   }
+  return best_frame;
+}
+
+static int sequencer_thumbnail_closest_guaranteed_frame_get(Sequence *seq, int timeline_frame)
+{
+  if (timeline_frame <= seq->startdisp) {
+    return seq->startdisp;
+  }
 
   /* Set of "guaranteed" thumbnails. */
   const int frame_index = timeline_frame - seq->startdisp;
   const int frame_step = SEQ_render_thumbnails_guaranteed_set_frame_step_get(seq);
   const int relative_base_frame = round_fl_to_int((frame_index / (float)frame_step)) * frame_step;
   const int nearest_guaranted_absolute_frame = relative_base_frame + seq->startdisp;
-  if (abs(nearest_guaranted_absolute_frame - timeline_frame) < best_diff) {
-    return nearest_guaranted_absolute_frame;
+  return nearest_guaranted_absolute_frame;
+}
+
+static ImBuf *sequencer_thumbnail_closest_from_memory(const SeqRenderData *context,
+                                                      Sequence *seq,
+                                                      int timeline_frame,
+                                                      GSet *previously_displayed,
+                                                      rcti *crop,
+                                                      bool clipped)
+{
+  int frame_previous = sequencer_thumbnail_closest_previous_frame_get(timeline_frame,
+                                                                      previously_displayed);
+  ImBuf *ibuf_previous = SEQ_get_thumbnail(context, seq, frame_previous, crop, clipped);
+
+  int frame_guaranteed = sequencer_thumbnail_closest_guaranteed_frame_get(seq, timeline_frame);
+  ImBuf *ibuf_guaranteed = SEQ_get_thumbnail(context, seq, frame_guaranteed, crop, clipped);
+
+  if (ibuf_previous && ibuf_guaranteed &&
+      abs(frame_previous - timeline_frame) < abs(frame_guaranteed - timeline_frame)) {
+
+    IMB_freeImBuf(ibuf_guaranteed);
+    return ibuf_previous;
+  }
+  else {
+    IMB_freeImBuf(ibuf_previous);
+    return ibuf_guaranteed;
   }
 
-  return best_frame;
+  if (ibuf_previous == NULL) {
+    return ibuf_guaranteed;
+  }
+
+  if (ibuf_guaranteed == NULL) {
+    return ibuf_previous;
+  }
 }
 
 static void draw_seq_strip_thumbnail(View2D *v2d,
@@ -1617,15 +1655,20 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
   rcti crop;
 
   /* If width of the strip too small ignore drawing thumbnails. */
-  if ((y2 - y1) / pixely <= 40 * U.dpi_fac)
+  if ((y2 - y1) / pixely <= 40 * U.dpi_fac) {
     return;
+  }
 
   SeqRenderData context = sequencer_thumbnail_context_init(C);
+
+  if ((seq->flag & SEQ_FLAG_SKIP_THUMBNAILS) != 0) {
+    return;
+  }
+
   seq_get_thumb_image_dimensions(
       seq, pixelx, pixely, &thumb_width, &thumb_height, &image_width, &image_height);
 
   float thumb_y_end = y1 + thumb_height - pixely;
-  float thumb_x_start = seq->start;
 
   float cut_off = 0;
   float upper_thumb_bound = (seq->endstill) ? (seq->start + seq->len) : seq->enddisp;
@@ -1633,7 +1676,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     upper_thumb_bound = seq->enddisp;
   }
 
-  thumb_x_start = seq_thumbnail_get_start_frame(seq, thumb_width, &v2d->cur);
+  float thumb_x_start = seq_thumbnail_get_start_frame(seq, thumb_width, &v2d->cur);
   float thumb_x_end;
 
   while (thumb_x_start + thumb_width < v2d->cur.xmin) {
@@ -1691,22 +1734,14 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
 
     int timeline_frame = round_fl_to_int(thumb_x_start);
 
-    /* Override timeline frame when zooming with closest that should be kept in memory. */
-    if (sequencer_thumbnail_v2d_is_navigating(C)) {
-      timeline_frame = sequencer_thumbnail_closest_guaranteed_frame_get(
-          seq, timeline_frame, last_displayed_thumbnails);
-    }
-
     /* Get the image. */
     ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
 
     if (!ibuf) {
       sequencer_thumbnail_start_job_if_necessary(C, scene->ed, v2d, true);
 
-      /* Render one of guaranteed frames, if image is not found. */
-      timeline_frame = sequencer_thumbnail_closest_guaranteed_frame_get(
-          seq, timeline_frame, last_displayed_thumbnails);
-      ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
+      ibuf = sequencer_thumbnail_closest_from_memory(
+          &context, seq, timeline_frame, last_displayed_thumbnails, &crop, clipped);
     }
     /* Store recently rendered frames, so they can be reused when zooming. */
     else if (!sequencer_thumbnail_v2d_is_navigating(C)) {
@@ -2679,8 +2714,6 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *region)
   Sequence *last_seq = SEQ_select_active_get(scene);
   int sel = 0, j;
   float pixelx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-
-  sequencer_thumbnail_start_job_if_necessary(C, ed, v2d, false);
 
   /* Loop through twice, first unselected, then selected. */
   for (j = 0; j < 2; j++) {
