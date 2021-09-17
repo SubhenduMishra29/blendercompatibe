@@ -46,8 +46,9 @@
 /** Used for sequencer transform. */
 typedef struct TransDataSeq {
   struct Sequence *seq;
-  float orig_scale_x;
-  float orig_scale_y;
+  float orig_origin_position[2];
+  float orig_translation[2];
+  float orig_scale[2];
   float orig_rotation;
 } TransDataSeq;
 
@@ -61,7 +62,7 @@ static TransData *SeqToTransData(const Scene *scene,
   const StripTransform *transform = seq->strip->transform;
   float origin[2];
   SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
-  float vertex[2] = {transform->xofs + origin[0], transform->yofs + origin[1]};
+  float vertex[2] = {origin[0], origin[1]};
 
   /* Add control vertex, so rotation and scale can be calculated. */
   if (vert_index == 1) {
@@ -77,8 +78,8 @@ static TransData *SeqToTransData(const Scene *scene,
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
 
-  td->center[0] = transform->xofs + origin[0];
-  td->center[1] = transform->yofs + origin[1];
+  td->center[0] = origin[0];
+  td->center[1] = origin[1];
 
   memset(td->axismtx, 0, sizeof(td->axismtx));
   td->axismtx[2][2] = 1.0f;
@@ -86,8 +87,11 @@ static TransData *SeqToTransData(const Scene *scene,
   unit_m3(td->smtx);
 
   tdseq->seq = seq;
-  tdseq->orig_scale_x = transform->scale_x;
-  tdseq->orig_scale_y = transform->scale_y;
+  copy_v2_v2(tdseq->orig_origin_position, origin);
+  tdseq->orig_translation[0] = transform->xofs;
+  tdseq->orig_translation[1] = transform->yofs;
+  tdseq->orig_scale[0] = transform->scale_x;
+  tdseq->orig_scale[1] = transform->scale_y;
   tdseq->orig_rotation = transform->rotation;
 
   td->extra = (void *)tdseq;
@@ -164,15 +168,25 @@ void recalcData_sequencer_image(TransInfo *t)
     TransDataSeq *tdseq = td->extra;
     Sequence *seq = tdseq->seq;
     StripTransform *transform = seq->strip->transform;
-    float origin[2];
-    SEQ_image_transform_origin_offset_pixelspace_get(t->scene, seq, origin);
-    transform->xofs = round_fl_to_int(loc[0] - origin[0]);
-    transform->yofs = round_fl_to_int(loc[1] - origin[1]);
-    transform->scale_x = tdseq->orig_scale_x * fabs(len_v2(handle_x));
-    transform->scale_y = tdseq->orig_scale_y * fabs(len_v2(handle_y));
-    /* Scaling can cause negative rotation. */
+    float mirror[2];
+    SEQ_image_transform_mirror_factor_get(seq, mirror);
+
+    /* Calculate translation. */
+    float translation[2];
+    copy_v2_v2(translation, tdseq->orig_origin_position);
+    sub_v2_v2(translation, loc);
+    mul_v2_v2(translation, mirror);
+    transform->xofs = tdseq->orig_translation[0] - translation[0];
+    transform->yofs = tdseq->orig_translation[1] - translation[1];
+
+    /* Scale. */
+    transform->scale_x = tdseq->orig_scale[0] * fabs(len_v2(handle_x));
+    transform->scale_y = tdseq->orig_scale[1] * fabs(len_v2(handle_y));
+
+    /* Rotation. Scaling can cause negative rotation. */
     if (t->mode == TFM_ROTATION) {
-      transform->rotation = tdseq->orig_rotation + angle_signed_v2v2(handle_x, (float[]){1, 0});
+      float rotation = angle_signed_v2v2(handle_x, (float[]){1, 0}) * mirror[0] * mirror[1];
+      transform->rotation = tdseq->orig_rotation + rotation;
       transform->rotation += DEG2RAD(360.0);
       transform->rotation = fmod(transform->rotation, DEG2RAD(360.0));
     }

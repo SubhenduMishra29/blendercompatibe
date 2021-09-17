@@ -412,9 +412,7 @@ static void sequencer_image_crop_transform_matrix(const Scene *scene,
   const float image_center_offs_y = (out->y - in->y) / 2;
   const float translate_x = transform->xofs * preview_scale_factor + image_center_offs_x;
   const float translate_y = transform->yofs * preview_scale_factor + image_center_offs_y;
-  float origin[2];
-  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
-  const float pivot[2] = {(in->x / 2) + origin[0], (in->y / 2) + origin[1]};
+  const float pivot[2] = {in->x * transform->origin[0], in->y * transform->origin[1]};
   loc_rot_size_to_mat3(r_transform_matrix,
                        (const float[]){translate_x, translate_y},
                        transform->rotation,

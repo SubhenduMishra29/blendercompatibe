@@ -256,8 +256,10 @@ static float gizmo2d_calc_rotation(const bContext *C)
   SEQ_ITERATOR_FOREACH (seq, strips) {
     if (seq == ed->act_seq) {
       StripTransform *transform = seq->strip->transform;
+      float mirror[2];
+      SEQ_image_transform_mirror_factor_get(seq, mirror);
       SEQ_collection_free(strips);
-      return transform->rotation;
+      return transform->rotation * mirror[0] * mirror[1];
     }
   }
 
@@ -292,8 +294,7 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
       StripTransform *transform = seq->strip->transform;
       float origin[2];
       SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
-      r_center[0] += transform->xofs + origin[0];
-      r_center[1] += transform->yofs + origin[1];
+      copy_v2_v2(r_center, origin);
     }
     r_center[0] /= SEQ_collection_len(strips);
     r_center[1] /= SEQ_collection_len(strips);

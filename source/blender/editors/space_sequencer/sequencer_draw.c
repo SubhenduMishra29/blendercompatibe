@@ -2062,15 +2062,10 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
     return;
   }
 
-  const StripTransform *transform = seq->strip->transform;
-
   float origin[2];
   SEQ_image_transform_origin_offset_pixelspace_get(CTX_data_scene(C), seq, origin);
 
   /* Origin. */
-  float x = transform->xofs + origin[0];
-  float y = transform->yofs + origin[1];
-
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_OUTLINE_AA);
@@ -2079,18 +2074,11 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
   immUniform4f("outlineColor", 0.0f, 0.0f, 0.0f, 1.0f);
   immUniform1f("size", 15.0f * U.pixelsize);
   immBegin(GPU_PRIM_POINTS, 1);
-  immVertex2f(pos, x, y);
+  immVertex2f(pos, origin[0], origin[1]);
   immEnd();
   immUnbindProgram();
 
   /* Outline. */
-  float transform_matrix[3][3];
-  loc_rot_size_to_mat3(transform_matrix,
-                       (const float[]){transform->xofs, transform->yofs},
-                       transform->rotation,
-                       (const float[]){transform->scale_x, transform->scale_y});
-  transform_pivot_set_m3(transform_matrix, origin);
-
   float seq_image_quad[4][2];
   SEQ_image_transform_final_quad_get(CTX_data_scene(C), seq, seq_image_quad);
 
