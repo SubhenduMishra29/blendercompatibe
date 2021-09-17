@@ -291,13 +291,11 @@ static bool gizmo2d_calc_center(const bContext *C, float r_center[2])
     has_select = true;
     Sequence *seq;
     SEQ_ITERATOR_FOREACH (seq, strips) {
-      StripTransform *transform = seq->strip->transform;
       float origin[2];
       SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
-      copy_v2_v2(r_center, origin);
+      add_v2_v2(r_center, origin);
     }
-    r_center[0] /= SEQ_collection_len(strips);
-    r_center[1] /= SEQ_collection_len(strips);
+    mul_v2_fl(r_center, 1.0f / SEQ_collection_len(strips));
 
     SEQ_collection_free(strips);
   }
