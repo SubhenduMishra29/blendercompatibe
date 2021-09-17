@@ -2061,6 +2061,9 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq)
       (sseq->flag & SEQ_SHOW_OUTLINE_SELECTED) == 0) {
     return;
   }
+  if (ELEM(sseq->mainb, SEQ_DRAW_IMG_WAVEFORM, SEQ_DRAW_IMG_VECTORSCOPE, SEQ_DRAW_IMG_HISTOGRAM)) {
+    return;
+  }
 
   float origin[2];
   SEQ_image_transform_origin_offset_pixelspace_get(CTX_data_scene(C), seq, origin);
