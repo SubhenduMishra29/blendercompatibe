@@ -98,6 +98,12 @@ static TransData *SeqToTransData(const Scene *scene,
   return td;
 }
 
+static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data)
+{
+  TransData *td = (TransData *)tc->data;
+  MEM_freeN(td->extra);
+}
+
 void createTransSeqImageData(TransInfo *t)
 {
   Editing *ed = SEQ_editing_get(t->scene);
@@ -112,6 +118,8 @@ void createTransSeqImageData(TransInfo *t)
   }
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+  tc->custom.type.free_cb = freeSeqData;
+
   tc->data_len = count * 3; /* 3 vertices per sequence are needed. */
   TransData *td = tc->data = MEM_callocN(tc->data_len * sizeof(TransData), "TransSeq TransData");
   TransData2D *td2d = tc->data_2d = MEM_callocN(tc->data_len * sizeof(TransData2D),
