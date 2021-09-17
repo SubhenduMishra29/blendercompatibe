@@ -3076,6 +3076,9 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'SEQUENCER_PREVIEW': [
             *_tools_select,
+            _defs_sequencer_generic.translate,
+            _defs_sequencer_generic.rotate,
+            _defs_sequencer_generic.scale,
             _defs_sequencer_generic.blade,
             _defs_sequencer_generic.sample,
             *_tools_annotate,
