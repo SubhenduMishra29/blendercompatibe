@@ -397,8 +397,7 @@ static bool seq_need_scale_to_render_size(const Sequence *seq, bool is_proxy_ima
   return false;
 }
 
-static void sequencer_image_crop_transform_matrix(const Scene *scene,
-                                                  const Sequence *seq,
+static void sequencer_image_crop_transform_matrix(const Sequence *seq,
                                                   const ImBuf *in,
                                                   const ImBuf *out,
                                                   const float image_scale_factor,
@@ -448,7 +447,7 @@ static void sequencer_preprocess_transform_crop(
 
   float transform_matrix[3][3];
   sequencer_image_crop_transform_matrix(
-      scene, seq, in, out, image_scale_factor, preview_scale_factor, transform_matrix);
+      seq, in, out, image_scale_factor, preview_scale_factor, transform_matrix);
 
   /* Proxy image is smaller, so crop values must be corrected by proxy scale factor.
    * Proxy scale factor always matches preview_scale_factor. */

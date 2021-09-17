@@ -102,7 +102,7 @@ static TransData *SeqToTransData(const Scene *scene,
   return td;
 }
 
-static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *custom_data)
+static void freeSeqData(TransInfo *UNUSED(t), TransDataContainer *tc, TransCustomData *UNUSED(custom_data))
 {
   TransData *td = (TransData *)tc->data;
   MEM_freeN(td->extra);
