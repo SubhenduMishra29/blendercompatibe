@@ -87,6 +87,7 @@ set(SRC
   intern/hash_md5.c
   intern/hash_mm2a.c
   intern/hash_mm3.c
+  intern/index_mask.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
   intern/kdtree_2d.c
@@ -117,6 +118,7 @@ set(SRC
   intern/mesh_boolean.cc
   intern/mesh_intersect.cc
   intern/noise.c
+  intern/noise.cc
   intern/path_util.c
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
@@ -146,6 +148,7 @@ set(SRC
   intern/time.c
   intern/timecode.c
   intern/timeit.cc
+  intern/uuid.cc
   intern/uvproject.c
   intern/voronoi_2d.c
   intern/voxel.c
@@ -204,6 +207,7 @@ set(SRC
   BLI_filereader.h
   BLI_float2.hh
   BLI_float3.hh
+  BLI_float4.hh
   BLI_float4x4.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
@@ -265,6 +269,7 @@ set(SRC
   BLI_mpq3.hh
   BLI_multi_value_map.hh
   BLI_noise.h
+  BLI_noise.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
   BLI_polyfill_2d_beautify.h
@@ -307,6 +312,7 @@ set(SRC
   BLI_utildefines_stack.h
   BLI_utildefines_variadic.h
   BLI_utility_mixins.hh
+  BLI_uuid.h
   BLI_uvproject.h
   BLI_vector.hh
   BLI_vector_adaptor.hh
@@ -452,6 +458,7 @@ if(WITH_GTESTS)
     tests/BLI_string_utf8_test.cc
     tests/BLI_task_graph_test.cc
     tests/BLI_task_test.cc
+    tests/BLI_uuid_test.cc
     tests/BLI_vector_set_test.cc
     tests/BLI_vector_test.cc
     tests/BLI_virtual_array_test.cc
