@@ -87,6 +87,10 @@ class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
   {
     uiBasicTreeViewItem::build_row(row);
 
+    if (!is_active()) {
+      return;
+    }
+
     PointerRNA *props = UI_but_extra_operator_icon_add(
         button(), "ASSET_OT_catalog_new", WM_OP_EXEC_DEFAULT, ICON_ADD);
     RNA_string_set(props, "parent_path", catalog_.catalog_path().data());
