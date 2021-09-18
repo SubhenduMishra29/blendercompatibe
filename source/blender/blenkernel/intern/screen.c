@@ -1731,6 +1731,7 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
       }
       if (sfile->asset_params) {
         sfile->asset_params->base_params.rename_id = NULL;
+        BLO_read_data_address(reader, &sfile->asset_params->catalog_id);
       }
     }
     else if (sl->spacetype == SPACE_ACTION) {
