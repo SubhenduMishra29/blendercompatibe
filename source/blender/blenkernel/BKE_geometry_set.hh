@@ -103,6 +103,7 @@ class GeometryComponent {
   virtual int attribute_domain_size(const AttributeDomain domain) const;
 
   bool attribute_is_builtin(const blender::StringRef attribute_name) const;
+  bool attribute_is_builtin(const blender::bke::AttributeIDRef &attribute_id) const;
 
   /* Get read-only access to the highest priority attribute with the given name.
    * Returns null if the attribute does not exist. */
@@ -657,9 +658,16 @@ class AttributeFieldInput : public fn::FieldInput {
   {
   }
 
+  StringRefNull attribute_name() const
+  {
+    return name_;
+  }
+
   const GVArray *get_varray_for_context(const fn::FieldContext &context,
                                         IndexMask mask,
                                         ResourceScope &scope) const override;
+
+  std::string socket_inspection_name() const override;
 
   uint64_t hash() const override;
   bool is_equal_to(const fn::FieldNode &other) const override;
@@ -682,6 +690,8 @@ class AnonymousAttributeFieldInput : public fn::FieldInput {
   const GVArray *get_varray_for_context(const fn::FieldContext &context,
                                         IndexMask mask,
                                         ResourceScope &scope) const override;
+
+  std::string socket_inspection_name() const override;
 
   uint64_t hash() const override;
   bool is_equal_to(const fn::FieldNode &other) const override;

@@ -37,7 +37,7 @@
  *    use is to compose multiple existing fields into new fields.
  *
  * When fields are evaluated, they are converted into a multi-function procedure which allows
- * efficient compution. In the future, we might support different field evaluation mechanisms for
+ * efficient computation. In the future, we might support different field evaluation mechanisms for
  * e.g. the following scenarios:
  *  - Latency of a single evaluation is more important than throughput.
  *  - Evaluation should happen on other hardware like GPUs.
@@ -46,6 +46,7 @@
  * they share common sub-fields and a common context.
  */
 
+#include "BLI_function_ref.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
@@ -57,15 +58,27 @@
 
 namespace blender::fn {
 
+class FieldInput;
+
 /**
  * A node in a field-tree. It has at least one output that can be referenced by fields.
  */
 class FieldNode {
  private:
   bool is_input_;
+  /**
+   * True when this node is a #FieldInput or (potentially indirectly) depends on one. This could
+   * always be derived again later by traversing the field-tree, but keeping track of it while the
+   * field is built is cheaper.
+   *
+   * If this is false, the field is constant. Note that even when this is true, the field may be
+   * constant when all inputs are constant.
+   */
+  bool depends_on_input_;
 
  public:
-  FieldNode(bool is_input) : is_input_(is_input)
+  FieldNode(bool is_input, bool depends_on_input)
+      : is_input_(is_input), depends_on_input_(depends_on_input)
   {
   }
 
@@ -83,6 +96,17 @@ class FieldNode {
     return !is_input_;
   }
 
+  bool depends_on_input() const
+  {
+    return depends_on_input_;
+  }
+
+  /**
+   * Invoke callback for every field input. It might be called multiple times for the same input.
+   * The caller is responsible for deduplication if required.
+   */
+  virtual void foreach_field_input(FunctionRef<void(const FieldInput &)> foreach_fn) const = 0;
+
   virtual uint64_t hash() const
   {
     return get_default_hash(this);
@@ -91,6 +115,11 @@ class FieldNode {
   friend bool operator==(const FieldNode &a, const FieldNode &b)
   {
     return a.is_equal_to(b);
+  }
+
+  friend bool operator!=(const FieldNode &a, const FieldNode &b)
+  {
+    return !(a == b);
   }
 
   virtual bool is_equal_to(const FieldNode &other) const
@@ -122,12 +151,14 @@ template<typename NodePtr> class GFieldBase {
 
   friend bool operator==(const GFieldBase &a, const GFieldBase &b)
   {
-    return &*a.node_ == &*b.node_ && a.node_output_index_ == b.node_output_index_;
+    /* Two nodes can compare equal even when their pointer is not the same. For example, two
+     * "Position" nodes are the same. */
+    return *a.node_ == *b.node_ && a.node_output_index_ == b.node_output_index_;
   }
 
   uint64_t hash() const
   {
-    return get_default_hash_2(node_, node_output_index_);
+    return get_default_hash_2(*node_, node_output_index_);
   }
 
   const fn::CPPType &cpp_type() const
@@ -211,16 +242,8 @@ class FieldOperation : public FieldNode {
   blender::Vector<GField> inputs_;
 
  public:
-  FieldOperation(std::unique_ptr<const MultiFunction> function, Vector<GField> inputs = {})
-      : FieldNode(false), owned_function_(std::move(function)), inputs_(std::move(inputs))
-  {
-    function_ = owned_function_.get();
-  }
-
-  FieldOperation(const MultiFunction &function, Vector<GField> inputs = {})
-      : FieldNode(false), function_(&function), inputs_(std::move(inputs))
-  {
-  }
+  FieldOperation(std::unique_ptr<const MultiFunction> function, Vector<GField> inputs = {});
+  FieldOperation(const MultiFunction &function, Vector<GField> inputs = {});
 
   Span<GField> inputs() const
   {
@@ -247,6 +270,8 @@ class FieldOperation : public FieldNode {
     BLI_assert_unreachable();
     return CPPType::get<float>();
   }
+
+  void foreach_field_input(FunctionRef<void(const FieldInput &)> foreach_fn) const override;
 };
 
 class FieldContext;
@@ -260,10 +285,7 @@ class FieldInput : public FieldNode {
   std::string debug_name_;
 
  public:
-  FieldInput(const CPPType &type, std::string debug_name = "")
-      : FieldNode(true), type_(&type), debug_name_(std::move(debug_name))
-  {
-  }
+  FieldInput(const CPPType &type, std::string debug_name = "");
 
   /**
    * Get the value of this specific input based on the given context. The returned virtual array,
@@ -272,6 +294,11 @@ class FieldInput : public FieldNode {
   virtual const GVArray *get_varray_for_context(const FieldContext &context,
                                                 IndexMask mask,
                                                 ResourceScope &scope) const = 0;
+
+  virtual std::string socket_inspection_name() const
+  {
+    return debug_name_;
+  }
 
   blender::StringRef debug_name() const
   {
@@ -289,6 +316,8 @@ class FieldInput : public FieldNode {
     UNUSED_VARS_NDEBUG(output_index);
     return *type_;
   }
+
+  void foreach_field_input(FunctionRef<void(const FieldInput &)> foreach_fn) const override;
 };
 
 /**
@@ -352,7 +381,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
   /** Same as #add_with_destination but typed. */
   template<typename T> int add_with_destination(Field<T> field, VMutableArray<T> &dst)
   {
-    GVMutableArray &varray = scope_.construct<GVMutableArray_For_VMutableArray<T>>(__func__, dst);
+    GVMutableArray &varray = scope_.construct<GVMutableArray_For_VMutableArray<T>>(dst);
     return this->add_with_destination(GField(std::move(field)), varray);
   }
 
@@ -372,7 +401,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
    */
   template<typename T> int add_with_destination(Field<T> field, MutableSpan<T> dst)
   {
-    GVMutableArray &varray = scope_.construct<GVMutableArray_For_MutableSpan<T>>(__func__, dst);
+    GVMutableArray &varray = scope_.construct<GVMutableArray_For_MutableSpan<T>>(dst);
     return this->add_with_destination(std::move(field), varray);
   }
 
@@ -388,10 +417,10 @@ class FieldEvaluator : NonMovable, NonCopyable {
   {
     const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
     dst_varrays_.append(nullptr);
-    output_pointer_infos_.append(OutputPointerInfo{
-        varray_ptr, [](void *dst, const GVArray &varray, ResourceScope &scope) {
-          *(const VArray<T> **)dst = &*scope.construct<GVArray_Typed<T>>(__func__, varray);
-        }});
+    output_pointer_infos_.append(
+        OutputPointerInfo{varray_ptr, [](void *dst, const GVArray &varray, ResourceScope &scope) {
+                            *(const VArray<T> **)dst = &*scope.construct<GVArray_Typed<T>>(varray);
+                          }});
     return field_index;
   }
 
@@ -414,7 +443,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
   template<typename T> const VArray<T> &get_evaluated(const int field_index)
   {
     const GVArray &varray = this->get_evaluated(field_index);
-    GVArray_Typed<T> &typed_varray = scope_.construct<GVArray_Typed<T>>(__func__, varray);
+    GVArray_Typed<T> &typed_varray = scope_.construct<GVArray_Typed<T>>(varray);
     return *typed_varray;
   }
 
@@ -452,5 +481,7 @@ template<typename T> Field<T> make_constant_field(T value)
   auto operation = std::make_shared<FieldOperation>(std::move(constant_fn));
   return Field<T>{GField{std::move(operation), 0}};
 }
+
+GField make_field_constant_if_possible(GField field);
 
 }  // namespace blender::fn
