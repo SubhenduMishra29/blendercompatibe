@@ -58,7 +58,8 @@ typedef struct OpenSubdiv_BufferInterface {
   // channels.
   int buffer_offset;
 
-  // Pointer to user defined data.
+  // Pointer to the client buffer data, which is modified or initialized through the various
+  // callbacks.
   void *data;
 } OpenSubdiv_BufferInterface;
 
