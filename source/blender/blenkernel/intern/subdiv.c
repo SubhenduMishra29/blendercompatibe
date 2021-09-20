@@ -240,7 +240,7 @@ int *BKE_subdiv_face_ptex_offset_get(Subdiv *subdiv)
   const int num_coarse_faces = topology_refiner->getNumFaces(topology_refiner);
   /* +1 to store the final PTex offset (the total number of PTex faces) at the end of the array so
    * that algorithms can compute the number of PTex faces for a given face by computing the delta
-   * with the offste for the next face without using a separate data structure, e.g.:
+   * with the offset for the next face without using a separate data structure, e.g.:
    *
    * const int num_face_ptex_faces = face_ptex_offset[i + 1] - face_ptex_offset[i];
    */

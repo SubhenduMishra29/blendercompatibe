@@ -200,7 +200,7 @@ class ConstPatchCoordWrapperBuffer : public RawDataWrapperVertexBuffer<const Pat
 };
 
 // Discriminators used in FaceVaryingVolatileEval in order to detect whether we are using adaptive
-// subdivision as the CPU and OpenGL PatchTable have different APIs.
+// patches as the CPU and OpenGL PatchTable have different APIs.
 static bool is_adaptive(CpuPatchTable *patch_table)
 {
   return patch_table->GetPatchArrayBuffer()[0].GetDescriptor().IsAdaptive();
