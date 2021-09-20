@@ -1170,7 +1170,7 @@ OpenSubdiv_EvaluatorImpl::~OpenSubdiv_EvaluatorImpl()
 
 OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
     OpenSubdiv_TopologyRefiner *topology_refiner,
-    int evaluator_type,
+    eOpenSubdivEvaluator evaluator_type,
     OpenSubdiv_EvaluatorCacheImpl *evaluator_cache_descr)
 {
   // Only CPU and GLCompute are implemented at the moment.

@@ -19,7 +19,9 @@
 #ifndef OPENSUBDIV_EVALUATOR_CAPI_H_
 #define OPENSUBDIV_EVALUATOR_CAPI_H_
 
-#include "stdint.h"
+#include "stdint.h"  // for uint64_t
+
+#include "opensubdiv_capi_type.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -210,7 +212,7 @@ typedef struct OpenSubdiv_EvaluatorCache {
 
 OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
     struct OpenSubdiv_TopologyRefiner *topology_refiner,
-    int evaluator_type,
+    eOpenSubdivEvaluator evaluator_type,
     OpenSubdiv_EvaluatorCache *evaluator_cache);
 
 void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator);

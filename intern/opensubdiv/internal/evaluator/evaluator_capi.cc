@@ -238,7 +238,7 @@ void assignFunctionPointers(OpenSubdiv_Evaluator *evaluator)
 
 OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
     OpenSubdiv_TopologyRefiner *topology_refiner,
-    int evaluator_type,
+    eOpenSubdivEvaluator evaluator_type,
     OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
   OpenSubdiv_Evaluator *evaluator = OBJECT_GUARDED_NEW(OpenSubdiv_Evaluator);

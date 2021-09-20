@@ -28,6 +28,8 @@
 
 #include "internal/base/memory.h"
 
+#include "opensubdiv_capi_type.h"
+
 struct OpenSubdiv_BufferInterface;
 struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
@@ -366,7 +368,7 @@ struct OpenSubdiv_EvaluatorCacheImpl {
 
 OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
     struct OpenSubdiv_TopologyRefiner *topology_refiner,
-    int evaluator_type,
+    eOpenSubdivEvaluator evaluator_type,
     OpenSubdiv_EvaluatorCacheImpl *evaluator_cache_descr);
 
 void openSubdiv_deleteEvaluatorInternal(OpenSubdiv_EvaluatorImpl *evaluator);
