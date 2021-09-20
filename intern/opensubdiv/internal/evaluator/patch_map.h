@@ -22,7 +22,8 @@
 //
 // Modifications copyright 2021 Blender Foundation. All rights reserved.
 
-#pragma once
+#ifndef OPENSUBDIV_PATCH_MAP_H_
+#define OPENSUBDIV_PATCH_MAP_H_
 
 #include <opensubdiv/far/patchTable.h>
 
@@ -91,14 +92,17 @@ class PatchMap {
   {
     return _minPatchFace;
   }
+
   int getMaxPatchFace() const
   {
     return _maxPatchFace;
   }
+
   int getMaxDepth() const
   {
     return _maxDepth;
   }
+
   bool getPatchesAreTriangular() const
   {
     return _patchesAreTriangular;
@@ -256,3 +260,5 @@ inline PatchMap::Handle const *PatchMap::FindPatch(int faceid, double u, double 
 }
 }  // namespace opensubdiv
 }  // namespace blender
+
+#endif  // OPENSUBDIV_PATCH_MAP_H_
