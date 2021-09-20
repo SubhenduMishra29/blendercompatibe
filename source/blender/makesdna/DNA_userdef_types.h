@@ -1015,6 +1015,7 @@ typedef enum eUserPref_Flag {
 /** #UserDef.file_preview_type */
 typedef enum eUserpref_File_Preview_Type {
   USER_FILE_PREVIEW_NONE = 0,
+  USER_FILE_PREVIEW_AUTO,
   USER_FILE_PREVIEW_SCREENSHOT,
   USER_FILE_PREVIEW_CAMERA,
 } eUserpref_File_Preview_Type;
@@ -1135,7 +1136,9 @@ typedef enum eUserpref_TableAPI {
 
 /** #UserDef.app_flag */
 typedef enum eUserpref_APP_Flag {
-  USER_APP_LOCK_UI_LAYOUT = (1 << 0),
+  USER_APP_LOCK_CORNER_SPLIT = (1 << 0),
+  USER_APP_HIDE_REGION_TOGGLE = (1 << 1),
+  USER_APP_LOCK_EDGE_RESIZE = (1 << 2),
 } eUserpref_APP_Flag;
 
 /** #UserDef.statusbar_flag */
