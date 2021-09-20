@@ -343,6 +343,86 @@ class FaceVaryingVolatileEval {
   DEVICE_CONTEXT *device_context_;
 };
 
+// Base class for the implementation of the evaluators.
+class EvalOutput {
+ public:
+  virtual ~EvalOutput() = default;
+
+  virtual void updateData(const float *src, int start_vertex, int num_vertices) = 0;
+
+  virtual void updateVaryingData(const float *src, int start_vertex, int num_vertices) = 0;
+
+  virtual void updateFaceVaryingData(const int face_varying_channel,
+                                     const float *src,
+                                     int start_vertex,
+                                     int num_vertices) = 0;
+
+  virtual void refine() = 0;
+
+  // NOTE: P must point to a memory of at least float[3]*num_patch_coords.
+  virtual void evalPatches(const PatchCoord *patch_coord,
+                           const int num_patch_coords,
+                           float *P) = 0;
+
+  // NOTE: P, dPdu, dPdv must point to a memory of at least float[3]*num_patch_coords.
+  virtual void evalPatchesWithDerivatives(const PatchCoord *patch_coord,
+                                          const int num_patch_coords,
+                                          float *P,
+                                          float *dPdu,
+                                          float *dPdv) = 0;
+
+  // NOTE: varying must point to a memory of at least float[3]*num_patch_coords.
+  virtual void evalPatchesVarying(const PatchCoord *patch_coord,
+                                  const int num_patch_coords,
+                                  float *varying) = 0;
+
+  virtual void evalPatchesFaceVarying(const int face_varying_channel,
+                                      const PatchCoord *patch_coord,
+                                      const int num_patch_coords,
+                                      float face_varying[2]) = 0;
+
+  // The following interfaces are dependant on the actual evaluator type (CPU, OpenGL, etc.) which
+  // have slightly different APIs to access patch arrays, as well as different types for their
+  // data structure. They need to be overridden in the specific instances of the EvalOutput derived
+  // classes if needed, while the interfaces above are overriden through VolatileEvalOutput.
+
+  virtual void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
+  {
+  }
+
+  virtual void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
+  {
+  }
+
+  virtual void wrapPatchParamBuffer(OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
+  {
+  }
+
+  virtual void wrapSrcBuffer(OpenSubdiv_BufferInterface * /*src_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarPatchArraysBuffer(const int /*face_varying_channel*/,
+                                         OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarPatchIndexBuffer(const int /*face_varying_channel*/,
+                                        OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarPatchParamBuffer(const int /*face_varying_channel*/,
+                                        OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarSrcBuffer(const int /*face_varying_channel*/,
+                                 OpenSubdiv_BufferInterface * /*src_buffer*/)
+  {
+  }
+};
+
 // Volatile evaluator which can be used from threads.
 //
 // TODO(sergey): Make it possible to evaluate coordinates in chunks.
@@ -355,7 +435,7 @@ template<typename SRC_VERTEX_BUFFER,
          typename PATCH_TABLE,
          typename EVALUATOR,
          typename DEVICE_CONTEXT = void>
-class VolatileEvalOutput {
+class VolatileEvalOutput : public EvalOutput {
  public:
   typedef OpenSubdiv::Osd::EvaluatorCacheT<EVALUATOR> EvaluatorCache;
   typedef FaceVaryingVolatileEval<EVAL_VERTEX_BUFFER,
@@ -404,7 +484,7 @@ class VolatileEvalOutput {
     }
   }
 
-  ~VolatileEvalOutput()
+  ~VolatileEvalOutput() override
   {
     delete src_data_;
     delete src_varying_data_;
@@ -418,12 +498,12 @@ class VolatileEvalOutput {
 
   // TODO(sergey): Implement binding API.
 
-  void updateData(const float *src, int start_vertex, int num_vertices)
+  void updateData(const float *src, int start_vertex, int num_vertices) override
   {
     src_data_->UpdateData(src, start_vertex, num_vertices, device_context_);
   }
 
-  void updateVaryingData(const float *src, int start_vertex, int num_vertices)
+  void updateVaryingData(const float *src, int start_vertex, int num_vertices) override
   {
     src_varying_data_->UpdateData(src, start_vertex, num_vertices, device_context_);
   }
@@ -431,7 +511,7 @@ class VolatileEvalOutput {
   void updateFaceVaryingData(const int face_varying_channel,
                              const float *src,
                              int start_vertex,
-                             int num_vertices)
+                             int num_vertices) override
   {
     assert(face_varying_channel >= 0);
     assert(face_varying_channel < face_varying_evaluators.size());
@@ -450,7 +530,7 @@ class VolatileEvalOutput {
     return face_varying_evaluators.size() != 0;
   }
 
-  void refine()
+  void refine() override
   {
     // Evaluate vertex positions.
     BufferDescriptor dst_desc = src_desc_;
@@ -487,7 +567,7 @@ class VolatileEvalOutput {
   }
 
   // NOTE: P must point to a memory of at least float[3]*num_patch_coords.
-  void evalPatches(const PatchCoord *patch_coord, const int num_patch_coords, float *P)
+  void evalPatches(const PatchCoord *patch_coord, const int num_patch_coords, float *P) override
   {
     RawDataWrapperBuffer<float> P_data(P);
     // TODO(sergey): Support interleaved vertex-varying data.
@@ -511,7 +591,7 @@ class VolatileEvalOutput {
                                   const int num_patch_coords,
                                   float *P,
                                   float *dPdu,
-                                  float *dPdv)
+                                  float *dPdv) override
   {
     assert(dPdu);
     assert(dPdv);
@@ -541,7 +621,7 @@ class VolatileEvalOutput {
   // NOTE: varying must point to a memory of at least float[3]*num_patch_coords.
   void evalPatchesVarying(const PatchCoord *patch_coord,
                           const int num_patch_coords,
-                          float *varying)
+                          float *varying) override
   {
     RawDataWrapperBuffer<float> varying_data(varying);
     BufferDescriptor varying_desc(3, 3, 6);
@@ -562,7 +642,7 @@ class VolatileEvalOutput {
   void evalPatchesFaceVarying(const int face_varying_channel,
                               const PatchCoord *patch_coord,
                               const int num_patch_coords,
-                              float face_varying[2])
+                              float face_varying[2]) override
   {
     assert(face_varying_channel >= 0);
     assert(face_varying_channel < face_varying_evaluators.size());
@@ -692,105 +772,108 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
                                                evaluator_cache)
   {
   }
+
+  void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer) override
+  {
+    GLPatchTable *patch_table = getPatchTable();
+    buildPatchArraysBufferFromVector(patch_table->GetPatchArrays(), patch_arrays_buffer);
+  }
+
+  void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer) override
+  {
+    GLPatchTable *patch_table = getPatchTable();
+    patch_index_buffer->wrap(patch_index_buffer, patch_table->GetPatchIndexBuffer());
+  }
+
+  void wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer) override
+  {
+    GLPatchTable *patch_table = getPatchTable();
+    patch_param_buffer->wrap(patch_param_buffer, patch_table->GetPatchParamBuffer());
+  }
+
+  void wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer) override
+  {
+    GLVertexBuffer *vertex_buffer = getSrcBuffer();
+    src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+  }
+
+  void wrapFVarPatchArraysBuffer(const int face_varying_channel,
+                                 OpenSubdiv_BufferInterface *patch_arrays_buffer) override
+  {
+    GLPatchTable *patch_table = getFVarPatchTable(face_varying_channel);
+    buildPatchArraysBufferFromVector(patch_table->GetFVarPatchArrays(face_varying_channel),
+                                     patch_arrays_buffer);
+  }
+
+  void wrapFVarPatchIndexBuffer(const int face_varying_channel,
+                                OpenSubdiv_BufferInterface *patch_index_buffer) override
+  {
+    GLPatchTable *patch_table = getFVarPatchTable(face_varying_channel);
+    patch_index_buffer->wrap(patch_index_buffer,
+                             patch_table->GetFVarPatchIndexBuffer(face_varying_channel));
+  }
+
+  void wrapFVarPatchParamBuffer(const int face_varying_channel,
+                                OpenSubdiv_BufferInterface *patch_param_buffer) override
+  {
+    GLPatchTable *patch_table = getFVarPatchTable(face_varying_channel);
+    patch_param_buffer->wrap(patch_param_buffer,
+                             patch_table->GetFVarPatchParamBuffer(face_varying_channel));
+  }
+
+  void wrapFVarSrcBuffer(const int face_varying_channel,
+                         OpenSubdiv_BufferInterface *src_buffer) override
+  {
+    GLVertexBuffer *vertex_buffer = getFVarSrcBuffer(face_varying_channel);
+    src_buffer->buffer_offset = getFVarSrcBufferOffset(face_varying_channel);
+    src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // Evaluator wrappers for anonymous API.
 
-EvalOutputAPI::EvalOutputAPI(PatchMap *patch_map) : patch_map_(patch_map)
+EvalOutputAPI::EvalOutputAPI(EvalOutput *implementation, PatchMap *patch_map)
+    : patch_map_(patch_map), implementation_(implementation)
 {
 }
 
 EvalOutputAPI::~EvalOutputAPI()
 {
-}
-
-void EvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface * /*patch_map_handles*/,
-                                OpenSubdiv_BufferInterface * /*patch_map_quadtree*/,
-                                int * /*min_patch_face*/,
-                                int * /*max_patch_face*/,
-                                int * /*max_depth*/,
-                                int * /*patches_are_triangular*/)
-{
-}
-
-void EvalOutputAPI::wrapPatchArraysBuffer(OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapPatchIndexBuffer(OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapPatchParamBuffer(OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapSrcBuffer(OpenSubdiv_BufferInterface * /*src_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapFVarPatchArraysBuffer(const int /*face_varying_channel*/,
-                                              OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapFVarPatchIndexBuffer(const int /*face_varying_channel*/,
-                                             OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapFVarPatchParamBuffer(const int /*face_varying_channel*/,
-                                             OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
-{
-}
-
-void EvalOutputAPI::wrapFVarSrcBuffer(const int /*face_varying_channel*/,
-                                      OpenSubdiv_BufferInterface * /*src_buffer*/)
-{
-}
-
-CpuEvalOutputAPI::CpuEvalOutputAPI(CpuEvalOutput *implementation, PatchMap *patch_map)
-    : EvalOutputAPI(patch_map), implementation_(implementation)
-{
-}
-
-CpuEvalOutputAPI::~CpuEvalOutputAPI()
-{
   delete implementation_;
 }
 
-void CpuEvalOutputAPI::setCoarsePositions(const float *positions,
-                                          const int start_vertex_index,
-                                          const int num_vertices)
+void EvalOutputAPI::setCoarsePositions(const float *positions,
+                                       const int start_vertex_index,
+                                       const int num_vertices)
 {
   // TODO(sergey): Add sanity check on indices.
   implementation_->updateData(positions, start_vertex_index, num_vertices);
 }
 
-void CpuEvalOutputAPI::setVaryingData(const float *varying_data,
-                                      const int start_vertex_index,
-                                      const int num_vertices)
+void EvalOutputAPI::setVaryingData(const float *varying_data,
+                                   const int start_vertex_index,
+                                   const int num_vertices)
 {
   // TODO(sergey): Add sanity check on indices.
   implementation_->updateVaryingData(varying_data, start_vertex_index, num_vertices);
 }
 
-void CpuEvalOutputAPI::setFaceVaryingData(const int face_varying_channel,
-                                          const float *face_varying_data,
-                                          const int start_vertex_index,
-                                          const int num_vertices)
+void EvalOutputAPI::setFaceVaryingData(const int face_varying_channel,
+                                       const float *face_varying_data,
+                                       const int start_vertex_index,
+                                       const int num_vertices)
 {
   // TODO(sergey): Add sanity check on indices.
   implementation_->updateFaceVaryingData(
       face_varying_channel, face_varying_data, start_vertex_index, num_vertices);
 }
 
-void CpuEvalOutputAPI::setCoarsePositionsFromBuffer(const void *buffer,
-                                                    const int start_offset,
-                                                    const int stride,
-                                                    const int start_vertex_index,
-                                                    const int num_vertices)
+void EvalOutputAPI::setCoarsePositionsFromBuffer(const void *buffer,
+                                                 const int start_offset,
+                                                 const int stride,
+                                                 const int start_vertex_index,
+                                                 const int num_vertices)
 {
   // TODO(sergey): Add sanity check on indices.
   const unsigned char *current_buffer = (unsigned char *)buffer;
@@ -803,11 +886,11 @@ void CpuEvalOutputAPI::setCoarsePositionsFromBuffer(const void *buffer,
   }
 }
 
-void CpuEvalOutputAPI::setVaryingDataFromBuffer(const void *buffer,
-                                                const int start_offset,
-                                                const int stride,
-                                                const int start_vertex_index,
-                                                const int num_vertices)
+void EvalOutputAPI::setVaryingDataFromBuffer(const void *buffer,
+                                             const int start_offset,
+                                             const int stride,
+                                             const int start_vertex_index,
+                                             const int num_vertices)
 {
   // TODO(sergey): Add sanity check on indices.
   const unsigned char *current_buffer = (unsigned char *)buffer;
@@ -820,12 +903,12 @@ void CpuEvalOutputAPI::setVaryingDataFromBuffer(const void *buffer,
   }
 }
 
-void CpuEvalOutputAPI::setFaceVaryingDataFromBuffer(const int face_varying_channel,
-                                                    const void *buffer,
-                                                    const int start_offset,
-                                                    const int stride,
-                                                    const int start_vertex_index,
-                                                    const int num_vertices)
+void EvalOutputAPI::setFaceVaryingDataFromBuffer(const int face_varying_channel,
+                                                 const void *buffer,
+                                                 const int start_offset,
+                                                 const int stride,
+                                                 const int start_vertex_index,
+                                                 const int num_vertices)
 {
   // TODO(sergey): Add sanity check on indices.
   const unsigned char *current_buffer = (unsigned char *)buffer;
@@ -840,17 +923,17 @@ void CpuEvalOutputAPI::setFaceVaryingDataFromBuffer(const int face_varying_chann
   }
 }
 
-void CpuEvalOutputAPI::refine()
+void EvalOutputAPI::refine()
 {
   implementation_->refine();
 }
 
-void CpuEvalOutputAPI::evaluateLimit(const int ptex_face_index,
-                                     float face_u,
-                                     float face_v,
-                                     float P[3],
-                                     float dPdu[3],
-                                     float dPdv[3])
+void EvalOutputAPI::evaluateLimit(const int ptex_face_index,
+                                  float face_u,
+                                  float face_v,
+                                  float P[3],
+                                  float dPdu[3],
+                                  float dPdv[3])
 {
   assert(face_u >= 0.0f);
   assert(face_u <= 1.0f);
@@ -866,10 +949,10 @@ void CpuEvalOutputAPI::evaluateLimit(const int ptex_face_index,
   }
 }
 
-void CpuEvalOutputAPI::evaluateVarying(const int ptex_face_index,
-                                       float face_u,
-                                       float face_v,
-                                       float varying[3])
+void EvalOutputAPI::evaluateVarying(const int ptex_face_index,
+                                    float face_u,
+                                    float face_v,
+                                    float varying[3])
 {
   assert(face_u >= 0.0f);
   assert(face_u <= 1.0f);
@@ -880,11 +963,11 @@ void CpuEvalOutputAPI::evaluateVarying(const int ptex_face_index,
   implementation_->evalPatchesVarying(&patch_coord, 1, varying);
 }
 
-void CpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
-                                           const int ptex_face_index,
-                                           float face_u,
-                                           float face_v,
-                                           float face_varying[2])
+void EvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
+                                        const int ptex_face_index,
+                                        float face_u,
+                                        float face_v,
+                                        float face_varying[2])
 {
   assert(face_u >= 0.0f);
   assert(face_u <= 1.0f);
@@ -895,11 +978,11 @@ void CpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
   implementation_->evalPatchesFaceVarying(face_varying_channel, &patch_coord, 1, face_varying);
 }
 
-void CpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
-                                            const int num_patch_coords,
-                                            float *P,
-                                            float *dPdu,
-                                            float *dPdv)
+void EvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
+                                         const int num_patch_coords,
+                                         float *P,
+                                         float *dPdu,
+                                         float *dPdv)
 {
   StackOrHeapPatchCoordArray patch_coords_array;
   convertPatchCoordsToArray(patch_coords, num_patch_coords, patch_map_, &patch_coords_array);
@@ -912,174 +995,12 @@ void CpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_c
   }
 }
 
-GpuEvalOutputAPI::GpuEvalOutputAPI(GpuEvalOutput *implementation, PatchMap *patch_map)
-    : EvalOutputAPI(patch_map), implementation_(implementation)
-{
-}
-
-GpuEvalOutputAPI::~GpuEvalOutputAPI()
-{
-  delete implementation_;
-}
-
-void GpuEvalOutputAPI::setCoarsePositions(const float *positions,
-                                          const int start_vertex_index,
-                                          const int num_vertices)
-{
-  // TODO(sergey): Add sanity check on indices.
-  implementation_->updateData(positions, start_vertex_index, num_vertices);
-}
-
-void GpuEvalOutputAPI::setVaryingData(const float *varying_data,
-                                      const int start_vertex_index,
-                                      const int num_vertices)
-{
-  // TODO(sergey): Add sanity check on indices.
-  implementation_->updateVaryingData(varying_data, start_vertex_index, num_vertices);
-}
-
-void GpuEvalOutputAPI::setFaceVaryingData(const int face_varying_channel,
-                                          const float *face_varying_data,
-                                          const int start_vertex_index,
-                                          const int num_vertices)
-{
-  // TODO(sergey): Add sanity check on indices.
-  implementation_->updateFaceVaryingData(
-      face_varying_channel, face_varying_data, start_vertex_index, num_vertices);
-}
-
-void GpuEvalOutputAPI::setCoarsePositionsFromBuffer(const void *buffer,
-                                                    const int start_offset,
-                                                    const int stride,
-                                                    const int start_vertex_index,
-                                                    const int num_vertices)
-{
-  // TODO(sergey): Add sanity check on indices.
-  const unsigned char *current_buffer = (unsigned char *)buffer;
-  current_buffer += start_offset;
-  for (int i = 0; i < num_vertices; ++i) {
-    const int current_vertex_index = start_vertex_index + i;
-    implementation_->updateData(
-        reinterpret_cast<const float *>(current_buffer), current_vertex_index, 1);
-    current_buffer += stride;
-  }
-}
-
-void GpuEvalOutputAPI::setVaryingDataFromBuffer(const void *buffer,
-                                                const int start_offset,
-                                                const int stride,
-                                                const int start_vertex_index,
-                                                const int num_vertices)
-{
-  // TODO(sergey): Add sanity check on indices.
-  const unsigned char *current_buffer = (unsigned char *)buffer;
-  current_buffer += start_offset;
-  for (int i = 0; i < num_vertices; ++i) {
-    const int current_vertex_index = start_vertex_index + i;
-    implementation_->updateVaryingData(
-        reinterpret_cast<const float *>(current_buffer), current_vertex_index, 1);
-    current_buffer += stride;
-  }
-}
-
-void GpuEvalOutputAPI::setFaceVaryingDataFromBuffer(const int face_varying_channel,
-                                                    const void *buffer,
-                                                    const int start_offset,
-                                                    const int stride,
-                                                    const int start_vertex_index,
-                                                    const int num_vertices)
-{
-  // TODO(sergey): Add sanity check on indices.
-  const unsigned char *current_buffer = (unsigned char *)buffer;
-  current_buffer += start_offset;
-  for (int i = 0; i < num_vertices; ++i) {
-    const int current_vertex_index = start_vertex_index + i;
-    implementation_->updateFaceVaryingData(face_varying_channel,
-                                           reinterpret_cast<const float *>(current_buffer),
-                                           current_vertex_index,
-                                           1);
-    current_buffer += stride;
-  }
-}
-
-void GpuEvalOutputAPI::refine()
-{
-  implementation_->refine();
-}
-
-void GpuEvalOutputAPI::evaluateLimit(const int ptex_face_index,
-                                     float face_u,
-                                     float face_v,
-                                     float P[3],
-                                     float dPdu[3],
-                                     float dPdv[3])
-{
-  assert(face_u >= 0.0f);
-  assert(face_u <= 1.0f);
-  assert(face_v >= 0.0f);
-  assert(face_v <= 1.0f);
-  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
-  PatchCoord patch_coord(*handle, face_u, face_v);
-  if (dPdu != NULL || dPdv != NULL) {
-    implementation_->evalPatchesWithDerivatives(&patch_coord, 1, P, dPdu, dPdv);
-  }
-  else {
-    implementation_->evalPatches(&patch_coord, 1, P);
-  }
-}
-
-void GpuEvalOutputAPI::evaluateVarying(const int ptex_face_index,
-                                       float face_u,
-                                       float face_v,
-                                       float varying[3])
-{
-  assert(face_u >= 0.0f);
-  assert(face_u <= 1.0f);
-  assert(face_v >= 0.0f);
-  assert(face_v <= 1.0f);
-  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
-  PatchCoord patch_coord(*handle, face_u, face_v);
-  implementation_->evalPatchesVarying(&patch_coord, 1, varying);
-}
-
-void GpuEvalOutputAPI::evaluateFaceVarying(const int face_varying_channel,
-                                           const int ptex_face_index,
-                                           float face_u,
-                                           float face_v,
-                                           float face_varying[2])
-{
-  assert(face_u >= 0.0f);
-  assert(face_u <= 1.0f);
-  assert(face_v >= 0.0f);
-  assert(face_v <= 1.0f);
-  const PatchTable::PatchHandle *handle = patch_map_->FindPatch(ptex_face_index, face_u, face_v);
-  PatchCoord patch_coord(*handle, face_u, face_v);
-  implementation_->evalPatchesFaceVarying(face_varying_channel, &patch_coord, 1, face_varying);
-}
-
-void GpuEvalOutputAPI::evaluatePatchesLimit(const OpenSubdiv_PatchCoord *patch_coords,
-                                            const int num_patch_coords,
-                                            float *P,
-                                            float *dPdu,
-                                            float *dPdv)
-{
-  StackOrHeapPatchCoordArray patch_coords_array;
-  convertPatchCoordsToArray(patch_coords, num_patch_coords, patch_map_, &patch_coords_array);
-  if (dPdu != NULL || dPdv != NULL) {
-    implementation_->evalPatchesWithDerivatives(
-        patch_coords_array.data(), num_patch_coords, P, dPdu, dPdv);
-  }
-  else {
-    implementation_->evalPatches(patch_coords_array.data(), num_patch_coords, P);
-  }
-}
-
-void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
-                                   OpenSubdiv_BufferInterface *patch_map_quadtree,
-                                   int *min_patch_face,
-                                   int *max_patch_face,
-                                   int *max_depth,
-                                   int *patches_are_triangular)
+void EvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles,
+                                OpenSubdiv_BufferInterface *patch_map_quadtree,
+                                int *min_patch_face,
+                                int *max_patch_face,
+                                int *max_depth,
+                                int *patches_are_triangular)
 {
   *min_patch_face = patch_map_->getMinPatchFace();
   *max_patch_face = patch_map_->getMaxPatchFace();
@@ -1097,60 +1018,48 @@ void GpuEvalOutputAPI::getPatchMap(OpenSubdiv_BufferInterface *patch_map_handles
   memcpy(buffer_nodes, &quadtree[0], sizeof(PatchMap::QuadNode) * quadtree.size());
 }
 
-void GpuEvalOutputAPI::wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer)
+void EvalOutputAPI::wrapPatchArraysBuffer(OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
-  GLPatchTable *patch_table = implementation_->getPatchTable();
-  buildPatchArraysBufferFromVector(patch_table->GetPatchArrays(), patch_arrays_buffer);
+  implementation_->wrapPatchArraysBuffer(patch_arrays_buffer);
 }
 
-void GpuEvalOutputAPI::wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer)
+void EvalOutputAPI::wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer)
 {
-  GLPatchTable *patch_table = implementation_->getPatchTable();
-  patch_index_buffer->wrap(patch_index_buffer, patch_table->GetPatchIndexBuffer());
+  implementation_->wrapPatchIndexBuffer(patch_index_buffer);
 }
 
-void GpuEvalOutputAPI::wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer)
+void EvalOutputAPI::wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer)
 {
-  GLPatchTable *patch_table = implementation_->getPatchTable();
-  patch_param_buffer->wrap(patch_param_buffer, patch_table->GetPatchParamBuffer());
+  implementation_->wrapPatchParamBuffer(patch_param_buffer);
 }
 
-void GpuEvalOutputAPI::wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer)
+void EvalOutputAPI::wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer)
 {
-  GLVertexBuffer *vertex_buffer = implementation_->getSrcBuffer();
-  src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+  implementation_->wrapSrcBuffer(src_buffer);
 }
 
-void GpuEvalOutputAPI::wrapFVarPatchArraysBuffer(const int face_varying_channel,
-                                                 OpenSubdiv_BufferInterface *patch_arrays_buffer)
+void EvalOutputAPI::wrapFVarPatchArraysBuffer(const int face_varying_channel,
+                                              OpenSubdiv_BufferInterface *patch_arrays_buffer)
 {
-  GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
-  buildPatchArraysBufferFromVector(patch_table->GetFVarPatchArrays(face_varying_channel),
-                                   patch_arrays_buffer);
+  implementation_->wrapFVarPatchArraysBuffer(face_varying_channel, patch_arrays_buffer);
 }
 
-void GpuEvalOutputAPI::wrapFVarPatchIndexBuffer(const int face_varying_channel,
-                                                OpenSubdiv_BufferInterface *patch_index_buffer)
+void EvalOutputAPI::wrapFVarPatchIndexBuffer(const int face_varying_channel,
+                                             OpenSubdiv_BufferInterface *patch_index_buffer)
 {
-  GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
-  patch_index_buffer->wrap(patch_index_buffer,
-                           patch_table->GetFVarPatchIndexBuffer(face_varying_channel));
+  implementation_->wrapFVarPatchIndexBuffer(face_varying_channel, patch_index_buffer);
 }
 
-void GpuEvalOutputAPI::wrapFVarPatchParamBuffer(const int face_varying_channel,
-                                                OpenSubdiv_BufferInterface *patch_param_buffer)
+void EvalOutputAPI::wrapFVarPatchParamBuffer(const int face_varying_channel,
+                                             OpenSubdiv_BufferInterface *patch_param_buffer)
 {
-  GLPatchTable *patch_table = implementation_->getFVarPatchTable(face_varying_channel);
-  patch_param_buffer->wrap(patch_param_buffer,
-                           patch_table->GetFVarPatchParamBuffer(face_varying_channel));
+  implementation_->wrapFVarPatchParamBuffer(face_varying_channel, patch_param_buffer);
 }
 
-void GpuEvalOutputAPI::wrapFVarSrcBuffer(const int face_varying_channel,
-                                         OpenSubdiv_BufferInterface *src_buffer)
+void EvalOutputAPI::wrapFVarSrcBuffer(const int face_varying_channel,
+                                      OpenSubdiv_BufferInterface *src_buffer)
 {
-  GLVertexBuffer *vertex_buffer = implementation_->getFVarSrcBuffer(face_varying_channel);
-  src_buffer->buffer_offset = implementation_->getFVarSrcBufferOffset(face_varying_channel);
-  src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+  implementation_->wrapFVarSrcBuffer(face_varying_channel, src_buffer);
 }
 
 }  // namespace opensubdiv
@@ -1281,8 +1190,7 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
   }
   // Create OpenSubdiv's CPU side evaluator.
   // TODO(sergey): Make it possible to use different evaluators.
-  blender::opensubdiv::CpuEvalOutput *eval_output_cpu = nullptr;
-  blender::opensubdiv::GpuEvalOutput *eval_output_gpu = nullptr;
+  blender::opensubdiv::EvalOutput *eval_output = nullptr;
 
   const bool use_gl_evaluator = evaluator_type == OPENSUBDIV_EVALUATOR_GLSL_COMPUTE;
   if (use_gl_evaluator) {
@@ -1292,15 +1200,15 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
           evaluator_cache_descr->eval_cache);
     }
 
-    eval_output_gpu = new blender::opensubdiv::GpuEvalOutput(vertex_stencils,
-                                                             varying_stencils,
-                                                             all_face_varying_stencils,
-                                                             2,
-                                                             patch_table,
-                                                             evaluator_cache);
+    eval_output = new blender::opensubdiv::GpuEvalOutput(vertex_stencils,
+                                                         varying_stencils,
+                                                         all_face_varying_stencils,
+                                                         2,
+                                                         patch_table,
+                                                         evaluator_cache);
   }
   else {
-    eval_output_cpu = new blender::opensubdiv::CpuEvalOutput(
+    eval_output = new blender::opensubdiv::CpuEvalOutput(
         vertex_stencils, varying_stencils, all_face_varying_stencils, 2, patch_table);
   }
 
@@ -1309,14 +1217,7 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
   OpenSubdiv_EvaluatorImpl *evaluator_descr;
   evaluator_descr = new OpenSubdiv_EvaluatorImpl();
 
-  if (use_gl_evaluator) {
-    evaluator_descr->eval_output = new blender::opensubdiv::GpuEvalOutputAPI(eval_output_gpu,
-                                                                             patch_map);
-  }
-  else {
-    evaluator_descr->eval_output = new blender::opensubdiv::CpuEvalOutputAPI(eval_output_cpu,
-                                                                             patch_map);
-  }
+  evaluator_descr->eval_output = new blender::opensubdiv::EvalOutputAPI(eval_output, patch_map);
   evaluator_descr->patch_map = patch_map;
   evaluator_descr->patch_table = patch_table;
   // TOOD(sergey): Look into whether we've got duplicated stencils arrays.
