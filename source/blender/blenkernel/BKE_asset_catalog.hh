@@ -64,6 +64,10 @@ class AssetCatalogService {
   /** Return catalog with the given ID. Return nullptr if not found. */
   AssetCatalog *find_catalog(const CatalogID &catalog_id);
 
+  /** Return first catalog with the given path. Return nullptr if not found. Not the most efficient
+   * function, better don't use it in performance sensitive areas. */
+  AssetCatalog *find_catalog_from_path(const CatalogPath &path) const;
+
   /** Create a catalog with some sensible auto-generated catalog ID.
    * The catalog will be saved to the default catalog file.*/
   AssetCatalog *create_catalog(const CatalogPath &catalog_path);

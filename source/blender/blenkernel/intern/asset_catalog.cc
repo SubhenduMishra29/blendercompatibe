@@ -52,6 +52,17 @@ AssetCatalog *AssetCatalogService::find_catalog(const CatalogID &catalog_id)
   return catalog_uptr_ptr->get();
 }
 
+AssetCatalog *AssetCatalogService::find_catalog_from_path(const CatalogPath &path) const
+{
+  for (auto &catalog : catalogs_.values()) {
+    if (catalog->path == path) {
+      return catalog.get();
+    }
+  }
+
+  return nullptr;
+}
+
 AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_path)
 {
   std::unique_ptr<AssetCatalog> catalog = AssetCatalog::from_path(catalog_path);
@@ -59,6 +70,8 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   /* So we can std::move(catalog) and still use the non-owning pointer: */
   AssetCatalog *const catalog_ptr = catalog.get();
 
+  BLI_assert_msg(find_catalog_from_path(catalog_path) == nullptr,
+                 "duplicate catalog path not supported");
   /* TODO(@sybren): move the `AssetCatalog::from_path()` function to another place, that can reuse
    * catalogs when a catalog with the given path is already known, and avoid duplicate catalog IDs.
    */

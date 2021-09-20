@@ -28,5 +28,5 @@ struct AssetLibrary;
 }  // namespace blender::bke
 
 blender::bke::AssetCatalog *ED_asset_catalog_add(blender::bke::AssetLibrary *library,
-                                                 blender::StringRef name,
+                                                 blender::StringRefNull name,
                                                  blender::StringRef parent_path = nullptr);
