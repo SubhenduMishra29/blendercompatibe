@@ -219,7 +219,7 @@ OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
 
 void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator);
 
-OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(int evaluator_type);
+OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(eOpenSubdivEvaluator evaluator_type);
 
 void openSubdiv_deleteEvaluatorCache(OpenSubdiv_EvaluatorCache *evaluator_cache);
 

@@ -254,7 +254,7 @@ void openSubdiv_deleteEvaluator(OpenSubdiv_Evaluator *evaluator)
   OBJECT_GUARDED_DELETE(evaluator, OpenSubdiv_Evaluator);
 }
 
-OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(int evaluator_type)
+OpenSubdiv_EvaluatorCache *openSubdiv_createEvaluatorCache(eOpenSubdivEvaluator evaluator_type)
 {
   OpenSubdiv_EvaluatorCache *evaluator_cache = OBJECT_GUARDED_NEW(OpenSubdiv_EvaluatorCache);
   evaluator_cache->impl = openSubdiv_createEvaluatorCacheInternal(evaluator_type);
