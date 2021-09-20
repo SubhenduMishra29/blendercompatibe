@@ -65,7 +65,7 @@ inline PatchMap::QuadNode *PatchMap::assignLeafOrChildNode(QuadNode *node,
 //
 //  Constructor and initialization methods for the handles and quadtree:
 //
-PatchMap::PatchMap(PatchTable const &patchTable)
+PatchMap::PatchMap(OpenSubdiv::Far::PatchTable const &patchTable)
     : _minPatchFace(-1), _maxPatchFace(-1), _maxDepth(0)
 {
 
@@ -77,7 +77,7 @@ PatchMap::PatchMap(PatchTable const &patchTable)
   }
 }
 
-void PatchMap::initializeHandles(PatchTable const &patchTable)
+void PatchMap::initializeHandles(OpenSubdiv::Far::PatchTable const &patchTable)
 {
 
   //
@@ -113,7 +113,7 @@ void PatchMap::initializeHandles(PatchTable const &patchTable)
   }
 }
 
-void PatchMap::initializeQuadtree(PatchTable const &patchTable)
+void PatchMap::initializeQuadtree(OpenSubdiv::Far::PatchTable const &patchTable)
 {
 
   //

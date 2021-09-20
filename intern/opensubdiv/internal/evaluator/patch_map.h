@@ -3,8 +3,6 @@
 
 #include <opensubdiv/far/patchTable.h>
 
-using OpenSubdiv::Far::PatchTable;
-
 /// \brief An quadtree-based map connecting coarse faces to their sub-patches
 ///
 /// PatchTable::PatchArrays contain lists of patches that represent the limit
@@ -39,13 +37,13 @@ class PatchMap {
     Child children[4];
   };
 
-  typedef PatchTable::PatchHandle Handle;
+  typedef OpenSubdiv::Far::PatchTable::PatchHandle Handle;
 
   /// \brief Constructor
   ///
   /// @param patchTable  A valid PatchTable
   ///
-  PatchMap(PatchTable const &patchTable);
+  PatchMap(OpenSubdiv::Far::PatchTable const &patchTable);
 
   /// \brief Returns a handle to the sub-patch of the face at the given (u,v).
   /// Note that the patch face ID corresponds to potentially quadrangulated
@@ -91,8 +89,8 @@ class PatchMap {
   }
 
  private:
-  void initializeHandles(PatchTable const &patchTable);
-  void initializeQuadtree(PatchTable const &patchTable);
+  void initializeHandles(OpenSubdiv::Far::PatchTable const &patchTable);
+  void initializeQuadtree(OpenSubdiv::Far::PatchTable const &patchTable);
 
   typedef std::vector<QuadNode> QuadTree;
 
