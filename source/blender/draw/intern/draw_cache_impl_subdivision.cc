@@ -393,7 +393,8 @@ static void vertbuf_device_alloc(const OpenSubdiv_BufferInterface *interface, co
   GPU_vertbuf_data_alloc(verts, len);
 }
 
-static void vertbuf_wrap(const OpenSubdiv_BufferInterface *interface, uint64_t handle)
+static void vertbuf_wrap_device_handle(const OpenSubdiv_BufferInterface *interface,
+                                       uint64_t handle)
 {
   GPUVertBuf *verts = (GPUVertBuf *)(interface->data);
   GPU_vertbuf_wrap_handle(verts, handle);
@@ -414,7 +415,7 @@ static void opensubdiv_gpu_buffer_init(OpenSubdiv_BufferInterface *buffer_interf
   buffer_interface->data = vertbuf;
   buffer_interface->bind_gpu = vertbuf_bind_gpu;
   buffer_interface->buffer_offset = 0;
-  buffer_interface->wrap = vertbuf_wrap;
+  buffer_interface->wrap_device_handle = vertbuf_wrap_device_handle;
   buffer_interface->alloc = vertbuf_alloc;
   buffer_interface->device_alloc = vertbuf_device_alloc;
   buffer_interface->device_update = vertbuf_update_data;

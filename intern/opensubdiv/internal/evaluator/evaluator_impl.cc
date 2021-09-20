@@ -782,19 +782,19 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
   void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface *patch_index_buffer) override
   {
     GLPatchTable *patch_table = getPatchTable();
-    patch_index_buffer->wrap(patch_index_buffer, patch_table->GetPatchIndexBuffer());
+    patch_index_buffer->wrap_device_handle(patch_index_buffer, patch_table->GetPatchIndexBuffer());
   }
 
   void wrapPatchParamBuffer(OpenSubdiv_BufferInterface *patch_param_buffer) override
   {
     GLPatchTable *patch_table = getPatchTable();
-    patch_param_buffer->wrap(patch_param_buffer, patch_table->GetPatchParamBuffer());
+    patch_param_buffer->wrap_device_handle(patch_param_buffer, patch_table->GetPatchParamBuffer());
   }
 
   void wrapSrcBuffer(OpenSubdiv_BufferInterface *src_buffer) override
   {
     GLVertexBuffer *vertex_buffer = getSrcBuffer();
-    src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+    src_buffer->wrap_device_handle(src_buffer, vertex_buffer->BindVBO());
   }
 
   void wrapFVarPatchArraysBuffer(const int face_varying_channel,
@@ -809,16 +809,16 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
                                 OpenSubdiv_BufferInterface *patch_index_buffer) override
   {
     GLPatchTable *patch_table = getFVarPatchTable(face_varying_channel);
-    patch_index_buffer->wrap(patch_index_buffer,
-                             patch_table->GetFVarPatchIndexBuffer(face_varying_channel));
+    patch_index_buffer->wrap_device_handle(
+        patch_index_buffer, patch_table->GetFVarPatchIndexBuffer(face_varying_channel));
   }
 
   void wrapFVarPatchParamBuffer(const int face_varying_channel,
                                 OpenSubdiv_BufferInterface *patch_param_buffer) override
   {
     GLPatchTable *patch_table = getFVarPatchTable(face_varying_channel);
-    patch_param_buffer->wrap(patch_param_buffer,
-                             patch_table->GetFVarPatchParamBuffer(face_varying_channel));
+    patch_param_buffer->wrap_device_handle(
+        patch_param_buffer, patch_table->GetFVarPatchParamBuffer(face_varying_channel));
   }
 
   void wrapFVarSrcBuffer(const int face_varying_channel,
@@ -826,7 +826,7 @@ class GpuEvalOutput : public VolatileEvalOutput<GLVertexBuffer,
   {
     GLVertexBuffer *vertex_buffer = getFVarSrcBuffer(face_varying_channel);
     src_buffer->buffer_offset = getFVarSrcBufferOffset(face_varying_channel);
-    src_buffer->wrap(src_buffer, vertex_buffer->BindVBO());
+    src_buffer->wrap_device_handle(src_buffer, vertex_buffer->BindVBO());
   }
 };
 

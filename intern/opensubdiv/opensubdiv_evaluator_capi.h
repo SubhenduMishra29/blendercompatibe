@@ -19,7 +19,7 @@
 #ifndef OPENSUBDIV_EVALUATOR_CAPI_H_
 #define OPENSUBDIV_EVALUATOR_CAPI_H_
 
-#include "stdint.h"  // for uint64_t
+#include <stdint.h>  // for uint64_t
 
 #include "opensubdiv_capi_type.h"
 
@@ -50,8 +50,9 @@ typedef struct OpenSubdiv_BufferInterface {
                         unsigned int len,
                         const void *data);
 
-  // Wrap an existing GPU buffer, given its device handle, for read-only use.
-  void (*wrap)(const struct OpenSubdiv_BufferInterface *buffer, uint64_t device_ptr);
+  // Wrap an existing GPU buffer, given its device handle, into the client's buffer type for
+  // read-only use.
+  void (*wrap_device_handle)(const struct OpenSubdiv_BufferInterface *buffer, uint64_t device_ptr);
 
   // Offset in the buffer where the data starts, if a single buffer is used for multiple data
   // channels.
