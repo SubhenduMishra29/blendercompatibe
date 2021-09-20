@@ -868,6 +868,15 @@ static void mesh_buffer_cache_clear(MeshBufferCache *mbc)
   mbc->poly_sorted.visible_tri_len = 0;
 }
 
+static void mesh_batch_cache_free_subdiv_cache(MeshBatchCache *cache)
+{
+  if (cache->subdiv_cache) {
+    draw_subdiv_cache_free(cache->subdiv_cache);
+    MEM_freeN(cache->subdiv_cache);
+    cache->subdiv_cache = NULL;
+  }
+}
+
 static void mesh_batch_cache_clear(Mesh *me)
 {
   MeshBatchCache *cache = me->runtime.batch_cache;
@@ -895,6 +904,8 @@ static void mesh_batch_cache_clear(Mesh *me)
 
   cache->batch_ready = 0;
   drw_mesh_weight_state_clear(&cache->weight_state);
+
+  mesh_batch_cache_free_subdiv_cache(cache);
 }
 
 void DRW_mesh_batch_cache_free(Mesh *me)
@@ -1815,6 +1826,11 @@ void DRW_mesh_batch_cache_create_requested(struct TaskGraph *task_graph,
 
   if (do_subdivision) {
     DRW_create_subdivision(scene, ob, me, cache, &cache->final, ts);
+  }
+  else {
+    /* The subsurf modifier may have been recently removed, or another modifier was added after it,
+     * so free any potential subdivision cache as it is not needed anymore. */
+    mesh_batch_cache_free_subdiv_cache(cache);
   }
 
   mesh_buffer_cache_create_requested(task_graph,

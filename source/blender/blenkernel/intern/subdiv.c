@@ -208,12 +208,13 @@ Subdiv *BKE_subdiv_update_from_mesh(Subdiv *subdiv,
 
 void BKE_subdiv_free(Subdiv *subdiv)
 {
-  if (subdiv->cache_.draw_cache != NULL) {
-    /* Let the draw code do the freeing, to ensure that the OpenGL context is valid. */
-    BKE_modifier_subsurf_free_gpu_cache_cb(subdiv);
-    return;
-  }
   if (subdiv->evaluator != NULL) {
+    const eOpenSubdivEvaluator evaluator_type = subdiv->evaluator->type;
+    if (evaluator_type == OPENSUBDIV_EVALUATOR_GLSL_COMPUTE) {
+      /* Let the draw code do the freeing, to ensure that the OpenGL context is valid. */
+      BKE_modifier_subsurf_free_gpu_cache_cb(subdiv);
+      return;
+    }
     openSubdiv_deleteEvaluator(subdiv->evaluator);
   }
   if (subdiv->topology_refiner != NULL) {

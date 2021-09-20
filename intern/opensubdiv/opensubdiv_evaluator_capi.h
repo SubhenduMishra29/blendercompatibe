@@ -205,6 +205,9 @@ typedef struct OpenSubdiv_Evaluator {
 
   // Implementation of the evaluator.
   struct OpenSubdiv_EvaluatorImpl *impl;
+
+  // Type of the evaluator.
+  eOpenSubdivEvaluator type;
 } OpenSubdiv_Evaluator;
 
 typedef struct OpenSubdiv_EvaluatorCache {

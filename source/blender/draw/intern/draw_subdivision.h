@@ -130,6 +130,10 @@ typedef struct DRWSubdivCache {
   struct GPUUniformBuf *ubo;
 } DRWSubdivCache;
 
+/* Only frees the data of the cache, caller is responsible to free the cache itself if necessary.
+ */
+void draw_subdiv_cache_free(DRWSubdivCache *cache);
+
 /** \} */
 
 void DRW_create_subdivision(const struct Scene *scene,

@@ -245,6 +245,7 @@ OpenSubdiv_Evaluator *openSubdiv_createEvaluatorFromTopologyRefiner(
   assignFunctionPointers(evaluator);
   evaluator->impl = openSubdiv_createEvaluatorInternal(
       topology_refiner, evaluator_type, evaluator_cache ? evaluator_cache->impl : nullptr);
+  evaluator->type = evaluator->impl ? evaluator_type : static_cast<eOpenSubdivEvaluator>(0);
   return evaluator;
 }
 

@@ -271,6 +271,8 @@ typedef struct MeshBatchCache {
 
   GPUBatch **surface_per_mat;
 
+  struct DRWSubdivCache *subdiv_cache;
+
   DRWBatchFlag batch_requested; /* DRWBatchFlag */
   DRWBatchFlag batch_ready;     /* DRWBatchFlag */
 

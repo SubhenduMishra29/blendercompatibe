@@ -535,7 +535,7 @@ static void draw_subdiv_free_edit_mode_cache(DRWSubdivCache *cache)
   GPU_VERTBUF_DISCARD_SAFE(cache->fdots_patch_coords);
 }
 
-static void draw_subdiv_cache_free(DRWSubdivCache *cache)
+void draw_subdiv_cache_free(DRWSubdivCache *cache)
 {
   GPU_VERTBUF_DISCARD_SAFE(cache->patch_coords);
   GPU_VERTBUF_DISCARD_SAFE(cache->face_ptex_offset_buffer);
@@ -586,15 +586,15 @@ static void draw_subdiv_cache_update_extra_coarse_face_data(DRWSubdivCache *cach
   GPU_vertbuf_tag_dirty(cache->extra_coarse_face_data);
 }
 
-static DRWSubdivCache *ensure_draw_cache(Subdiv *subdiv)
+static DRWSubdivCache *mesh_batch_cache_ensure_subdiv_cache(MeshBatchCache *mbc)
 {
-  DRWSubdivCache *draw_cache = static_cast<DRWSubdivCache *>(subdiv->cache_.draw_cache);
-  if (draw_cache == nullptr) {
-    draw_cache = static_cast<DRWSubdivCache *>(
+  DRWSubdivCache *subdiv_cache = mbc->subdiv_cache;
+  if (subdiv_cache == nullptr) {
+    subdiv_cache = static_cast<DRWSubdivCache *>(
         MEM_callocN(sizeof(DRWSubdivCache), "DRWSubdivCache"));
   }
-  subdiv->cache_.draw_cache = draw_cache;
-  return draw_cache;
+  mbc->subdiv_cache = subdiv_cache;
+  return subdiv_cache;
 }
 
 /** \} */
@@ -1609,7 +1609,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
     return false;
   }
 
-  DRWSubdivCache *draw_cache = ensure_draw_cache(subdiv);
+  DRWSubdivCache *draw_cache = mesh_batch_cache_ensure_subdiv_cache(batch_cache);
   if (!draw_subdiv_build_cache(draw_cache, subdiv, mesh_eval, scene, smd, is_final_render)) {
     return false;
   }
@@ -1702,12 +1702,8 @@ void DRW_cache_free_old_subdiv()
 
   while (gpu_subdiv_free_queue != nullptr) {
     Subdiv *subdiv = static_cast<Subdiv *>(BLI_linklist_pop(&gpu_subdiv_free_queue));
-    DRWSubdivCache *cache = static_cast<DRWSubdivCache *>(subdiv->cache_.draw_cache);
-
-    draw_subdiv_cache_free(cache);
-    MEM_freeN(cache);
-
-    subdiv->cache_.draw_cache = nullptr;
+    /* Unset the type so that we do actually free the cache */
+    subdiv->evaluator->type = static_cast<eOpenSubdivEvaluator>(0);
     BKE_subdiv_free(subdiv);
   }
 
