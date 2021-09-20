@@ -239,7 +239,7 @@ static void extract_pos_nor_init_subdiv(const DRWSubdivCache *subdiv_cache,
 
     GPUVertBuf *vertex_normals = GPU_vertbuf_calloc();
     GPU_vertbuf_init_build_on_device(
-        vertex_normals, get_normals_format(), subdiv_cache->num_subdiv_vertis);
+        vertex_normals, get_normals_format(), subdiv_cache->num_subdiv_verts);
 
     draw_subdiv_accumulate_normals(subdiv_cache,
                                    vbo,

@@ -635,7 +635,7 @@ static bool draw_subdiv_topology_info_cb(const SubdivForeachContext *foreach_con
   /* Set topology information. */
   cache->num_subdiv_edges = (uint)num_edges;
   cache->num_subdiv_loops = (uint)num_loops;
-  cache->num_subdiv_vertis = (uint)num_vertices;
+  cache->num_subdiv_verts = (uint)num_vertices;
   cache->num_subdiv_quads = (uint)num_polygons;
   cache->subdiv_polygon_offset = static_cast<int *>(MEM_dupallocN(subdiv_polygon_offset));
 
@@ -664,7 +664,7 @@ static bool draw_subdiv_topology_info_cb(const SubdivForeachContext *foreach_con
       MEM_mallocN(cache->num_subdiv_loops * sizeof(int), "subdiv_loop_poly_index"));
 
   cache->point_indices = static_cast<int *>(
-      MEM_mallocN(cache->num_subdiv_vertis * sizeof(int), "point_indices"));
+      MEM_mallocN(cache->num_subdiv_verts * sizeof(int), "point_indices"));
   for (int i = 0; i < num_vertices; i++) {
     cache->point_indices[i] = -1;
   }
@@ -678,7 +678,7 @@ static bool draw_subdiv_topology_info_cb(const SubdivForeachContext *foreach_con
   ctx->point_indices = cache->point_indices;
 
   ctx->vert_origindex_map = static_cast<int *>(
-      MEM_mallocN(cache->num_subdiv_vertis * sizeof(int), "subdiv_vert_origindex_map"));
+      MEM_mallocN(cache->num_subdiv_verts * sizeof(int), "subdiv_vert_origindex_map"));
   for (int i = 0; i < num_vertices; i++) {
     ctx->vert_origindex_map[i] = -1;
   }
@@ -805,10 +805,10 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
   /* +1 so that we do not require a special case for the last vertex, this extra offset will
    * contain the total number of adjacent faces. */
   cache->subdiv_vertex_face_adjacency_offsets = gpu_vertbuf_create_from_format(
-      get_origindex_format(), cache->num_subdiv_vertis + 1);
+      get_origindex_format(), cache->num_subdiv_verts + 1);
 
   int *vertex_offsets = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency_offsets);
-  memset(vertex_offsets, 0, sizeof(int) * cache->num_subdiv_vertis + 1);
+  memset(vertex_offsets, 0, sizeof(int) * cache->num_subdiv_verts + 1);
 
   for (int i = 0; i < cache->num_subdiv_loops; i++) {
     vertex_offsets[cache->subdiv_loop_subdiv_vert_index[i]]++;
@@ -816,7 +816,7 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
 
   int ofs = vertex_offsets[0];
   vertex_offsets[0] = 0;
-  for (uint i = 1; i < cache->num_subdiv_vertis + 1; i++) {
+  for (uint i = 1; i < cache->num_subdiv_verts + 1; i++) {
     int tmp = vertex_offsets[i];
     vertex_offsets[i] = ofs;
     ofs += tmp;
@@ -826,7 +826,7 @@ static void build_vertex_face_adjacency_maps(DRWSubdivCache *cache)
                                                                        cache->num_subdiv_loops);
   int *adjacent_faces = (int *)GPU_vertbuf_get_data(cache->subdiv_vertex_face_adjacency);
   int *tmp_set_faces = static_cast<int *>(
-      MEM_callocN(sizeof(int) * cache->num_subdiv_vertis, "tmp subdiv vertex offset"));
+      MEM_callocN(sizeof(int) * cache->num_subdiv_verts, "tmp subdiv vertex offset"));
 
   for (int i = 0; i < cache->num_subdiv_loops / 4; i++) {
     for (int j = 0; j < 4; j++) {
@@ -1072,8 +1072,7 @@ void draw_subdiv_extract_uvs(const DRWSubdivCache *cache,
 
   OpenSubdiv_BufferInterface src_buffer_interface;
   GPUVertBuf *src_buffer = create_buffer_and_interface(&src_buffer_interface, get_uvs_format());
-  evaluator->wrapFVarSrcBuffer(
-      evaluator, face_varying_channel, &src_buffer_interface);
+  evaluator->wrapFVarSrcBuffer(evaluator, face_varying_channel, &src_buffer_interface);
 
   OpenSubdiv_BufferInterface patch_arrays_buffer_interface;
   GPUVertBuf *patch_arrays_buffer = create_buffer_and_interface(&patch_arrays_buffer_interface,
@@ -1182,7 +1181,7 @@ void draw_subdiv_accumulate_normals(const DRWSubdivCache *cache,
   GPU_vertbuf_bind_as_ssbo(face_adjacency_lists, binding_point++);
   GPU_vertbuf_bind_as_ssbo(vertex_normals, binding_point++);
 
-  GPU_compute_dispatch(shader, cache->num_subdiv_vertis, 1, 1);
+  GPU_compute_dispatch(shader, cache->num_subdiv_verts, 1, 1);
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
   /* Cleanup. */

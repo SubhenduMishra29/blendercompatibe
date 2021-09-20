@@ -79,7 +79,7 @@ typedef struct DRWSubdivCache {
   uint num_subdiv_loops;
   uint num_subdiv_edges;
   uint num_subdiv_triangles;
-  uint num_subdiv_vertis;
+  uint num_subdiv_verts;
   uint num_subdiv_quads;
 
   /* Number of polygons in the coarse mesh, notably used to compute a coarse polygon index given a

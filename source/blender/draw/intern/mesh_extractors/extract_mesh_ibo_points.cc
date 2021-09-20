@@ -164,7 +164,7 @@ static void extract_points_init_subdiv(const DRWSubdivCache *subdiv_cache,
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(data);
   /* Copy the points as the data upload will free them. */
   elb->data = (uint *)MEM_dupallocN(subdiv_cache->point_indices);
-  elb->index_len = subdiv_cache->num_subdiv_vertis;
+  elb->index_len = subdiv_cache->num_subdiv_verts;
   elb->index_min = 0;
   elb->index_max = subdiv_cache->num_subdiv_loops - 1;
   elb->prim_type = GPU_PRIM_POINTS;
