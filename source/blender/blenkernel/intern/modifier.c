@@ -85,6 +85,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "GPU_capabilities.h"
+#include "GPU_context.h"
 
 #include "MOD_modifiertypes.h"
 
@@ -1592,6 +1593,11 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Object *ob, const SubsurfMo
   return false;
 #else
   if (smd != ob->modifiers.last) {
+    return false;
+  }
+
+  /* Only OpenGL is supported for OpenSubdiv evaluation for now. */
+  if (GPU_backend_get_type() != GPU_BACKEND_OPENGL) {
     return false;
   }
 
