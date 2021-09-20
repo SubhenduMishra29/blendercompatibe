@@ -1189,7 +1189,6 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
     }
   }
   // Create OpenSubdiv's CPU side evaluator.
-  // TODO(sergey): Make it possible to use different evaluators.
   blender::opensubdiv::EvalOutput *eval_output = nullptr;
 
   const bool use_gl_evaluator = evaluator_type == OPENSUBDIV_EVALUATOR_GLSL_COMPUTE;
