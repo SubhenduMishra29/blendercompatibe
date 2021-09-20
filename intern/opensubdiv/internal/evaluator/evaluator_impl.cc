@@ -1242,7 +1242,8 @@ OpenSubdiv_EvaluatorCacheImpl::~OpenSubdiv_EvaluatorCacheImpl()
   delete static_cast<blender::opensubdiv::GpuEvalOutput::EvaluatorCache *>(eval_cache);
 }
 
-OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(int evaluator_type)
+OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(
+    eOpenSubdivEvaluator evaluator_type)
 {
   if (evaluator_type != eOpenSubdivEvaluator::OPENSUBDIV_EVALUATOR_GLSL_COMPUTE) {
     return nullptr;
