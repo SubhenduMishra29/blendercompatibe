@@ -152,7 +152,7 @@ void GPU_vertbuf_tag_dirty(GPUVertBuf *verts);
 void GPU_vertbuf_use(GPUVertBuf *);
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding);
 
-GPUVertBuf *GPU_vertbuf_wrap(uint64_t handle);
+void GPU_vertbuf_wrap_handle(GPUVertBuf *verts, uint64_t handle);
 
 void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, const void *data);
 

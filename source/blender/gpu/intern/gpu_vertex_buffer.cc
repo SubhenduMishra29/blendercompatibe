@@ -345,11 +345,9 @@ void GPU_vertbuf_use(GPUVertBuf *verts)
   unwrap(verts)->upload();
 }
 
-GPUVertBuf *GPU_vertbuf_wrap(uint64_t handle)
+void GPU_vertbuf_wrap_handle(GPUVertBuf *verts, uint64_t handle)
 {
-  GPUVertBuf *verts = GPU_vertbuf_calloc();
   unwrap(verts)->wrap_handle(handle);
-  return verts;
 }
 
 void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)
