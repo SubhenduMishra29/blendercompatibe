@@ -214,7 +214,8 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
 
 void openSubdiv_deleteEvaluatorInternal(OpenSubdiv_EvaluatorImpl *evaluator);
 
-OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(int evaluator_type);
+OpenSubdiv_EvaluatorCacheImpl *openSubdiv_createEvaluatorCacheInternal(
+    eOpenSubdivEvaluator evaluator_type);
 
 void openSubdiv_deleteEvaluatorCacheInternal(OpenSubdiv_EvaluatorCacheImpl *evaluator_cache);
 
