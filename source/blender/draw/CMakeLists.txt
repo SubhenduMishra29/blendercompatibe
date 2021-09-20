@@ -376,6 +376,7 @@ data_to_c_simple(intern/shaders/common_subdiv_normals_finalize_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_subdiv_patch_evaluation_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_subdiv_vbo_edge_fac_comp.glsl SRC)
 data_to_c_simple(intern/shaders/common_subdiv_vbo_lnor_comp.glsl SRC)
+data_to_c_simple(intern/shaders/common_subdiv_vbo_sculpt_data_comp.glsl SRC)
 
 data_to_c_simple(engines/gpencil/shaders/gpencil_frag.glsl SRC)
 data_to_c_simple(engines/gpencil/shaders/gpencil_vert.glsl SRC)

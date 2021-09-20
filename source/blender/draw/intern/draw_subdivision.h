@@ -156,6 +156,11 @@ struct GPUVertBuf *draw_subdiv_build_origindex_buffer(int *vert_origindex, uint 
 
 /* Compute shader functions. */
 
+void draw_subdiv_build_sculpt_data_buffer(const DRWSubdivCache *cache,
+                                          struct GPUVertBuf *mask_vbo,
+                                          struct GPUVertBuf *face_set_vbo,
+                                          struct GPUVertBuf *sculpt_data);
+
 void draw_subdiv_accumulate_normals(const DRWSubdivCache *cache,
                                     struct GPUVertBuf *pos_nor,
                                     struct GPUVertBuf *face_adjacency_offsets,

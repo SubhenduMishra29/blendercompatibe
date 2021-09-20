@@ -67,6 +67,7 @@ extern "C" char datatoc_common_subdiv_normals_finalize_comp_glsl[];
 extern "C" char datatoc_common_subdiv_patch_evaluation_comp_glsl[];
 extern "C" char datatoc_common_subdiv_vbo_edge_fac_comp_glsl[];
 extern "C" char datatoc_common_subdiv_vbo_lnor_comp_glsl[];
+extern "C" char datatoc_common_subdiv_vbo_sculpt_data_comp_glsl[];
 
 enum {
   SHADER_BUFFER_LINES,
@@ -83,6 +84,7 @@ enum {
   SHADER_PATCH_EVALUATION_FACE_DOTS,
   SHADER_COMP_CUSTOM_DATA_INTERP_1D,
   SHADER_COMP_CUSTOM_DATA_INTERP_4D,
+  SHADER_BUFFER_SCULPT_DATA,
 
   NUM_SHADERS,
 };
@@ -121,6 +123,9 @@ static const char *get_shader_code(int shader_type)
     case SHADER_COMP_CUSTOM_DATA_INTERP_1D:
     case SHADER_COMP_CUSTOM_DATA_INTERP_4D: {
       return datatoc_common_subdiv_custom_data_interp_comp_glsl;
+    }
+    case SHADER_BUFFER_SCULPT_DATA: {
+      return datatoc_common_subdiv_vbo_sculpt_data_comp_glsl;
     }
   }
   return nullptr;
@@ -168,6 +173,9 @@ static const char *get_shader_name(int shader_type)
     }
     case SHADER_COMP_CUSTOM_DATA_INTERP_4D: {
       return "subdiv custom data interp 4D";
+    }
+    case SHADER_BUFFER_SCULPT_DATA: {
+      return "subdiv sculpt data";
     }
   }
   return nullptr;
@@ -952,8 +960,11 @@ typedef struct DRWSubdivUboStorage {
    * expects. */
   int optimal_display;
 
+  /* The sculpt mask data layer may be null. */
+  int has_sculpt_mask;
+
   /* Ensure we are padded to size of vec4 (16 bytes), as the GPU code assumes it. */
-  char _pad[8];
+  char _pad[4];
 } DRWSubdivUboStorage;
 
 static_assert((sizeof(DRWSubdivUboStorage) % 16) == 0,
@@ -962,7 +973,8 @@ static_assert((sizeof(DRWSubdivUboStorage) % 16) == 0,
 static void draw_subdiv_init_ubo_storage(const DRWSubdivCache *cache,
                                          DRWSubdivUboStorage *ubo,
                                          const int src_offset,
-                                         const int dst_offset)
+                                         const int dst_offset,
+                                         const bool has_sculpt_mask)
 {
   ubo->src_offset = src_offset;
   ubo->dst_offset = dst_offset;
@@ -974,15 +986,17 @@ static void draw_subdiv_init_ubo_storage(const DRWSubdivCache *cache,
   ubo->optimal_display = cache->optimal_display;
   ubo->num_subdiv_loops = cache->num_subdiv_loops;
   ubo->edge_loose_offset = cache->num_subdiv_loops * 2;
+  ubo->has_sculpt_mask = has_sculpt_mask;
 }
 
 static void draw_subdiv_ubo_update_and_bind(const DRWSubdivCache *cache,
                                             GPUShader *shader,
                                             const int src_offset,
-                                            const int dst_offset)
+                                            const int dst_offset,
+                                            const bool has_sculpt_mask = false)
 {
   DRWSubdivUboStorage storage;
-  draw_subdiv_init_ubo_storage(cache, &storage, src_offset, dst_offset);
+  draw_subdiv_init_ubo_storage(cache, &storage, src_offset, dst_offset, has_sculpt_mask);
 
   if (!cache->ubo) {
     const_cast<DRWSubdivCache *>(cache)->ubo = GPU_uniformbuf_create_ex(
@@ -1159,6 +1173,30 @@ void draw_subdiv_interp_custom_data(const DRWSubdivCache *cache,
 
   GPU_compute_dispatch(shader, cache->num_subdiv_quads, 1, 1);
 
+  GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
+
+  /* Cleanup. */
+  GPU_shader_unbind();
+}
+
+void draw_subdiv_build_sculpt_data_buffer(const DRWSubdivCache *cache,
+                                          GPUVertBuf *mask_vbo,
+                                          GPUVertBuf *face_set_vbo,
+                                          GPUVertBuf *sculpt_data)
+{
+  GPUShader *shader = get_subdiv_shader(SHADER_BUFFER_SCULPT_DATA, nullptr);
+  GPU_shader_bind(shader);
+
+  if (mask_vbo) {
+    GPU_vertbuf_bind_as_ssbo(mask_vbo, 0);
+  }
+
+  GPU_vertbuf_bind_as_ssbo(face_set_vbo, 1);
+  GPU_vertbuf_bind_as_ssbo(sculpt_data, 2);
+
+  draw_subdiv_ubo_update_and_bind(cache, shader, 0, 0, mask_vbo != nullptr);
+
+  GPU_compute_dispatch(shader, cache->num_subdiv_verts, 1, 1);
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
   /* Cleanup. */

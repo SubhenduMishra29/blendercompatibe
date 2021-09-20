@@ -20,6 +20,9 @@ layout(std140) uniform shader_data
 
   /* Subdivision settings. */
   bool optimal_display;
+
+  /* Sculpt data. */
+  bool has_sculpt_mask;
 };
 
 /* Structure for #CompressedPatchCoord. */
