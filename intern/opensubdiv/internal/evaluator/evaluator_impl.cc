@@ -67,6 +67,86 @@ using OpenSubdiv::Osd::PatchCoord;
 namespace blender {
 namespace opensubdiv {
 
+// Base class for the implementation of the evaluators.
+class EvalOutputAPI::EvalOutput {
+ public:
+  virtual ~EvalOutput() = default;
+
+  virtual void updateData(const float *src, int start_vertex, int num_vertices) = 0;
+
+  virtual void updateVaryingData(const float *src, int start_vertex, int num_vertices) = 0;
+
+  virtual void updateFaceVaryingData(const int face_varying_channel,
+                                     const float *src,
+                                     int start_vertex,
+                                     int num_vertices) = 0;
+
+  virtual void refine() = 0;
+
+  // NOTE: P must point to a memory of at least float[3]*num_patch_coords.
+  virtual void evalPatches(const PatchCoord *patch_coord,
+                           const int num_patch_coords,
+                           float *P) = 0;
+
+  // NOTE: P, dPdu, dPdv must point to a memory of at least float[3]*num_patch_coords.
+  virtual void evalPatchesWithDerivatives(const PatchCoord *patch_coord,
+                                          const int num_patch_coords,
+                                          float *P,
+                                          float *dPdu,
+                                          float *dPdv) = 0;
+
+  // NOTE: varying must point to a memory of at least float[3]*num_patch_coords.
+  virtual void evalPatchesVarying(const PatchCoord *patch_coord,
+                                  const int num_patch_coords,
+                                  float *varying) = 0;
+
+  virtual void evalPatchesFaceVarying(const int face_varying_channel,
+                                      const PatchCoord *patch_coord,
+                                      const int num_patch_coords,
+                                      float face_varying[2]) = 0;
+
+  // The following interfaces are dependant on the actual evaluator type (CPU, OpenGL, etc.) which
+  // have slightly different APIs to access patch arrays, as well as different types for their
+  // data structure. They need to be overridden in the specific instances of the EvalOutput derived
+  // classes if needed, while the interfaces above are overriden through VolatileEvalOutput.
+
+  virtual void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
+  {
+  }
+
+  virtual void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
+  {
+  }
+
+  virtual void wrapPatchParamBuffer(OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
+  {
+  }
+
+  virtual void wrapSrcBuffer(OpenSubdiv_BufferInterface * /*src_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarPatchArraysBuffer(const int /*face_varying_channel*/,
+                                         OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarPatchIndexBuffer(const int /*face_varying_channel*/,
+                                        OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarPatchParamBuffer(const int /*face_varying_channel*/,
+                                        OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
+  {
+  }
+
+  virtual void wrapFVarSrcBuffer(const int /*face_varying_channel*/,
+                                 OpenSubdiv_BufferInterface * /*src_buffer*/)
+  {
+  }
+};
+
 namespace {
 
 // Array implementation which stores small data on stack (or, rather, in the class itself).
@@ -343,86 +423,6 @@ class FaceVaryingVolatileEval {
   DEVICE_CONTEXT *device_context_;
 };
 
-// Base class for the implementation of the evaluators.
-class EvalOutput {
- public:
-  virtual ~EvalOutput() = default;
-
-  virtual void updateData(const float *src, int start_vertex, int num_vertices) = 0;
-
-  virtual void updateVaryingData(const float *src, int start_vertex, int num_vertices) = 0;
-
-  virtual void updateFaceVaryingData(const int face_varying_channel,
-                                     const float *src,
-                                     int start_vertex,
-                                     int num_vertices) = 0;
-
-  virtual void refine() = 0;
-
-  // NOTE: P must point to a memory of at least float[3]*num_patch_coords.
-  virtual void evalPatches(const PatchCoord *patch_coord,
-                           const int num_patch_coords,
-                           float *P) = 0;
-
-  // NOTE: P, dPdu, dPdv must point to a memory of at least float[3]*num_patch_coords.
-  virtual void evalPatchesWithDerivatives(const PatchCoord *patch_coord,
-                                          const int num_patch_coords,
-                                          float *P,
-                                          float *dPdu,
-                                          float *dPdv) = 0;
-
-  // NOTE: varying must point to a memory of at least float[3]*num_patch_coords.
-  virtual void evalPatchesVarying(const PatchCoord *patch_coord,
-                                  const int num_patch_coords,
-                                  float *varying) = 0;
-
-  virtual void evalPatchesFaceVarying(const int face_varying_channel,
-                                      const PatchCoord *patch_coord,
-                                      const int num_patch_coords,
-                                      float face_varying[2]) = 0;
-
-  // The following interfaces are dependant on the actual evaluator type (CPU, OpenGL, etc.) which
-  // have slightly different APIs to access patch arrays, as well as different types for their
-  // data structure. They need to be overridden in the specific instances of the EvalOutput derived
-  // classes if needed, while the interfaces above are overriden through VolatileEvalOutput.
-
-  virtual void wrapPatchArraysBuffer(OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
-  {
-  }
-
-  virtual void wrapPatchIndexBuffer(OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
-  {
-  }
-
-  virtual void wrapPatchParamBuffer(OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
-  {
-  }
-
-  virtual void wrapSrcBuffer(OpenSubdiv_BufferInterface * /*src_buffer*/)
-  {
-  }
-
-  virtual void wrapFVarPatchArraysBuffer(const int /*face_varying_channel*/,
-                                         OpenSubdiv_BufferInterface * /*patch_arrays_buffer*/)
-  {
-  }
-
-  virtual void wrapFVarPatchIndexBuffer(const int /*face_varying_channel*/,
-                                        OpenSubdiv_BufferInterface * /*patch_index_buffer*/)
-  {
-  }
-
-  virtual void wrapFVarPatchParamBuffer(const int /*face_varying_channel*/,
-                                        OpenSubdiv_BufferInterface * /*patch_param_buffer*/)
-  {
-  }
-
-  virtual void wrapFVarSrcBuffer(const int /*face_varying_channel*/,
-                                 OpenSubdiv_BufferInterface * /*src_buffer*/)
-  {
-  }
-};
-
 // Volatile evaluator which can be used from threads.
 //
 // TODO(sergey): Make it possible to evaluate coordinates in chunks.
@@ -435,7 +435,7 @@ template<typename SRC_VERTEX_BUFFER,
          typename PATCH_TABLE,
          typename EVALUATOR,
          typename DEVICE_CONTEXT = void>
-class VolatileEvalOutput : public EvalOutput {
+class VolatileEvalOutput : public EvalOutputAPI::EvalOutput {
  public:
   typedef OpenSubdiv::Osd::EvaluatorCacheT<EVALUATOR> EvaluatorCache;
   typedef FaceVaryingVolatileEval<EVAL_VERTEX_BUFFER,
@@ -1189,7 +1189,7 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
     }
   }
   // Create OpenSubdiv's CPU side evaluator.
-  blender::opensubdiv::EvalOutput *eval_output = nullptr;
+  blender::opensubdiv::EvalOutputAPI::EvalOutput *eval_output = nullptr;
 
   const bool use_gl_evaluator = evaluator_type == OPENSUBDIV_EVALUATOR_GLSL_COMPUTE;
   if (use_gl_evaluator) {
@@ -1211,7 +1211,7 @@ OpenSubdiv_EvaluatorImpl *openSubdiv_createEvaluatorInternal(
         vertex_stencils, varying_stencils, all_face_varying_stencils, 2, patch_table);
   }
 
-  PatchMap *patch_map = new PatchMap(*patch_table);
+  blender::opensubdiv::PatchMap *patch_map = new blender::opensubdiv::PatchMap(*patch_table);
   // Wrap everything we need into an object which we control from our side.
   OpenSubdiv_EvaluatorImpl *evaluator_descr;
   evaluator_descr = new OpenSubdiv_EvaluatorImpl();

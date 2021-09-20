@@ -3,6 +3,9 @@
 
 #include <opensubdiv/far/patchTable.h>
 
+namespace blender {
+namespace opensubdiv {
+
 /// \brief An quadtree-based map connecting coarse faces to their sub-patches
 ///
 /// PatchTable::PatchArrays contain lists of patches that represent the limit
@@ -228,3 +231,5 @@ inline PatchMap::Handle const *PatchMap::FindPatch(int faceid, double u, double 
   assert(0);
   return 0;
 }
+}  // namespace opensubdiv
+}  // namespace blender

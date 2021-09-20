@@ -1,10 +1,14 @@
 
-#include "patch_map.h"
+#include "internal/evaluator/patch_map.h"
 
 using OpenSubdiv::Far::ConstPatchParamArray;
 using OpenSubdiv::Far::Index;
 using OpenSubdiv::Far::PatchParam;
 using OpenSubdiv::Far::PatchParamTable;
+using OpenSubdiv::Far::PatchTable;
+
+namespace blender {
+namespace opensubdiv {
 
 //
 //  Inline quadtree assembly methods used by the constructor:
@@ -65,7 +69,7 @@ inline PatchMap::QuadNode *PatchMap::assignLeafOrChildNode(QuadNode *node,
 //
 //  Constructor and initialization methods for the handles and quadtree:
 //
-PatchMap::PatchMap(OpenSubdiv::Far::PatchTable const &patchTable)
+PatchMap::PatchMap(PatchTable const &patchTable)
     : _minPatchFace(-1), _maxPatchFace(-1), _maxDepth(0)
 {
 
@@ -77,7 +81,7 @@ PatchMap::PatchMap(OpenSubdiv::Far::PatchTable const &patchTable)
   }
 }
 
-void PatchMap::initializeHandles(OpenSubdiv::Far::PatchTable const &patchTable)
+void PatchMap::initializeHandles(PatchTable const &patchTable)
 {
 
   //
@@ -113,7 +117,7 @@ void PatchMap::initializeHandles(OpenSubdiv::Far::PatchTable const &patchTable)
   }
 }
 
-void PatchMap::initializeQuadtree(OpenSubdiv::Far::PatchTable const &patchTable)
+void PatchMap::initializeQuadtree(PatchTable const &patchTable)
 {
 
   //
@@ -180,3 +184,6 @@ void PatchMap::initializeQuadtree(OpenSubdiv::Far::PatchTable const &patchTable)
   QuadTree tmpTree = _quadtree;
   _quadtree.swap(tmpTree);
 }
+
+}  // namespace opensubdiv
+}  // namespace blender

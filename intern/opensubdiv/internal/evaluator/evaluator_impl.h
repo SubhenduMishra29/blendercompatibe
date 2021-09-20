@@ -34,15 +34,10 @@ struct OpenSubdiv_BufferInterface;
 struct OpenSubdiv_PatchCoord;
 struct OpenSubdiv_TopologyRefiner;
 
-class PatchMap;
-
 namespace blender {
 namespace opensubdiv {
 
-// Anonymous forward declaration of actual evaluator implementation.
-namespace {
-class EvalOutput;
-}
+class PatchMap;
 
 // Wrapper around implementaiton, which defines API which we are capable to
 // provide over the implementation.
@@ -52,6 +47,9 @@ class EvalOutput;
 // and such separate?
 class EvalOutputAPI {
  public:
+  // Anonymous forward declaration of actual evaluator implementation.
+  class EvalOutput;
+
   // NOTE: PatchMap is not owned, only referenced.
   EvalOutputAPI(EvalOutput *implementation, PatchMap *patch_map);
 
@@ -194,7 +192,7 @@ struct OpenSubdiv_EvaluatorImpl {
   ~OpenSubdiv_EvaluatorImpl();
 
   blender::opensubdiv::EvalOutputAPI *eval_output;
-  const PatchMap *patch_map;
+  const blender::opensubdiv::PatchMap *patch_map;
   const OpenSubdiv::Far::PatchTable *patch_table;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("OpenSubdiv_EvaluatorImpl");
