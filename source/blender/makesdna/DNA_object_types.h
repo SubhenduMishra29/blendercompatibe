@@ -164,7 +164,10 @@ typedef struct Object_Runtime {
 
   /**
    * Mesh structure created during object evaluation.
-   * It has all modifiers applied on it, including the last potential subsurf modifier.
+   * It has all modifiers applied on it, including the last potential subsurf modifier. It is
+   * separate for data_eval, as the latter may not have the subsurf applied to it, and allows to
+   * evaluate separately subdivision on the CPU side when needed for e.g. transform operators or
+   * modifiers requesting the actual surface.
    */
   struct Mesh *subsurf_data_eval;
 
