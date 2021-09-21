@@ -2168,6 +2168,17 @@ static const EnumPropertyItem *rna_GeometryNodeAttributeFill_type_itemf(bContext
   return itemf_function_check(rna_enum_attribute_type_items, attribute_fill_type_supported);
 }
 
+static bool attribute_statistic_type_supported(const EnumPropertyItem *item)
+{
+  return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3);
+}
+static const EnumPropertyItem *rna_GeometryNodeAttributeStatistic_type_itemf(
+    bContext *UNUSED(C), PointerRNA *UNUSED(ptr), PropertyRNA *UNUSED(prop), bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(rna_enum_attribute_type_items, attribute_statistic_type_supported);
+}
+
 /**
  * This bit of ugly code makes sure the float / attribute option shows up instead of
  * vector / attribute if the node uses an operation that uses a float for input B or C.
@@ -9077,6 +9088,30 @@ static void def_geo_curve_primitive_bezier_segment(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_geo_curve_sample(StructRNA *srna)
+{
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_CURVE_SAMPLE_FACTOR,
+       "FACTOR",
+       0,
+       "Factor",
+       "Find sample positions on the curve using a factor of its total length"},
+      {GEO_NODE_CURVE_SAMPLE_LENGTH,
+       "LENGTH",
+       0,
+       "Length",
+       "Find sample positions on the curve using a distance from its beginning"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryCurveSample", "storage");
+
+  PropertyRNA *prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "Method for sampling input");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
 static void def_geo_triangulate(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9216,6 +9251,29 @@ static void def_geo_attribute_convert(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_with_auto_items);
   RNA_def_property_enum_default(prop, ATTR_DOMAIN_AUTO);
   RNA_def_property_ui_text(prop, "Domain", "The geometry domain to save the result attribute in");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_geo_attribute_statistic(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeometryNodeAttributeStatistic_type_itemf");
+  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
+  RNA_def_property_ui_text(
+      prop,
+      "Data Type",
+      "The data type the attribute is converted to before calculating the results");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+
+  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom2");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
+  RNA_def_property_ui_text(prop, "Domain", "Which domain to read the data from");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
