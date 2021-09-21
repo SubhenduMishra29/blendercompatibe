@@ -32,9 +32,9 @@ namespace blender::bke::tests {
 
 /* UUIDs from lib/tests/asset_library/blender_assets.cats.txt */
 const UUID UUID_ID_WITHOUT_PATH("e34dd2c5-5d2e-4668-9794-1db5de2a4f71");
-const UUID UUID_POSES_ELLY("df60e1f6-2259-475b-93d9-69a1b4a8db78");
-const UUID UUID_POSES_ELLY_WHITESPACE("b06132f6-5687-4751-a6dd-392740eb3c46");
-const UUID UUID_POSES_ELLY_TRAILING_SLASH("3376b94b-a28d-4d05-86c1-bf30b937130d");
+const UUID UUID_POSES_ELLIE("df60e1f6-2259-475b-93d9-69a1b4a8db78");
+const UUID UUID_POSES_ELLIE_WHITESPACE("b06132f6-5687-4751-a6dd-392740eb3c46");
+const UUID UUID_POSES_ELLIE_TRAILING_SLASH("3376b94b-a28d-4d05-86c1-bf30b937130d");
 const UUID UUID_POSES_RUZENA("79a4f887-ab60-4bd4-94da-d572e27d6aed");
 const UUID UUID_POSES_RUZENA_HAND("81811c31-1a88-4bd7-bb34-c6fc2607a12e");
 const UUID UUID_POSES_RUZENA_FACE("82162c1f-06cc-4d91-a9bf-4f72c104e348");
@@ -86,18 +86,18 @@ TEST_F(AssetCatalogTest, load_single_file)
   ASSERT_EQ(nullptr, cat_without_path);
 
   // Test getting a regular catalog.
-  AssetCatalog *poses_elly = service.find_catalog(UUID_POSES_ELLY);
-  ASSERT_NE(nullptr, poses_elly);
-  EXPECT_EQ(UUID_POSES_ELLY, poses_elly->catalog_id);
-  EXPECT_EQ("character/Elly/poselib", poses_elly->path);
-  EXPECT_EQ("POSES_ELLY", poses_elly->simple_name);
+  AssetCatalog *poses_ellie = service.find_catalog(UUID_POSES_ELLIE);
+  ASSERT_NE(nullptr, poses_ellie);
+  EXPECT_EQ(UUID_POSES_ELLIE, poses_ellie->catalog_id);
+  EXPECT_EQ("character/Ellie/poselib", poses_ellie->path);
+  EXPECT_EQ("POSES_ELLIE", poses_ellie->simple_name);
 
   // Test whitespace stripping and support in the path.
-  AssetCatalog *poses_whitespace = service.find_catalog(UUID_POSES_ELLY_WHITESPACE);
+  AssetCatalog *poses_whitespace = service.find_catalog(UUID_POSES_ELLIE_WHITESPACE);
   ASSERT_NE(nullptr, poses_whitespace);
-  EXPECT_EQ(UUID_POSES_ELLY_WHITESPACE, poses_whitespace->catalog_id);
-  EXPECT_EQ("character/Elly/poselib/white space", poses_whitespace->path);
-  EXPECT_EQ("POSES_ELLY WHITESPACE", poses_whitespace->simple_name);
+  EXPECT_EQ(UUID_POSES_ELLIE_WHITESPACE, poses_whitespace->catalog_id);
+  EXPECT_EQ("character/Ellie/poselib/white space", poses_whitespace->path);
+  EXPECT_EQ("POSES_ELLIE WHITESPACE", poses_whitespace->simple_name);
 
   // Test getting a UTF-8 catalog ID.
   AssetCatalog *poses_ruzena = service.find_catalog(UUID_POSES_RUZENA);
@@ -126,9 +126,9 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
    * catalogs). */
   std::vector<fs::path> expected_paths{
       "character",
-      "character/Elly",
-      "character/Elly/poselib",
-      "character/Elly/poselib/white space",
+      "character/Ellie",
+      "character/Ellie/poselib",
+      "character/Ellie/poselib/white space",
       "character/Ružena",
       "character/Ružena/poselib",
       "character/Ružena/poselib/face",
@@ -145,7 +145,7 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
     ASSERT_LT(i, expected_paths.size())
         << "More catalogs in tree than expected; did not expect " << actual_item.catalog_path();
 
-    /* Is the catalog name as expected? "character", "Elly", ... */
+    /* Is the catalog name as expected? "character", "Ellie", ... */
     EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
     /* Does the number of parents match? */
     EXPECT_EQ(count_path_parents(expected_paths[i]), actual_item.count_parents());
@@ -168,9 +168,9 @@ TEST_F(AssetCatalogTest, write_single_file)
   loaded_service.load_from_disk();
 
   // Test that the expected catalogs are there.
-  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLY));
-  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLY_WHITESPACE));
-  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLY_TRAILING_SLASH));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE_WHITESPACE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE_TRAILING_SLASH));
   EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA));
   EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_HAND));
   EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_FACE));
@@ -222,7 +222,7 @@ TEST_F(AssetCatalogTest, create_catalog_after_loading_file)
 
   AssetCatalogService service(temp_lib_root);
   service.load_from_disk();
-  EXPECT_NE(nullptr, service.find_catalog(UUID_POSES_ELLY)) << "expected catalogs to be loaded";
+  EXPECT_NE(nullptr, service.find_catalog(UUID_POSES_ELLIE)) << "expected catalogs to be loaded";
 
   /* This should create a new catalog and write to disk. */
   const AssetCatalog *new_catalog = service.create_catalog("new/catalog");
@@ -231,7 +231,7 @@ TEST_F(AssetCatalogTest, create_catalog_after_loading_file)
   AssetCatalogService loaded_service(temp_lib_root);
   loaded_service.load_from_disk();
 
-  EXPECT_NE(nullptr, service.find_catalog(UUID_POSES_ELLY))
+  EXPECT_NE(nullptr, service.find_catalog(UUID_POSES_ELLIE))
       << "expected pre-existing catalogs to be kept in the file";
   EXPECT_NE(nullptr, service.find_catalog(new_catalog->catalog_id))
       << "expecting newly added catalog to exist in the file";
