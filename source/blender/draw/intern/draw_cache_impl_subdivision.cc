@@ -1578,7 +1578,7 @@ static bool draw_subdiv_create_requested_buffers(const Scene *scene,
                                                  const ToolSettings *toolsettings,
                                                  OpenSubdiv_EvaluatorCache *evaluator_cache)
 {
-  SubsurfModifierData *smd = BKE_object_get_last_modifier_if_subsurf(ob);
+  SubsurfModifierData *smd = BKE_object_get_last_subsurf_modifier(ob);
   BLI_assert(smd);
 
   const bool is_final_render = DRW_state_is_scene_render();

@@ -1585,10 +1585,34 @@ void BKE_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
   }
 }
 
-bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Object *ob, const SubsurfModifierData *smd)
+static ModifierData *modifier_get_last_enabled_for_mode(const Scene *scene,
+                                                        const Object *ob,
+                                                        int required_mode)
 {
-  if (smd != ob->modifiers.last) {
-    return false;
+  ModifierData *md = ob->modifiers.last;
+
+  while (md) {
+    if (BKE_modifier_is_enabled(scene, md, required_mode)) {
+      break;
+    }
+
+    md = md->prev;
+  }
+
+  return md;
+}
+
+bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Scene *scene,
+                                               const Object *ob,
+                                               const SubsurfModifierData *smd,
+                                               int required_mode,
+                                               bool skip_check_is_last)
+{
+  if (!skip_check_is_last) {
+    ModifierData *md = modifier_get_last_enabled_for_mode(scene, ob, required_mode);
+    if (md != (const ModifierData *)smd) {
+      return false;
+    }
   }
 
   /* Only OpenGL is supported for OpenSubdiv evaluation for now. */
@@ -1610,9 +1634,9 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const Object *ob, const SubsurfMo
 
 bool BKE_modifier_subsurf_can_do_gpu_subdiv(const Scene *scene,
                                             const Object *ob,
-                                            const int required_mode)
+                                            int required_mode)
 {
-  ModifierData *md = ob->modifiers.last;
+  ModifierData *md = modifier_get_last_enabled_for_mode(scene, ob, required_mode);
 
   if (!md) {
     return false;
@@ -1622,13 +1646,8 @@ bool BKE_modifier_subsurf_can_do_gpu_subdiv(const Scene *scene,
     return false;
   }
 
-  /* We need to manually check if the modifier is disabled since this is called from the draw code.
-   */
-  if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
-    return false;
-  }
-
-  return BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ob, (SubsurfModifierData *)md);
+  return BKE_modifier_subsurf_can_do_gpu_subdiv_ex(
+      scene, ob, (SubsurfModifierData *)md, required_mode, true);
 }
 
 void (*BKE_modifier_subsurf_free_gpu_cache_cb)(Subdiv *subdiv) = NULL;

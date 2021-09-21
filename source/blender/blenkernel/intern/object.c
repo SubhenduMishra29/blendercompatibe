@@ -5769,16 +5769,16 @@ void BKE_object_modifiers_lib_link_common(void *userData,
   }
 }
 
-SubsurfModifierData *BKE_object_get_last_modifier_if_subsurf(Object *ob)
+SubsurfModifierData *BKE_object_get_last_subsurf_modifier(Object *ob)
 {
   ModifierData *md = (ModifierData *)(ob->modifiers.last);
 
-  if (md == NULL) {
-    return NULL;
-  }
+  while (md) {
+    if (md->type == eModifierType_Subsurf) {
+      break;
+    }
 
-  if (md->type != eModifierType_Subsurf) {
-    return NULL;
+    md = md->prev;
   }
 
   return (SubsurfModifierData *)(md);

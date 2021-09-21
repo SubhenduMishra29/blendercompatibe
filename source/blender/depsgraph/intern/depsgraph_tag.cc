@@ -47,6 +47,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
+#include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -595,20 +596,27 @@ void graph_tag_ids_for_subdivision_evaluation(Depsgraph *graph)
   }
 
   Main *bmain = graph->bmain;
+  Scene *scene = graph->scene;
 
   for (deg::IDNode *id_node : graph->id_nodes) {
     const ID_Type id_type = GS(id_node->id_orig->name);
-    if (id_type == ID_OB) {
-      Object *object_orig = reinterpret_cast<Object *>(id_node->id_orig);
+    if (id_type != ID_OB) {
+      continue;
+    }
 
-      if (BKE_object_get_last_modifier_if_subsurf(object_orig)) {
-        if (object_orig->runtime.subsurf_data_eval == nullptr) {
-          id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
-          int flag = ID_RECALC_GEOMETRY;
-          graph_id_tag_update(
-              bmain, graph, id_node->id_orig, flag, DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION);
-        }
-      }
+    Object *object_orig = reinterpret_cast<Object *>(id_node->id_orig);
+    int required_mode = eModifierMode_Realtime | eModifierMode_Editmode;
+
+    if (!BKE_modifier_subsurf_can_do_gpu_subdiv(scene, object_orig, required_mode)) {
+      continue;
+    }
+
+    if (object_orig->runtime.subsurf_data_eval == nullptr) {
+      fprintf(stderr, "tagging for subdivision update...\n");
+      id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
+      int flag = ID_RECALC_GEOMETRY;
+      graph_id_tag_update(
+          bmain, graph, id_node->id_orig, flag, DEG_UPDATE_SOURCE_REQUIRES_SUBDIVISION);
     }
   }
 

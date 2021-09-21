@@ -227,9 +227,15 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   /* Delay evaluation to the draw code if possible, provided we do not have to apply the modifier.
    */
   if ((ctx->flag & (MOD_APPLY_TO_BASE_MESH | MOD_APPLY_CPU_SUBDIVISION)) == 0) {
-    if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(ctx->object, smd)) {
+    Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+    int required_mode = eModifierMode_Realtime | eModifierMode_Editmode;
+    if (ctx->flag & MOD_APPLY_RENDER) {
+      required_mode |= eModifierMode_Render;
+    }
+    if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(scene, ctx->object, smd, required_mode, false)) {
       return result;
     }
+    fprintf(stderr, "Evaluating subsurf on the CPU...\n");
   }
 
   Subdiv *subdiv = BKE_modifier_subsurf_subdiv_descriptor_ensure(

@@ -460,8 +460,9 @@ void BKE_object_modifiers_lib_link_common(void *userData,
                                           struct ID **idpoin,
                                           int cb_flag);
 
-/* Return the last modifier as a subsurf modifier if it is one, NULL otherwise. */
-struct SubsurfModifierData *BKE_object_get_last_modifier_if_subsurf(struct Object *ob);
+/* Return the last subsurf modifier of an object, this does not check whether modifiers on top of
+ * it are disabled. Return NULL if no such modifier is found. */
+struct SubsurfModifierData *BKE_object_get_last_subsurf_modifier(struct Object *ob);
 
 void BKE_object_replace_data_on_shallow_copy(struct Object *ob, struct ID *new_data);
 

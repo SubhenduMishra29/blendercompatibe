@@ -556,8 +556,14 @@ void BKE_modifier_blend_read_data(struct BlendDataReader *reader,
                                   struct Object *ob);
 void BKE_modifier_blend_read_lib(struct BlendLibReader *reader, struct Object *ob);
 
-bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const struct Object *ob,
-                                               const SubsurfModifierData *smd);
+/* If skip_check_is_last is true, we assume that the modifier passed is the last enabled modifier
+ * in the stack. */
+bool BKE_modifier_subsurf_can_do_gpu_subdiv_ex(const struct Scene *scene,
+                                               const struct Object *ob,
+                                               const SubsurfModifierData *smd,
+                                               int required_mode,
+                                               bool skip_check_is_last);
+
 bool BKE_modifier_subsurf_can_do_gpu_subdiv(const struct Scene *scene,
                                             const struct Object *ob,
                                             const int required_mode);
