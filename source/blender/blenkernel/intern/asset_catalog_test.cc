@@ -40,6 +40,20 @@ const UUID UUID_POSES_RUZENA_HAND("81811c31-1a88-4bd7-bb34-c6fc2607a12e");
 const UUID UUID_POSES_RUZENA_FACE("82162c1f-06cc-4d91-a9bf-4f72c104e348");
 const UUID UUID_WITHOUT_SIMPLENAME("d7916a31-6ca9-4909-955f-182ca2b81fa3");
 
+/* Subclass that adds accessors such that protected fields can be used in tests. */
+class TestableAssetCatalogService : public AssetCatalogService {
+ public:
+  explicit TestableAssetCatalogService(const CatalogFilePath &asset_library_root)
+      : AssetCatalogService(asset_library_root)
+  {
+  }
+
+  AssetCatalogDefinitionFile *get_catalog_definition_file()
+  {
+    return catalog_definition_file_.get();
+  }
+};
+
 class AssetCatalogTest : public testing::Test {
  protected:
   CatalogFilePath asset_library_root_;
@@ -157,7 +171,7 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
 
 TEST_F(AssetCatalogTest, write_single_file)
 {
-  AssetCatalogService service(asset_library_root_);
+  TestableAssetCatalogService service(asset_library_root_);
   service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
 
   const CatalogFilePath save_to_path = use_temp_path();

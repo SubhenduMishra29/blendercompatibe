@@ -336,11 +336,6 @@ void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::Ch
   }
 }
 
-AssetCatalogDefinitionFile *AssetCatalogService::get_catalog_definition_file()
-{
-  return catalog_definition_file_.get();
-}
-
 AssetCatalogTree *AssetCatalogService::get_catalog_tree()
 {
   return catalog_tree_.get();

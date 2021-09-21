@@ -68,8 +68,6 @@ class AssetCatalogService {
    * The catalog will be saved to the default catalog file.*/
   AssetCatalog *create_catalog(const CatalogPath &catalog_path);
 
-  /** For testing only, get the loaded catalog definition file. */
-  AssetCatalogDefinitionFile *get_catalog_definition_file();
 
   AssetCatalogTree *get_catalog_tree();
 
