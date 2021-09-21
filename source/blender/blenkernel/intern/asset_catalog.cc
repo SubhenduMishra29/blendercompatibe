@@ -20,13 +20,11 @@
 
 #include "BKE_asset_catalog.hh"
 
-#include "BLI_filesystem.hh"
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 #include "BLI_string_ref.hh"
 
-#include <filesystem>
 #include <fstream>
-
-namespace fs = blender::filesystem;
 
 namespace blender::bke {
 
@@ -43,7 +41,7 @@ bool AssetCatalogService::is_empty() const
   return catalogs_.is_empty();
 }
 
-AssetCatalog *AssetCatalogService::find_catalog(const CatalogID &catalog_id)
+AssetCatalog *AssetCatalogService::find_catalog(CatalogID catalog_id)
 {
   std::unique_ptr<AssetCatalog> *catalog_uptr_ptr = this->catalogs_.lookup_ptr(catalog_id);
   if (catalog_uptr_ptr == nullptr) {
@@ -61,6 +59,27 @@ AssetCatalog *AssetCatalogService::find_catalog_from_path(const CatalogPath &pat
   }
 
   return nullptr;
+}
+
+void AssetCatalogService::delete_catalog(CatalogID catalog_id)
+{
+  std::unique_ptr<AssetCatalog> *catalog_uptr_ptr = this->catalogs_.lookup_ptr(catalog_id);
+  if (catalog_uptr_ptr == nullptr) {
+    /* Catalog cannot be found, which is fine. */
+    return;
+  }
+
+  /* Mark the catalog as deleted. */
+  AssetCatalog *catalog = catalog_uptr_ptr->get();
+  catalog->flags.is_deleted = true;
+
+  /* Move ownership from this->catalogs_ to this->deleted_catalogs_. */
+  this->deleted_catalogs_.add(catalog_id, std::move(*catalog_uptr_ptr));
+
+  /* The catalog can now be removed from the map without freeing the actual AssetCatalog. */
+  this->catalogs_.remove(catalog_id);
+
+  this->rebuild_tree();
 }
 
 AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_path)
@@ -93,6 +112,16 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   return catalog_ptr;
 }
 
+static std::string asset_definition_default_file_path_from_dir(StringRef asset_library_root)
+{
+  char file_path[PATH_MAX];
+  BLI_join_dirfile(file_path,
+                   sizeof(file_path),
+                   asset_library_root.data(),
+                   AssetCatalogService::DEFAULT_CATALOG_FILENAME.data());
+  return file_path;
+}
+
 void AssetCatalogService::ensure_catalog_definition_file()
 {
   if (catalog_definition_file_) {
@@ -100,7 +129,7 @@ void AssetCatalogService::ensure_catalog_definition_file()
   }
 
   auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
-  cdf->file_path = asset_library_root_ / DEFAULT_CATALOG_FILENAME;
+  cdf->file_path = asset_definition_default_file_path_from_dir(asset_library_root_);
   catalog_definition_file_ = std::move(cdf);
 }
 
@@ -115,8 +144,8 @@ bool AssetCatalogService::ensure_asset_library_root()
     return false;
   }
 
-  if (fs::exists(asset_library_root_)) {
-    if (!fs::is_directory(asset_library_root_)) {
+  if (BLI_exists(asset_library_root_.data())) {
+    if (!BLI_is_dir(asset_library_root_.data())) {
       std::cerr << "AssetCatalogService: " << asset_library_root_
                 << " exists but is not a directory, this is not a supported situation."
                 << std::endl;
@@ -129,7 +158,7 @@ bool AssetCatalogService::ensure_asset_library_root()
 
   /* Ensure the root directory exists. */
   std::error_code err_code;
-  if (!fs::create_directories(asset_library_root_, err_code)) {
+  if (!BLI_dir_create_recursive(asset_library_root_.data())) {
     std::cerr << "AssetCatalogService: error creating directory " << asset_library_root_ << ": "
               << err_code << std::endl;
     return false;
@@ -146,17 +175,20 @@ void AssetCatalogService::load_from_disk()
 
 void AssetCatalogService::load_from_disk(const CatalogFilePath &file_or_directory_path)
 {
-  fs::file_status status = fs::status(file_or_directory_path);
-  switch (status.type()) {
-    case fs::file_type::regular:
-      load_single_file(file_or_directory_path);
-      break;
-    case fs::file_type::directory:
-      load_directory_recursive(file_or_directory_path);
-      break;
-    default:
-      // TODO(@sybren): throw an appropriate exception.
-      return;
+  BLI_stat_t status;
+  if (BLI_stat(file_or_directory_path.data(), &status) == -1) {
+    // TODO(@sybren): throw an appropriate exception.
+    return;
+  }
+
+  if (S_ISREG(status.st_mode)) {
+    load_single_file(file_or_directory_path);
+  }
+  else if (S_ISDIR(status.st_mode)) {
+    load_directory_recursive(file_or_directory_path);
+  }
+  else {
+    // TODO(@sybren): throw an appropriate exception.
   }
 
   /* TODO: Should there be a sanitize step? E.g. to remove catalogs with identical paths? */
@@ -168,13 +200,13 @@ void AssetCatalogService::load_directory_recursive(const CatalogFilePath &direct
 {
   // TODO(@sybren): implement proper multi-file support. For now, just load
   // the default file if it is there.
-  CatalogFilePath file_path = directory_path / DEFAULT_CATALOG_FILENAME;
-  fs::file_status fs_status = fs::status(file_path);
+  CatalogFilePath file_path = asset_definition_default_file_path_from_dir(directory_path);
 
-  if (!fs::exists(fs_status)) {
+  if (!BLI_exists(file_path.data())) {
     /* No file to be loaded is perfectly fine. */
     return;
   }
+
   this->load_single_file(file_path);
 }
 
@@ -196,6 +228,57 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::parse_catalog_f
   auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
   cdf->file_path = catalog_definition_file_path;
 
+  auto catalog_parsed_callback = [this, catalog_definition_file_path](
+                                     std::unique_ptr<AssetCatalog> catalog) {
+    if (this->catalogs_.contains(catalog->catalog_id)) {
+      // TODO(@sybren): apparently another CDF was already loaded. This is not supported yet.
+      std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
+                << catalog->catalog_id << " in multiple files, ignoring this one." << std::endl;
+      /* Don't store 'catalog'; unique_ptr will free its memory. */
+      return false;
+    }
+
+    /* The AssetCatalog pointer is now owned by the AssetCatalogService. */
+    this->catalogs_.add_new(catalog->catalog_id, std::move(catalog));
+    return true;
+  };
+
+  cdf->parse_catalog_file(cdf->file_path, catalog_parsed_callback);
+
+  return cdf;
+}
+
+void AssetCatalogService::merge_from_disk_before_writing()
+{
+  /* TODO(Sybren): expand to support multiple CDFs. */
+
+  auto catalog_parsed_callback = [this](std::unique_ptr<AssetCatalog> catalog) {
+    const UUID catalog_id = catalog->catalog_id;
+
+    /* The following two conditions could be or'ed together. Keeping them separated helps when
+     * adding debug prints, breakpoints, etc. */
+    if (this->catalogs_.contains(catalog_id)) {
+      /* This catalog was already seen, so just ignore it. */
+      return false;
+    }
+    if (this->deleted_catalogs_.contains(catalog_id)) {
+      /* This catalog was already seen and subsequently deleted, so just ignore it. */
+      return false;
+    }
+
+    /* This is a new catalog, so let's keep it around. */
+    this->catalogs_.add_new(catalog_id, std::move(catalog));
+    return true;
+  };
+
+  catalog_definition_file_->parse_catalog_file(catalog_definition_file_->file_path,
+                                               catalog_parsed_callback);
+}
+
+void AssetCatalogDefinitionFile::parse_catalog_file(
+    const CatalogFilePath &catalog_definition_file_path,
+    AssetCatalogParsedFn catalog_loaded_callback)
+{
   std::fstream infile(catalog_definition_file_path);
   std::string line;
   while (std::getline(infile, line)) {
@@ -204,51 +287,71 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::parse_catalog_f
       continue;
     }
 
-    std::unique_ptr<AssetCatalog> catalog = this->parse_catalog_line(trimmed_line, cdf.get());
+    std::unique_ptr<AssetCatalog> catalog = this->parse_catalog_line(trimmed_line);
     if (!catalog) {
       continue;
     }
 
-    if (cdf->contains(catalog->catalog_id)) {
+    AssetCatalog *non_owning_ptr = catalog.get();
+    const bool keep_catalog = catalog_loaded_callback(std::move(catalog));
+    if (!keep_catalog) {
+      continue;
+    }
+
+    if (this->contains(non_owning_ptr->catalog_id)) {
       std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
-                << catalog->catalog_id << " in the same file, using first occurrence."
+                << non_owning_ptr->catalog_id << " in the same file, using first occurrence."
                 << std::endl;
       /* Don't store 'catalog'; unique_ptr will free its memory. */
       continue;
     }
 
-    if (this->catalogs_.contains(catalog->catalog_id)) {
-      // TODO(@sybren): apparently another CDF was already loaded. This is not supported yet.
-      std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
-                << catalog->catalog_id << " in multiple files, ignoring this one." << std::endl;
-      /* Don't store 'catalog'; unique_ptr will free its memory. */
-      continue;
-    }
-
     /* The AssetDefinitionFile should include this catalog when writing it back to disk. */
-    cdf->add_new(catalog.get());
-
-    /* The AssetCatalog pointer is owned by the AssetCatalogService. */
-    this->catalogs_.add_new(catalog->catalog_id, std::move(catalog));
+    this->add_new(non_owning_ptr);
   }
-
-  return cdf;
 }
 
-std::unique_ptr<AssetCatalog> AssetCatalogService::parse_catalog_line(
-    const StringRef line, const AssetCatalogDefinitionFile *catalog_definition_file)
+std::unique_ptr<AssetCatalog> AssetCatalogDefinitionFile::parse_catalog_line(const StringRef line)
 {
-  const int64_t first_space = line.find_first_of(' ');
-  if (first_space == StringRef::not_found) {
-    std::cerr << "Invalid line in " << catalog_definition_file->file_path << ": " << line
-              << std::endl;
+  const char delim = ':';
+  const int64_t first_delim = line.find_first_of(delim);
+  if (first_delim == StringRef::not_found) {
+    std::cerr << "Invalid line in " << this->file_path << ": " << line << std::endl;
     return std::unique_ptr<AssetCatalog>(nullptr);
   }
 
-  const StringRef catalog_id = line.substr(0, first_space);
-  const CatalogPath catalog_path = AssetCatalog::cleanup_path(line.substr(first_space + 1));
+  /* Parse the catalog ID. */
+  const std::string id_as_string = line.substr(0, first_delim).trim();
+  UUID catalog_id;
+  const bool uuid_parsed_ok = BLI_uuid_parse_string(&catalog_id, id_as_string.c_str());
+  if (!uuid_parsed_ok) {
+    std::cerr << "Invalid UUID in " << this->file_path << ": " << line << std::endl;
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
 
-  return std::make_unique<AssetCatalog>(catalog_id, catalog_path);
+  /* Parse the path and simple name. */
+  const StringRef path_and_simple_name = line.substr(first_delim + 1);
+  const int64_t second_delim = path_and_simple_name.find_first_of(delim);
+
+  CatalogPath catalog_path;
+  std::string simple_name;
+  if (second_delim == 0) {
+    /* Delimiter as first character means there is no path. These lines are to be ignored. */
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
+
+  if (second_delim == StringRef::not_found) {
+    /* No delimiter means no simple name, just treat it as all "path". */
+    catalog_path = path_and_simple_name;
+    simple_name = "";
+  }
+  else {
+    catalog_path = path_and_simple_name.substr(0, second_delim);
+    simple_name = path_and_simple_name.substr(second_delim + 1).trim();
+  }
+
+  catalog_path = AssetCatalog::cleanup_path(catalog_path);
+  return std::make_unique<AssetCatalog>(catalog_id, catalog_path, simple_name);
 }
 
 std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
@@ -275,6 +378,11 @@ AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name,
 AssetCatalogTreeItemIterator AssetCatalogTreeItem::children()
 {
   return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
+}
+
+void AssetCatalogService::rebuild_tree()
+{
+  this->catalog_tree_ = read_into_tree();
 }
 
 StringRef AssetCatalogTreeItem::get_catalog_id() const
@@ -362,28 +470,29 @@ bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
 
 void AssetCatalogTree::insert_item(AssetCatalog &catalog)
 {
-  /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
-   * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
-  fs::path catalog_path = catalog.path;
-
   const AssetCatalogTreeItem *parent = nullptr;
   AssetCatalogTreeItem::ChildMap *insert_to_map = &children_;
 
-  BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
-                 "Malformed catalog path: Path should be a relative path, with no root-name or "
-                 "root-directory as defined by std::filesystem::path.");
-  for (const fs::path &component : catalog_path) {
-    std::string component_name = component.string();
+  BLI_assert_msg(!ELEM(catalog.path[0], '/', '\\'),
+                 "Malformed catalog path: Path should be formatted like a relative path");
+
+  const char *next_slash_ptr;
+  /* Looks more complicated than it is, this just iterates over path components. E.g.
+   * "just/some/path" iterates over "just", then "some" then "path". */
+  for (const char *name_begin = catalog.path.data(); name_begin && name_begin[0];
+       /* Jump to one after the next slash if there is any. */
+       name_begin = next_slash_ptr ? next_slash_ptr + 1 : nullptr) {
+    next_slash_ptr = BLI_path_slash_find(name_begin);
+
+    /* Note that this won't be null terminated. */
+    StringRef component_name = next_slash_ptr ?
+                                   StringRef(name_begin, next_slash_ptr - name_begin) :
+                                   /* Last component in the path. */
+                                   name_begin;
 
     /* Insert new tree element - if no matching one is there yet! */
     auto [item, was_inserted] = insert_to_map->emplace(
-        component_name,
-        AssetCatalogTreeItem(
-            component_name,
-            /* TODO There may be components that don't relate to an actual
-               catalog, i.e. there's no catalog ID to set. This should be changed. */
-            catalog_path.filename() == component_name ? catalog.catalog_id : "",
-            parent));
+        component_name, AssetCatalogTreeItem(component_name, catalog.catalog_id, parent));
 
     /* Walk further into the path (no matter if a new item was created or not). */
     parent = &item->second;
@@ -410,17 +519,12 @@ void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::Ch
   }
 }
 
-AssetCatalogDefinitionFile *AssetCatalogService::get_catalog_definition_file()
-{
-  return catalog_definition_file_.get();
-}
-
 AssetCatalogTree *AssetCatalogService::get_catalog_tree()
 {
   return catalog_tree_.get();
 }
 
-bool AssetCatalogDefinitionFile::contains(const CatalogID &catalog_id) const
+bool AssetCatalogDefinitionFile::contains(const CatalogID catalog_id) const
 {
   return catalogs_.contains(catalog_id);
 }
@@ -454,29 +558,41 @@ void AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &file_path)
   // Write the catalogs.
   // TODO(@sybren): order them by Catalog ID or Catalog Path.
   for (const auto &catalog : catalogs_.values()) {
-    output << catalog->catalog_id << " " << catalog->path << std::endl;
+    if (catalog->flags.is_deleted) {
+      continue;
+    }
+    output << catalog->catalog_id << ":" << catalog->path << ":" << catalog->simple_name
+           << std::endl;
   }
 }
 
-AssetCatalog::AssetCatalog(const CatalogID &catalog_id, const CatalogPath &path)
-    : catalog_id(catalog_id), path(path)
+AssetCatalog::AssetCatalog(const CatalogID catalog_id,
+                           const CatalogPath &path,
+                           const std::string &simple_name)
+    : catalog_id(catalog_id), path(path), simple_name(simple_name)
 {
 }
 
 std::unique_ptr<AssetCatalog> AssetCatalog::from_path(const CatalogPath &path)
 {
   const CatalogPath clean_path = cleanup_path(path);
-  const CatalogID cat_id = sensible_id_for_path(clean_path);
-  auto catalog = std::make_unique<AssetCatalog>(cat_id, clean_path);
+  const CatalogID cat_id = BLI_uuid_generate_random();
+  const std::string simple_name = sensible_simple_name_for_path(clean_path);
+  auto catalog = std::make_unique<AssetCatalog>(cat_id, clean_path, simple_name);
   return catalog;
 }
 
-CatalogID AssetCatalog::sensible_id_for_path(const CatalogPath &path)
+std::string AssetCatalog::sensible_simple_name_for_path(const CatalogPath &path)
 {
-  CatalogID cat_id = path;
-  std::replace(cat_id.begin(), cat_id.end(), AssetCatalogService::PATH_SEPARATOR, '-');
-  std::replace(cat_id.begin(), cat_id.end(), ' ', '-');
-  return cat_id;
+  std::string name = path;
+  std::replace(name.begin(), name.end(), AssetCatalogService::PATH_SEPARATOR, '-');
+  if (name.length() < MAX_NAME - 1) {
+    return name;
+  }
+
+  /* Trim off the start of the path, as that's the most generic part and thus contains the least
+   * information. */
+  return "..." + name.substr(name.length() - 60);
 }
 
 CatalogPath AssetCatalog::cleanup_path(const CatalogPath &path)

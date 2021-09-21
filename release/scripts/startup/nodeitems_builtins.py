@@ -503,6 +503,7 @@ geometry_node_categories = [
         NodeItem("GeometryNodeAttributeRemove", poll=geometry_nodes_fields_legacy_poll),
 
         NodeItem("GeometryNodeAttributeCapture", poll=geometry_nodes_fields_poll),
+        NodeItem("GeometryNodeAttributeStatistic", poll=geometry_nodes_fields_poll),
     ]),
     GeometryNodeCategory("GEO_COLOR", "Color", items=[
         NodeItem("ShaderNodeMixRGB"),
@@ -526,6 +527,7 @@ geometry_node_categories = [
         NodeItem("GeometryNodeCurveFill"),
         NodeItem("GeometryNodeCurveTrim"),
         NodeItem("GeometryNodeCurveLength"),
+        NodeItem("GeometryNodeCurveSample", poll=geometry_nodes_fields_poll),
     ]),
     GeometryNodeCategory("GEO_PRIMITIVES_CURVE", "Curve Primitives", items=[
         NodeItem("GeometryNodeCurvePrimitiveLine"),

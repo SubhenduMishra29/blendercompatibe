@@ -72,4 +72,19 @@ bool BLI_uuid_parse_string(UUID *uuid, const char *buffer) ATTR_NONNULL();
 /** Output the UUID as formatted ASCII string, see #BLI_uuid_format(). */
 std::ostream &operator<<(std::ostream &stream, UUID uuid);
 
+namespace blender::bke {
+
+class UUID : public ::UUID {
+ public:
+  UUID() = default;
+  UUID(const ::UUID &struct_uuid);
+  explicit UUID(const std::string &string_formatted_uuid);
+
+  uint64_t hash() const;
+};
+
+bool operator==(UUID uuid1, UUID uuid2);
+
+}  // namespace blender::bke
+
 #endif

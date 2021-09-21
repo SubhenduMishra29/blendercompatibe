@@ -28,18 +28,14 @@
 
 #include "BKE_asset_catalog.hh"
 
-#include <filesystem>
 #include <memory>
 
 namespace blender::bke {
 
-/* TODO(@sybren): revisit after D12117 has a conclusion. */
-namespace fs = blender::filesystem;
-
 struct AssetLibrary {
   std::unique_ptr<AssetCatalogService> catalog_service;
 
-  void load(const fs::path &library_root_directory);
+  void load(StringRefNull library_root_directory);
 };
 
 }  // namespace blender::bke

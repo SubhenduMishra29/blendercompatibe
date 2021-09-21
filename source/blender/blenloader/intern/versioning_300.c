@@ -64,6 +64,7 @@
 #include "MEM_guardedalloc.h"
 #include "readfile.h"
 
+#include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
 
 #include "RNA_access.h"
@@ -774,6 +775,28 @@ static void version_geometry_nodes_change_legacy_names(bNodeTree *ntree)
     }
   }
 }
+static bool seq_transform_origin_set(Sequence *seq, void *UNUSED(user_data))
+{
+  StripTransform *transform = seq->strip->transform;
+  if (seq->strip->transform != NULL) {
+    transform->origin[0] = transform->origin[1] = 0.5f;
+  }
+  return true;
+}
+
+static void do_version_subsurface_methods(bNode *node)
+{
+  if (node->type == SH_NODE_SUBSURFACE_SCATTERING) {
+    if (node->custom1 != SHD_SUBSURFACE_RANDOM_WALK) {
+      node->custom1 = SHD_SUBSURFACE_RANDOM_WALK_FIXED_RADIUS;
+    }
+  }
+  else if (node->type == SH_NODE_BSDF_PRINCIPLED) {
+    if (node->custom2 != SHD_SUBSURFACE_RANDOM_WALK) {
+      node->custom2 = SHD_SUBSURFACE_RANDOM_WALK_FIXED_RADIUS;
+    }
+  }
+}
 
 /* NOLINTNEXTLINE: readability-function-size */
 void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
@@ -1287,6 +1310,62 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
           }
         }
       }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 24)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->pivot_point = V3D_AROUND_CENTER_MEDIAN;
+
+      if (scene->ed != NULL) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_transform_origin_set, NULL);
+      }
+    }
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SEQ) {
+            SpaceSeq *sseq = (SpaceSeq *)sl;
+            sseq->preview_overlay.flag |= SEQ_PREVIEW_SHOW_OUTLINE_SELECTED;
+          }
+        }
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SEQ) {
+            ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                   &sl->regionbase;
+            LISTBASE_FOREACH (ARegion *, region, regionbase) {
+              if (region->regiontype == RGN_TYPE_WINDOW) {
+                region->v2d.min[1] = 4.0f;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 25)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_SHADER) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          do_version_subsurface_methods(node);
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+
+    enum {
+      R_EXR_TILE_FILE = (1 << 10),
+      R_FULL_SAMPLE = (1 << 15),
+    };
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->r.scemode &= ~(R_EXR_TILE_FILE | R_FULL_SAMPLE);
     }
   }
 

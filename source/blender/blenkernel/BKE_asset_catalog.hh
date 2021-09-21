@@ -24,10 +24,10 @@
 #  error This is a C++ header. The C interface is yet to be implemented/designed.
 #endif
 
-#include "BLI_filesystem.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_uuid.h"
 #include "BLI_vector.hh"
 
 #include <map>
@@ -36,10 +36,12 @@
 
 namespace blender::bke {
 
-using CatalogID = std::string;
+using CatalogID = UUID;
 using CatalogPath = std::string;
 using CatalogPathComponent = std::string;
-using CatalogFilePath = filesystem::path;
+/* Would be nice to be able to use `std::filesystem::path` for this, but it's currently not
+ * available on the minimum macOS target version. */
+using CatalogFilePath = std::string;
 
 class AssetCatalog;
 class AssetCatalogDefinitionFile;
@@ -61,8 +63,18 @@ class AssetCatalogService {
   /** Load asset catalog definitions from the given file or directory. */
   void load_from_disk(const CatalogFilePath &file_or_directory_path);
 
+  /**
+   * Merge on-disk changes into the in-memory asset catalogs.
+   * This should be called before writing the asset catalogs to disk.
+   *
+   * - New on-disk catalogs are loaded into memory.
+   * - Already-known on-disk catalogs are ignored (so will be overwritten with our in-memory
+   *   data). This includes in-memory marked-as-deleted catalogs.
+   */
+  void merge_from_disk_before_writing();
+
   /** Return catalog with the given ID. Return nullptr if not found. */
-  AssetCatalog *find_catalog(const CatalogID &catalog_id);
+  AssetCatalog *find_catalog(CatalogID catalog_id);
 
   /** Return first catalog with the given path. Return nullptr if not found. Not the most efficient
    * function, better don't use it in performance sensitive areas. */
@@ -72,8 +84,10 @@ class AssetCatalogService {
    * The catalog will be saved to the default catalog file.*/
   AssetCatalog *create_catalog(const CatalogPath &catalog_path);
 
-  /** For testing only, get the loaded catalog definition file. */
-  AssetCatalogDefinitionFile *get_catalog_definition_file();
+  /**
+   * Soft-delete the catalog, ensuring it actually gets deleted when the catalog definition file is
+   * written. */
+  void delete_catalog(CatalogID catalog_id);
 
   AssetCatalogTree *get_catalog_tree();
 
@@ -83,6 +97,7 @@ class AssetCatalogService {
  protected:
   /* These pointers are owned by this AssetCatalogService. */
   Map<CatalogID, std::unique_ptr<AssetCatalog>> catalogs_;
+  Map<CatalogID, std::unique_ptr<AssetCatalog>> deleted_catalogs_;
   std::unique_ptr<AssetCatalogDefinitionFile> catalog_definition_file_;
   std::unique_ptr<AssetCatalogTree> catalog_tree_;
   CatalogFilePath asset_library_root_;
@@ -92,9 +107,6 @@ class AssetCatalogService {
 
   std::unique_ptr<AssetCatalogDefinitionFile> parse_catalog_file(
       const CatalogFilePath &catalog_definition_file_path);
-
-  std::unique_ptr<AssetCatalog> parse_catalog_line(
-      StringRef line, const AssetCatalogDefinitionFile *catalog_definition_file);
 
   /**
    * Ensure that an #AssetCatalogDefinitionFile exists in memory.
@@ -108,6 +120,7 @@ class AssetCatalogService {
   bool ensure_asset_library_root();
 
   std::unique_ptr<AssetCatalogTree> read_into_tree();
+  void rebuild_tree();
 };
 
 class AssetCatalogTreeItem {
@@ -208,14 +221,20 @@ class AssetCatalogDefinitionFile {
   /** Write the catalog definitions to an arbitrary file path. */
   void write_to_disk(const CatalogFilePath &) const;
 
-  bool contains(const CatalogID &catalog_id) const;
+  bool contains(CatalogID catalog_id) const;
   /* Add a new catalog. Undefined behaviour if a catalog with the same ID was already added. */
   void add_new(AssetCatalog *catalog);
+
+  using AssetCatalogParsedFn = FunctionRef<bool(std::unique_ptr<AssetCatalog>)>;
+  void parse_catalog_file(const CatalogFilePath &catalog_definition_file_path,
+                          AssetCatalogParsedFn callback);
 
  protected:
   /* Catalogs stored in this file. They are mapped by ID to make it possible to query whether a
    * catalog is already known, without having to find the corresponding `AssetCatalog*`. */
   Map<CatalogID, AssetCatalog *> catalogs_;
+
+  std::unique_ptr<AssetCatalog> parse_catalog_line(StringRef line);
 };
 
 /** Asset Catalog definition, containing a symbolic ID and a path that points to a node in the
@@ -223,18 +242,35 @@ class AssetCatalogDefinitionFile {
 class AssetCatalog {
  public:
   AssetCatalog() = default;
-  AssetCatalog(const CatalogID &catalog_id, const CatalogPath &path);
+  AssetCatalog(CatalogID catalog_id, const CatalogPath &path, const std::string &simple_name);
 
   CatalogID catalog_id;
   CatalogPath path;
+  /**
+   * Simple, human-readable name for the asset catalog. This is stored on assets alongside the
+   * catalog ID; the catalog ID is a UUID that is not human-readable, so to avoid complete dataloss
+   * when the catalog definition file gets lost, we also store a human-readable simple name for the
+   * catalog. */
+  std::string simple_name;
 
-  /** Create a new Catalog with the given path, auto-generating a sensible catalog ID. */
+  struct Flags {
+    /* Treat this catalog as deleted. Keeping deleted catalogs around is necessary to support
+     * merging of on-disk changes with in-memory changes. */
+    bool is_deleted = false;
+  } flags;
+
+  /**
+   * Create a new Catalog with the given path, auto-generating a sensible catalog simplename.
+   *
+   * NOTE: the given path will be cleaned up (trailing spaces removed, etc.), so the returned
+   * `AssetCatalog`'s path differ from the given one.
+   */
   static std::unique_ptr<AssetCatalog> from_path(const CatalogPath &path);
   static CatalogPath cleanup_path(const CatalogPath &path);
 
  protected:
   /** Generate a sensible catalog ID for the given path. */
-  static CatalogID sensible_id_for_path(const CatalogPath &path);
+  static std::string sensible_simple_name_for_path(const CatalogPath &path);
 };
 
 }  // namespace blender::bke

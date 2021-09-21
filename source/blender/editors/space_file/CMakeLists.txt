@@ -31,7 +31,6 @@ set(INC
   ../../../../intern/atomic
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
-  ../../../../extern/ghc_filesystem
 )
 
 set(SRC
