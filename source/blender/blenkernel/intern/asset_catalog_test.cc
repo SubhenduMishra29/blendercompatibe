@@ -73,6 +73,7 @@ class AssetCatalogTest : public testing::Test {
   /* Register a temporary path, which will be removed at the end of the test. */
   CatalogFilePath use_temp_path()
   {
+    BKE_tempdir_init("");
     const CatalogFilePath tempdir = BKE_tempdir_session();
     temp_library_path_ = tempdir + "test-temporary-path";
     return temp_library_path_;
