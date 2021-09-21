@@ -229,6 +229,33 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::parse_catalog_f
   return cdf;
 }
 
+void AssetCatalogService::merge_from_disk_before_writing()
+{
+  /* TODO(Sybren): expand to support multiple CDFs. */
+
+  auto catalog_parsed_callback = [this](std::unique_ptr<AssetCatalog> catalog) {
+    const UUID catalog_id = catalog->catalog_id;
+
+    /* The following two conditions could be or'ed together. Keeping them separated helps when
+     * adding debug prints, breakpoints, etc. */
+    if (this->catalogs_.contains(catalog_id)) {
+      /* This catalog was already seen, so just ignore it. */
+      return false;
+    }
+    if (this->deleted_catalogs_.contains(catalog_id)) {
+      /* This catalog was already seen and subsequently deleted, so just ignore it. */
+      return false;
+    }
+
+    /* This is a new catalog, so let's keep it around. */
+    this->catalogs_.add_new(catalog_id, std::move(catalog));
+    return true;
+  };
+
+  catalog_definition_file_->parse_catalog_file(catalog_definition_file_->file_path,
+                                               catalog_parsed_callback);
+}
+
 void AssetCatalogDefinitionFile::parse_catalog_file(
     const CatalogFilePath &catalog_definition_file_path,
     AssetCatalogParsedFn catalog_loaded_callback)

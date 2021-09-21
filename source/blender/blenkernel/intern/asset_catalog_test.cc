@@ -37,6 +37,9 @@ const UUID UUID_POSES_RUZENA_HAND("81811c31-1a88-4bd7-bb34-c6fc2607a12e");
 const UUID UUID_POSES_RUZENA_FACE("82162c1f-06cc-4d91-a9bf-4f72c104e348");
 const UUID UUID_WITHOUT_SIMPLENAME("d7916a31-6ca9-4909-955f-182ca2b81fa3");
 
+/* UUIDs from lib/tests/asset_library/modified_assets.cats.txt */
+const UUID UUID_AGENT_47("c5744ba5-43f5-4f73-8e52-010ad4a61b34");
+
 /* Subclass that adds accessors such that protected fields can be used in tests. */
 class TestableAssetCatalogService : public AssetCatalogService {
  public:
@@ -326,6 +329,42 @@ TEST_F(AssetCatalogTest, delete_catalog_write_to_disk)
   EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA));
   EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_HAND));
   EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_FACE));
+}
+
+TEST_F(AssetCatalogTest, merge_catalog_files)
+{
+  const CatalogFilePath cdf_path = use_temp_path();
+  const CatalogFilePath original_cdf_path = asset_library_root_ + "/blender_assets.cats.txt";
+  const CatalogFilePath modified_cdf_path = asset_library_root_ + "/modified_assets.cats.txt";
+  BLI_copy(original_cdf_path.c_str(), cdf_path.c_str());
+
+  // Load the unmodified, original CDF.
+  TestableAssetCatalogService service(asset_library_root_);
+  service.load_from_disk(cdf_path);
+
+  // Copy a modified file, to mimick a situation where someone changed the CDF after we loaded it.
+  BLI_copy(modified_cdf_path.c_str(), cdf_path.c_str());
+
+  // Overwrite the modified file. This should merge the on-disk file with our catalogs.
+  AssetCatalogDefinitionFile *cdf = service.get_catalog_definition_file();
+  service.merge_from_disk_before_writing();
+  cdf->write_to_disk(cdf_path);
+
+  AssetCatalogService loaded_service(cdf_path);
+  loaded_service.load_from_disk();
+
+  // Test that the expected catalogs are there.
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE_WHITESPACE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE_TRAILING_SLASH));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_HAND));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_FACE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_AGENT_47));  // New in the modified file.
+
+  // When there are overlaps, the in-memory (i.e. last-saved) paths should win.
+  const AssetCatalog *ruzena_face = loaded_service.find_catalog(UUID_POSES_RUZENA_FACE);
+  EXPECT_EQ("character/Ružena/poselib/face", ruzena_face->path);
 }
 
 }  // namespace blender::bke::tests

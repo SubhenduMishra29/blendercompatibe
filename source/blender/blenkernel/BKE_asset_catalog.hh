@@ -62,6 +62,16 @@ class AssetCatalogService {
   /** Load asset catalog definitions from the given file or directory. */
   void load_from_disk(const CatalogFilePath &file_or_directory_path);
 
+  /**
+   * Merge on-disk changes into the in-memory asset catalogs.
+   * This should be called before writing the asset catalogs to disk.
+   *
+   * - New on-disk catalogs are loaded into memory.
+   * - Already-known on-disk catalogs are ignored (so will be overwritten with our in-memory
+   *   data). This includes in-memory marked-as-deleted catalogs.
+   */
+  void merge_from_disk_before_writing();
+
   /** Return catalog with the given ID. Return nullptr if not found. */
   AssetCatalog *find_catalog(CatalogID catalog_id);
 
