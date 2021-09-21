@@ -72,7 +72,7 @@ enum {
    * about non-manifold boundary edges for the Target Normal Project mode. */
   DAG_EVAL_NEED_SHRINKWRAP_BOUNDARY = (1 << 1),
   /* Evaluate last subsurf modifier on the stack on the CPU as well so that
-   * tools and modifier can access the final geometry as well. */
+   * tools and modifier can access the final subdivided surface geometry. */
   DAG_EVAL_NEED_SUBDIVISION_MESH = (1 << 2),
 };
 
