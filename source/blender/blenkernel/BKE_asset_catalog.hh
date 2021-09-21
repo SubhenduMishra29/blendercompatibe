@@ -190,7 +190,12 @@ class AssetCatalog {
    * catalog. */
   std::string simple_name;
 
-  /** Create a new Catalog with the given path, auto-generating a sensible catalog ID. */
+  /**
+   * Create a new Catalog with the given path, auto-generating a sensible catalog simplename.
+   *
+   * NOTE: the given path will be cleaned up (trailing spaces removed, etc.), so the returned
+   * `AssetCatalog`'s path differ from the given one.
+   */
   static std::unique_ptr<AssetCatalog> from_path(const CatalogPath &path);
   static CatalogPath cleanup_path(const CatalogPath &path);
 
