@@ -93,9 +93,6 @@ class AssetCatalogService {
   std::unique_ptr<AssetCatalogDefinitionFile> parse_catalog_file(
       const CatalogFilePath &catalog_definition_file_path);
 
-  std::unique_ptr<AssetCatalog> parse_catalog_line(
-      StringRef line, const AssetCatalogDefinitionFile *catalog_definition_file);
-
   /**
    * Ensure that an #AssetCatalogDefinitionFile exists in memory.
    * This is used when no such file has been loaded, and a new catalog is to be created. */
@@ -173,10 +170,16 @@ class AssetCatalogDefinitionFile {
   /* Add a new catalog. Undefined behaviour if a catalog with the same ID was already added. */
   void add_new(AssetCatalog *catalog);
 
+  using AssetCatalogParsedFn = FunctionRef<bool(std::unique_ptr<AssetCatalog>)>;
+  void parse_catalog_file(const CatalogFilePath &catalog_definition_file_path,
+                          AssetCatalogParsedFn callback);
+
  protected:
   /* Catalogs stored in this file. They are mapped by ID to make it possible to query whether a
    * catalog is already known, without having to find the corresponding `AssetCatalog*`. */
   Map<CatalogID, AssetCatalog *> catalogs_;
+
+  std::unique_ptr<AssetCatalog> parse_catalog_line(StringRef line);
 };
 
 /** Asset Catalog definition, containing a symbolic ID and a path that points to a node in the

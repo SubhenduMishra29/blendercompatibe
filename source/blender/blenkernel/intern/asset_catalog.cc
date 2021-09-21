@@ -209,6 +209,30 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::parse_catalog_f
   auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
   cdf->file_path = catalog_definition_file_path;
 
+  auto catalog_parsed_callback = [this, catalog_definition_file_path](
+                                     std::unique_ptr<AssetCatalog> catalog) {
+    if (this->catalogs_.contains(catalog->catalog_id)) {
+      // TODO(@sybren): apparently another CDF was already loaded. This is not supported yet.
+      std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
+                << catalog->catalog_id << " in multiple files, ignoring this one." << std::endl;
+      /* Don't store 'catalog'; unique_ptr will free its memory. */
+      return false;
+    }
+
+    /* The AssetCatalog pointer is now owned by the AssetCatalogService. */
+    this->catalogs_.add_new(catalog->catalog_id, std::move(catalog));
+    return true;
+  };
+
+  cdf->parse_catalog_file(cdf->file_path, catalog_parsed_callback);
+
+  return cdf;
+}
+
+void AssetCatalogDefinitionFile::parse_catalog_file(
+    const CatalogFilePath &catalog_definition_file_path,
+    AssetCatalogParsedFn catalog_loaded_callback)
+{
   std::fstream infile(catalog_definition_file_path);
   std::string line;
   while (std::getline(infile, line)) {
@@ -217,45 +241,36 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::parse_catalog_f
       continue;
     }
 
-    std::unique_ptr<AssetCatalog> catalog = this->parse_catalog_line(trimmed_line, cdf.get());
+    std::unique_ptr<AssetCatalog> catalog = this->parse_catalog_line(trimmed_line);
     if (!catalog) {
       continue;
     }
 
-    if (cdf->contains(catalog->catalog_id)) {
+    AssetCatalog *non_owning_ptr = catalog.get();
+    const bool keep_catalog = catalog_loaded_callback(std::move(catalog));
+    if (!keep_catalog) {
+      continue;
+    }
+
+    if (this->contains(non_owning_ptr->catalog_id)) {
       std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
-                << catalog->catalog_id << " in the same file, using first occurrence."
+                << non_owning_ptr->catalog_id << " in the same file, using first occurrence."
                 << std::endl;
       /* Don't store 'catalog'; unique_ptr will free its memory. */
       continue;
     }
 
-    if (this->catalogs_.contains(catalog->catalog_id)) {
-      // TODO(@sybren): apparently another CDF was already loaded. This is not supported yet.
-      std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
-                << catalog->catalog_id << " in multiple files, ignoring this one." << std::endl;
-      /* Don't store 'catalog'; unique_ptr will free its memory. */
-      continue;
-    }
-
     /* The AssetDefinitionFile should include this catalog when writing it back to disk. */
-    cdf->add_new(catalog.get());
-
-    /* The AssetCatalog pointer is owned by the AssetCatalogService. */
-    this->catalogs_.add_new(catalog->catalog_id, std::move(catalog));
+    this->add_new(non_owning_ptr);
   }
-
-  return cdf;
 }
 
-std::unique_ptr<AssetCatalog> AssetCatalogService::parse_catalog_line(
-    const StringRef line, const AssetCatalogDefinitionFile *catalog_definition_file)
+std::unique_ptr<AssetCatalog> AssetCatalogDefinitionFile::parse_catalog_line(const StringRef line)
 {
   const char delim = ':';
   const int64_t first_delim = line.find_first_of(delim);
   if (first_delim == StringRef::not_found) {
-    std::cerr << "Invalid line in " << catalog_definition_file->file_path << ": " << line
-              << std::endl;
+    std::cerr << "Invalid line in " << this->file_path << ": " << line << std::endl;
     return std::unique_ptr<AssetCatalog>(nullptr);
   }
 
@@ -264,8 +279,7 @@ std::unique_ptr<AssetCatalog> AssetCatalogService::parse_catalog_line(
   UUID catalog_id;
   const bool uuid_parsed_ok = BLI_uuid_parse_string(&catalog_id, id_as_string.c_str());
   if (!uuid_parsed_ok) {
-    std::cerr << "Invalid UUID in " << catalog_definition_file->file_path << ": " << line
-              << std::endl;
+    std::cerr << "Invalid UUID in " << this->file_path << ": " << line << std::endl;
     return std::unique_ptr<AssetCatalog>(nullptr);
   }
 
