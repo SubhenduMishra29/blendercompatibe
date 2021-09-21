@@ -52,6 +52,27 @@ AssetCatalog *AssetCatalogService::find_catalog(CatalogID catalog_id)
   return catalog_uptr_ptr->get();
 }
 
+void AssetCatalogService::delete_catalog(CatalogID catalog_id)
+{
+  std::unique_ptr<AssetCatalog> *catalog_uptr_ptr = this->catalogs_.lookup_ptr(catalog_id);
+  if (catalog_uptr_ptr == nullptr) {
+    /* Catalog cannot be found, which is fine. */
+    return;
+  }
+
+  /* Mark the catalog as deleted. */
+  AssetCatalog *catalog = catalog_uptr_ptr->get();
+  catalog->flags.is_deleted = true;
+
+  /* Move ownership from this->catalogs_ to this->deleted_catalogs_. */
+  this->deleted_catalogs_.add(catalog_id, std::move(*catalog_uptr_ptr));
+
+  /* The catalog can now be removed from the map without freeing the actual AssetCatalog. */
+  this->catalogs_.remove(catalog_id);
+
+  this->rebuild_tree();
+}
+
 AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_path)
 {
   std::unique_ptr<AssetCatalog> catalog = AssetCatalog::from_path(catalog_path);
@@ -294,6 +315,11 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
   return tree;
 }
 
+void AssetCatalogService::rebuild_tree()
+{
+  this->catalog_tree_ = read_into_tree();
+}
+
 AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent)
     : name_(name), parent_(parent)
 {
@@ -375,6 +401,9 @@ void AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &file_path)
   // Write the catalogs.
   // TODO(@sybren): order them by Catalog ID or Catalog Path.
   for (const auto &catalog : catalogs_.values()) {
+    if (catalog->flags.is_deleted) {
+      continue;
+    }
     output << catalog->catalog_id << ":" << catalog->path << ":" << catalog->simple_name
            << std::endl;
   }

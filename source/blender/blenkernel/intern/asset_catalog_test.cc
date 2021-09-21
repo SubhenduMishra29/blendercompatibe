@@ -280,4 +280,57 @@ TEST_F(AssetCatalogTest, create_catalog_simple_name)
   EXPECT_EQ("...ht-Characters-Victora-Pose Library-Approved-Body Parts-Hands", cat->simple_name);
 }
 
+TEST_F(AssetCatalogTest, delete_catalog_leaf)
+{
+  AssetCatalogService service(asset_library_root_);
+  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+
+  /* Delete a leaf catalog, i.e. one that is not a parent of another catalog.
+   * This keeps this particular test easy. */
+  service.delete_catalog(UUID_POSES_RUZENA_HAND);
+  EXPECT_EQ(nullptr, service.find_catalog(UUID_POSES_RUZENA_HAND));
+
+  /* Contains not only paths from the CDF but also the missing parents (implicitly defined
+   * catalogs). This is why a leaf catalog was deleted. */
+  std::vector<fs::path> expected_paths{
+      "character",
+      "character/Ellie",
+      "character/Ellie/poselib",
+      "character/Ellie/poselib/white space",
+      "character/Ružena",
+      "character/Ružena/poselib",
+      "character/Ružena/poselib/face",
+      // "character/Ružena/poselib/hand", // this is the deleted one
+      "path",
+      "path/without",
+      "path/without/simplename",
+  };
+
+  AssetCatalogTree *tree = service.get_catalog_tree();
+  assert_expected_tree_items(tree, expected_paths);
+}
+
+TEST_F(AssetCatalogTest, delete_catalog_write_to_disk)
+{
+  TestableAssetCatalogService service(asset_library_root_);
+  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+
+  service.delete_catalog(UUID_POSES_ELLIE);
+
+  const CatalogFilePath save_to_path = use_temp_path();
+  AssetCatalogDefinitionFile *cdf = service.get_catalog_definition_file();
+  cdf->write_to_disk(save_to_path);
+
+  AssetCatalogService loaded_service(save_to_path);
+  loaded_service.load_from_disk();
+
+  // Test that the expected catalogs are there, except the deleted one.
+  EXPECT_EQ(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE_WHITESPACE));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_ELLIE_TRAILING_SLASH));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_HAND));
+  EXPECT_NE(nullptr, loaded_service.find_catalog(UUID_POSES_RUZENA_FACE));
+}
+
 }  // namespace blender::bke::tests

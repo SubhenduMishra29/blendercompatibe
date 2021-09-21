@@ -68,6 +68,10 @@ class AssetCatalogService {
    * The catalog will be saved to the default catalog file.*/
   AssetCatalog *create_catalog(const CatalogPath &catalog_path);
 
+  /**
+   * Soft-delete the catalog, ensuring it actually gets deleted when the catalog definition file is
+   * written. */
+  void delete_catalog(CatalogID catalog_id);
 
   AssetCatalogTree *get_catalog_tree();
 
@@ -77,6 +81,7 @@ class AssetCatalogService {
  protected:
   /* These pointers are owned by this AssetCatalogService. */
   Map<CatalogID, std::unique_ptr<AssetCatalog>> catalogs_;
+  Map<CatalogID, std::unique_ptr<AssetCatalog>> deleted_catalogs_;
   std::unique_ptr<AssetCatalogDefinitionFile> catalog_definition_file_;
   std::unique_ptr<AssetCatalogTree> catalog_tree_;
   CatalogFilePath asset_library_root_;
@@ -102,6 +107,7 @@ class AssetCatalogService {
   bool ensure_asset_library_root();
 
   std::unique_ptr<AssetCatalogTree> read_into_tree();
+  void rebuild_tree();
 };
 
 class AssetCatalogTreeItem {
@@ -187,6 +193,12 @@ class AssetCatalog {
    * when the catalog definition file gets lost, we also store a human-readable simple name for the
    * catalog. */
   std::string simple_name;
+
+  struct Flags {
+    /* Treat this catalog as deleted. Keeping deleted catalogs around is necessary to support
+     * merging of on-disk changes with in-memory changes. */
+    bool is_deleted = false;
+  } flags;
 
   /**
    * Create a new Catalog with the given path, auto-generating a sensible catalog simplename.
