@@ -1067,7 +1067,6 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
   SubsurfModifierData *last_subsurf = nullptr;
   if (BKE_modifier_subsurf_can_do_gpu_subdiv(scene, ob, required_mode)) {
     last_subsurf = BKE_object_get_last_subsurf_modifier(ob);
-    fprintf(stderr, "Can do subsurf on the GPU, got last subsurf...\n");
   }
 
   /* Apply all leading deform modifiers. */

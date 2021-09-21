@@ -235,7 +235,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     if (BKE_modifier_subsurf_can_do_gpu_subdiv_ex(scene, ctx->object, smd, required_mode, false)) {
       return result;
     }
-    fprintf(stderr, "Evaluating subsurf on the CPU...\n");
   }
 
   Subdiv *subdiv = BKE_modifier_subsurf_subdiv_descriptor_ensure(

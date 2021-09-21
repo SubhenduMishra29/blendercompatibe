@@ -612,7 +612,6 @@ void graph_tag_ids_for_subdivision_evaluation(Depsgraph *graph)
     }
 
     if (object_orig->runtime.subsurf_data_eval == nullptr) {
-      fprintf(stderr, "tagging for subdivision update...\n");
       id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
       int flag = ID_RECALC_GEOMETRY;
       graph_id_tag_update(
