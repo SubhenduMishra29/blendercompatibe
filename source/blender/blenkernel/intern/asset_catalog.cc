@@ -43,7 +43,7 @@ bool AssetCatalogService::is_empty() const
   return catalogs_.is_empty();
 }
 
-AssetCatalog *AssetCatalogService::find_catalog(const CatalogID &catalog_id)
+AssetCatalog *AssetCatalogService::find_catalog(CatalogID catalog_id)
 {
   std::unique_ptr<AssetCatalog> *catalog_uptr_ptr = this->catalogs_.lookup_ptr(catalog_id);
   if (catalog_uptr_ptr == nullptr) {
@@ -219,17 +219,47 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::parse_catalog_f
 std::unique_ptr<AssetCatalog> AssetCatalogService::parse_catalog_line(
     const StringRef line, const AssetCatalogDefinitionFile *catalog_definition_file)
 {
-  const int64_t first_space = line.find_first_of(' ');
-  if (first_space == StringRef::not_found) {
+  const char delim = ':';
+  const int64_t first_delim = line.find_first_of(delim);
+  if (first_delim == StringRef::not_found) {
     std::cerr << "Invalid line in " << catalog_definition_file->file_path << ": " << line
               << std::endl;
     return std::unique_ptr<AssetCatalog>(nullptr);
   }
 
-  const StringRef catalog_id = line.substr(0, first_space);
-  const CatalogPath catalog_path = AssetCatalog::cleanup_path(line.substr(first_space + 1));
+  /* Parse the catalog ID. */
+  const std::string id_as_string = line.substr(0, first_delim).trim();
+  UUID catalog_id;
+  const bool uuid_parsed_ok = BLI_uuid_parse_string(&catalog_id, id_as_string.c_str());
+  if (!uuid_parsed_ok) {
+    std::cerr << "Invalid UUID in " << catalog_definition_file->file_path << ": " << line
+              << std::endl;
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
 
-  return std::make_unique<AssetCatalog>(catalog_id, catalog_path);
+  /* Parse the path and simple name. */
+  const StringRef path_and_simple_name = line.substr(first_delim + 1);
+  const int64_t second_delim = path_and_simple_name.find_first_of(delim);
+
+  CatalogPath catalog_path;
+  std::string simple_name;
+  if (second_delim == 0) {
+    /* Delimiter as first character means there is no path. These lines are to be ignored. */
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
+
+  if (second_delim == StringRef::not_found) {
+    /* No delimiter means no simple name, just treat it as all "path". */
+    catalog_path = path_and_simple_name;
+    simple_name = "";
+  }
+  else {
+    catalog_path = path_and_simple_name.substr(0, second_delim);
+    simple_name = path_and_simple_name.substr(second_delim + 1).trim();
+  }
+
+  catalog_path = AssetCatalog::cleanup_path(catalog_path);
+  return std::make_unique<AssetCatalog>(catalog_id, catalog_path, simple_name);
 }
 
 std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
@@ -316,7 +346,7 @@ AssetCatalogTree *AssetCatalogService::get_catalog_tree()
   return catalog_tree_.get();
 }
 
-bool AssetCatalogDefinitionFile::contains(const CatalogID &catalog_id) const
+bool AssetCatalogDefinitionFile::contains(const CatalogID catalog_id) const
 {
   return catalogs_.contains(catalog_id);
 }
@@ -350,29 +380,38 @@ void AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &file_path)
   // Write the catalogs.
   // TODO(@sybren): order them by Catalog ID or Catalog Path.
   for (const auto &catalog : catalogs_.values()) {
-    output << catalog->catalog_id << " " << catalog->path << std::endl;
+    output << catalog->catalog_id << ":" << catalog->path << ":" << catalog->simple_name
+           << std::endl;
   }
 }
 
-AssetCatalog::AssetCatalog(const CatalogID &catalog_id, const CatalogPath &path)
-    : catalog_id(catalog_id), path(path)
+AssetCatalog::AssetCatalog(const CatalogID catalog_id,
+                           const CatalogPath &path,
+                           const std::string &simple_name)
+    : catalog_id(catalog_id), path(path), simple_name(simple_name)
 {
 }
 
 std::unique_ptr<AssetCatalog> AssetCatalog::from_path(const CatalogPath &path)
 {
   const CatalogPath clean_path = cleanup_path(path);
-  const CatalogID cat_id = sensible_id_for_path(clean_path);
-  auto catalog = std::make_unique<AssetCatalog>(cat_id, clean_path);
+  const CatalogID cat_id = BLI_uuid_generate_random();
+  const std::string simple_name = sensible_simple_name_for_path(clean_path);
+  auto catalog = std::make_unique<AssetCatalog>(cat_id, clean_path, simple_name);
   return catalog;
 }
 
-CatalogID AssetCatalog::sensible_id_for_path(const CatalogPath &path)
+std::string AssetCatalog::sensible_simple_name_for_path(const CatalogPath &path)
 {
-  CatalogID cat_id = path;
-  std::replace(cat_id.begin(), cat_id.end(), AssetCatalogService::PATH_SEPARATOR, '-');
-  std::replace(cat_id.begin(), cat_id.end(), ' ', '-');
-  return cat_id;
+  std::string name = path;
+  std::replace(name.begin(), name.end(), AssetCatalogService::PATH_SEPARATOR, '-');
+  if (name.length() < MAX_NAME - 1) {
+    return name;
+  }
+
+  /* Trim off the start of the path, as that's the most generic part and thus contains the least
+   * information. */
+  return "..." + name.substr(name.length() - 60);
 }
 
 CatalogPath AssetCatalog::cleanup_path(const CatalogPath &path)

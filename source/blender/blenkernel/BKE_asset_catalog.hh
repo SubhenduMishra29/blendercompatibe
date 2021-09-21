@@ -28,6 +28,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_uuid.h"
 #include "BLI_vector.hh"
 
 #include <map>
@@ -36,7 +37,7 @@
 
 namespace blender::bke {
 
-using CatalogID = std::string;
+using CatalogID = UUID;
 using CatalogPath = std::string;
 using CatalogPathComponent = std::string;
 using CatalogFilePath = filesystem::path;
@@ -61,7 +62,7 @@ class AssetCatalogService {
   void load_from_disk(const CatalogFilePath &file_or_directory_path);
 
   /** Return catalog with the given ID. Return nullptr if not found. */
-  AssetCatalog *find_catalog(const CatalogID &catalog_id);
+  AssetCatalog *find_catalog(CatalogID catalog_id);
 
   /** Create a catalog with some sensible auto-generated catalog ID.
    * The catalog will be saved to the default catalog file.*/
@@ -163,7 +164,7 @@ class AssetCatalogDefinitionFile {
   /** Write the catalog definitions to an arbitrary file path. */
   void write_to_disk(const CatalogFilePath &) const;
 
-  bool contains(const CatalogID &catalog_id) const;
+  bool contains(CatalogID catalog_id) const;
   /* Add a new catalog. Undefined behaviour if a catalog with the same ID was already added. */
   void add_new(AssetCatalog *catalog);
 
@@ -178,10 +179,16 @@ class AssetCatalogDefinitionFile {
 class AssetCatalog {
  public:
   AssetCatalog() = default;
-  AssetCatalog(const CatalogID &catalog_id, const CatalogPath &path);
+  AssetCatalog(CatalogID catalog_id, const CatalogPath &path, const std::string &simple_name);
 
   CatalogID catalog_id;
   CatalogPath path;
+  /**
+   * Simple, human-readable name for the asset catalog. This is stored on assets alongside the
+   * catalog ID; the catalog ID is a UUID that is not human-readable, so to avoid complete dataloss
+   * when the catalog definition file gets lost, we also store a human-readable simple name for the
+   * catalog. */
+  std::string simple_name;
 
   /** Create a new Catalog with the given path, auto-generating a sensible catalog ID. */
   static std::unique_ptr<AssetCatalog> from_path(const CatalogPath &path);
@@ -189,7 +196,7 @@ class AssetCatalog {
 
  protected:
   /** Generate a sensible catalog ID for the given path. */
-  static CatalogID sensible_id_for_path(const CatalogPath &path);
+  static std::string sensible_simple_name_for_path(const CatalogPath &path);
 };
 
 }  // namespace blender::bke

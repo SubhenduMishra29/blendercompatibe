@@ -22,6 +22,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "DNA_asset_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,7 +49,10 @@ struct AssetTagEnsureResult BKE_asset_metadata_tag_ensure(struct AssetMetaData *
 void BKE_asset_metadata_tag_remove(struct AssetMetaData *asset_data, struct AssetTag *tag);
 
 /** Clean up the catalog ID (whitespaces removed, length reduced, etc.) and assign it. */
-void BKE_asset_metadata_catalog_id_set(struct AssetMetaData *asset_data, const char *catalog_id);
+void BKE_asset_metadata_catalog_id_clear(struct AssetMetaData *asset_data);
+void BKE_asset_metadata_catalog_id_set(struct AssetMetaData *asset_data,
+                                       UUID catalog_id,
+                                       const char *catalog_simple_name);
 
 void BKE_asset_library_reference_init_default(struct AssetLibraryReference *library_ref);
 

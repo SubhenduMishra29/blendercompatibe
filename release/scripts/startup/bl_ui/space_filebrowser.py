@@ -691,15 +691,22 @@ class ASSETBROWSER_PT_metadata(asset_utils.AssetBrowserPanel, Panel):
         if asset_file_handle.local_id:
             # If the active file is an ID, use its name directly so renaming is possible from right here.
             layout.prop(asset_file_handle.local_id, "name", text="")
-            layout.prop(asset_file_handle.local_id.asset_data, "catalog_id")
+
+            col = layout.column(align=True)
+            col.label(text="Asset Catalog:")
+            col.prop(asset_file_handle.local_id.asset_data, "catalog_id", text="UUID")
+            col.prop(asset_file_handle.local_id.asset_data, "catalog_simple_name", text="Simple Name")
+
             row = layout.row()
             row.label(text="Source: Current File")
         else:
             layout.prop(asset_file_handle, "name", text="")
 
-            col = layout.column()  # Just to allow disabling editing.
+            col = layout.column(align=True)
             col.enabled = False
-            col.prop(asset_file_handle.asset_data, "catalog_id")
+            col.label(text="Asset Catalog:")
+            col.prop(asset_file_handle.asset_data, "catalog_id", text="UUID")
+            col.prop(asset_file_handle.asset_data, "catalog_simple_name", text="Simple Name")
 
             col = layout.column(align=True)  # Just to reduce margin.
             col.label(text="Source:")
