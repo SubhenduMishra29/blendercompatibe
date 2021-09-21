@@ -357,7 +357,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
       params->filter_search);
   if (asset_params) {
     filelist_set_asset_catalog_filter_options(
-        sfile->files, asset_params->asset_catalog_visibility, asset_params->catalog_id);
+        sfile->files, asset_params->asset_catalog_visibility, &asset_params->catalog_id);
   }
 
   /* Update the active indices of bookmarks & co. */

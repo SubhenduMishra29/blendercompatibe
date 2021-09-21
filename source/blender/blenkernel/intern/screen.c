@@ -1680,7 +1680,6 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
       sseq->scopes.vector_ibuf = NULL;
       sseq->scopes.histogram_ibuf = NULL;
       memset(&sseq->runtime, 0x0, sizeof(sseq->runtime));
-
     }
     else if (sl->spacetype == SPACE_PROPERTIES) {
       SpaceProperties *sbuts = (SpaceProperties *)sl;
@@ -1733,7 +1732,6 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
       }
       if (sfile->asset_params) {
         sfile->asset_params->base_params.rename_id = NULL;
-        BLO_read_data_address(reader, &sfile->asset_params->catalog_id);
       }
     }
     else if (sl->spacetype == SPACE_ACTION) {

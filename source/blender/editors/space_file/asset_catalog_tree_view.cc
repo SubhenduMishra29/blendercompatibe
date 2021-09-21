@@ -79,7 +79,7 @@ class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
     const AssetCatalogTreeView &tree_view = static_cast<const AssetCatalogTreeView &>(
         get_tree_view());
     tree_view.params_->asset_catalog_visibility = FILE_SHOW_ASSETS_FROM_CATALOG;
-    tree_view.params_->catalog_id = catalog_.get_catalog_id().data();
+    tree_view.params_->catalog_id = catalog_.get_catalog_id();
     WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
   }
 

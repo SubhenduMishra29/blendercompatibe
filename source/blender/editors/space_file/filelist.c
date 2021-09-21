@@ -50,6 +50,7 @@
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "BLI_uuid.h"
 
 #ifdef WIN32
 #  include "BLI_winstuff.h"
@@ -371,7 +372,7 @@ typedef struct FileListFilter {
   short flags;
 
   eFileSel_Params_AssetCatalogVisibility asset_catalog_visibility;
-  char asset_catalog_id[MAX_NAME];
+  UUID asset_catalog_id;
 } FileListFilter;
 
 /* FileListFilter.flags */
@@ -808,13 +809,13 @@ static bool is_filtered_hidden(const char *filename,
   /* TODO Current File library? */
   if (file->imported_asset_data) {
     if ((filter->asset_catalog_visibility == FILE_SHOW_ASSETS_WITHOUT_CATALOG) &&
-        (file->imported_asset_data->catalog_id[0])) {
+        !BLI_uuid_is_nil(file->imported_asset_data->catalog_id)) {
       return true;
     }
     /* TODO show all assets that are in child catalogs of the selected catalog. */
     if ((filter->asset_catalog_visibility == FILE_SHOW_ASSETS_FROM_CATALOG) &&
-        (!filter->asset_catalog_id[0] ||
-         !STREQ(filter->asset_catalog_id, file->imported_asset_data->catalog_id))) {
+        (BLI_uuid_is_nil(filter->asset_catalog_id) ||
+         !BLI_uuid_equal(filter->asset_catalog_id, file->imported_asset_data->catalog_id))) {
       return true;
     }
   }
@@ -1053,7 +1054,7 @@ void filelist_setfilter_options(FileList *filelist,
 void filelist_set_asset_catalog_filter_options(
     FileList *filelist,
     eFileSel_Params_AssetCatalogVisibility catalog_visibility,
-    const char *catalog_id)
+    const UUID *catalog_id)
 {
   bool update = false;
 
@@ -1063,10 +1064,8 @@ void filelist_set_asset_catalog_filter_options(
   }
 
   if (filelist->filter_data.asset_catalog_visibility == FILE_SHOW_ASSETS_FROM_CATALOG &&
-      catalog_id && !STREQ(filelist->filter_data.asset_catalog_id, catalog_id)) {
-    BLI_strncpy(filelist->filter_data.asset_catalog_id,
-                catalog_id,
-                sizeof(filelist->filter_data.asset_catalog_id));
+      catalog_id && !BLI_uuid_equal(filelist->filter_data.asset_catalog_id, *catalog_id)) {
+    filelist->filter_data.asset_catalog_id = *catalog_id;
     update = true;
   }
 

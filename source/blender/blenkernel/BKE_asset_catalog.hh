@@ -132,11 +132,11 @@ class AssetCatalogTreeItem {
   using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
 
   AssetCatalogTreeItem(StringRef name,
-                       StringRef catalog_id,
+                       const CatalogID &catalog_id,
                        const AssetCatalogTreeItem *parent = nullptr);
 
   AssetCatalogTreeItemIterator children();
-  StringRef get_catalog_id() const;
+  const CatalogID &get_catalog_id() const;
   StringRef get_name() const;
   /** Return the full catalog path, defined as the name of this catalog prefixed by the full
    * catalog path of its parent and a separator. */

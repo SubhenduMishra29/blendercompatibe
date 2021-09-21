@@ -50,6 +50,7 @@ AssetCatalog *AssetCatalogService::find_catalog(CatalogID catalog_id)
   return catalog_uptr_ptr->get();
 }
 
+<<<<<<< HEAD
 AssetCatalog *AssetCatalogService::find_catalog_from_path(const CatalogPath &path) const
 {
   for (auto &catalog : catalogs_.values()) {
@@ -59,8 +60,7 @@ AssetCatalog *AssetCatalogService::find_catalog_from_path(const CatalogPath &pat
   }
 
   return nullptr;
-}
-
+=======
 void AssetCatalogService::delete_catalog(CatalogID catalog_id)
 {
   std::unique_ptr<AssetCatalog> *catalog_uptr_ptr = this->catalogs_.lookup_ptr(catalog_id);
@@ -80,6 +80,7 @@ void AssetCatalogService::delete_catalog(CatalogID catalog_id)
   this->catalogs_.remove(catalog_id);
 
   this->rebuild_tree();
+>>>>>>> temp-asset-browser-catalogs
 }
 
 AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_path)
@@ -360,32 +361,68 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
   /* Go through the catalogs, insert each path component into the tree where needed. */
   for (auto &catalog : catalogs_.values()) {
+<<<<<<< HEAD
     tree->insert_item(*catalog);
+=======
+    const AssetCatalogTreeItem *parent = nullptr;
+    AssetCatalogTreeItem::ChildMap *insert_to_map = &tree->children_;
+
+    BLI_assert_msg(!ELEM(catalog->path[0], '/', '\\'),
+                   "Malformed catalog path: Path should be formatted like a relative path");
+
+    const char *next_slash_ptr;
+    /* Looks more complicated than it is, this just iterates over path components. E.g.
+     * "just/some/path" iterates over "just", then "some" then "path". */
+    for (const char *name_begin = catalog->path.data(); name_begin && name_begin[0];
+         /* Jump to one after the next slash if there is any. */
+         name_begin = next_slash_ptr ? next_slash_ptr + 1 : nullptr) {
+      next_slash_ptr = BLI_path_slash_find(name_begin);
+
+      /* Note that this won't be null terminated. */
+      StringRef component_name = next_slash_ptr ?
+                                     StringRef(name_begin, next_slash_ptr - name_begin) :
+                                     /* Last component in the path. */
+                                     name_begin;
+
+      /* Insert new tree element - if no matching one is there yet! */
+      auto [item, was_inserted] = insert_to_map->emplace(
+          component_name, AssetCatalogTreeItem(component_name, parent));
+
+      /* Walk further into the path (no matter if a new item was created or not). */
+      parent = &item->second;
+      insert_to_map = &item->second.children_;
+    }
+>>>>>>> temp-asset-browser-catalogs
   }
 
   return tree;
 }
 
+<<<<<<< HEAD
 /* ---------------------------------------------------------------------- */
 
 AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name,
-                                           const CatalogID &catalog_id,
+                                           StringRef catalog_id,
                                            const AssetCatalogTreeItem *parent)
     : name_(name), catalog_id_(catalog_id), parent_(parent)
 {
 }
 
 AssetCatalogTreeItemIterator AssetCatalogTreeItem::children()
-{
-  return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
-}
-
+=======
 void AssetCatalogService::rebuild_tree()
 {
   this->catalog_tree_ = read_into_tree();
 }
 
-const CatalogID &AssetCatalogTreeItem::get_catalog_id() const
+AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name, const AssetCatalogTreeItem *parent)
+    : name_(name), parent_(parent)
+>>>>>>> temp-asset-browser-catalogs
+{
+  return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
+}
+
+StringRef AssetCatalogTreeItem::get_catalog_id() const
 {
   return catalog_id_;
 }
@@ -470,29 +507,28 @@ bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
 
 void AssetCatalogTree::insert_item(AssetCatalog &catalog)
 {
+  /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
+   * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
+  fs::path catalog_path = catalog.path;
+
   const AssetCatalogTreeItem *parent = nullptr;
   AssetCatalogTreeItem::ChildMap *insert_to_map = &children_;
 
-  BLI_assert_msg(!ELEM(catalog.path[0], '/', '\\'),
-                 "Malformed catalog path: Path should be formatted like a relative path");
-
-  const char *next_slash_ptr;
-  /* Looks more complicated than it is, this just iterates over path components. E.g.
-   * "just/some/path" iterates over "just", then "some" then "path". */
-  for (const char *name_begin = catalog.path.data(); name_begin && name_begin[0];
-       /* Jump to one after the next slash if there is any. */
-       name_begin = next_slash_ptr ? next_slash_ptr + 1 : nullptr) {
-    next_slash_ptr = BLI_path_slash_find(name_begin);
-
-    /* Note that this won't be null terminated. */
-    StringRef component_name = next_slash_ptr ?
-                                   StringRef(name_begin, next_slash_ptr - name_begin) :
-                                   /* Last component in the path. */
-                                   name_begin;
+  BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
+                 "Malformed catalog path: Path should be a relative path, with no root-name or "
+                 "root-directory as defined by std::filesystem::path.");
+  for (const fs::path &component : catalog_path) {
+    std::string component_name = component.string();
 
     /* Insert new tree element - if no matching one is there yet! */
     auto [item, was_inserted] = insert_to_map->emplace(
-        component_name, AssetCatalogTreeItem(component_name, catalog.catalog_id, parent));
+        component_name,
+        AssetCatalogTreeItem(
+            component_name,
+            /* TODO There may be components that don't relate to an actual
+               catalog, i.e. there's no catalog ID to set. This should be changed. */
+            catalog_path.filename() == component_name ? catalog.catalog_id : "",
+            parent));
 
     /* Walk further into the path (no matter if a new item was created or not). */
     parent = &item->second;

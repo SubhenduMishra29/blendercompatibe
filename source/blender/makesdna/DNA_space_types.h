@@ -809,8 +809,7 @@ typedef struct FileAssetSelectParams {
   char _pad[6];
   /** If #asset_catalog_visibility is #FILE_SHOW_ASSETS_FROM_CATALOG, this sets the ID of the
    * catalog to show. */
-  const char *catalog_id;
-  void *_pad1;
+  UUID catalog_id;
 
   short import_type; /* eFileAssetImportType */
   char _pad2[6];
