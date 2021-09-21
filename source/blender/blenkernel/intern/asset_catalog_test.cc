@@ -125,6 +125,9 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
 
   int i = 0;
   tree->foreach_item([&](const AssetCatalogTreeItem &actual_item) {
+    ASSERT_LT(i, expected_paths.size())
+        << "More catalogs in tree than expected; did not expect " << actual_item.catalog_path();
+
     /* Is the catalog name as expected? "character", "Elly", ... */
     EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
     /* Does the number of parents match? */
