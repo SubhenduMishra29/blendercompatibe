@@ -108,10 +108,6 @@ void DEG_add_object_relation(DepsNodeHandle *node_handle,
   deg::ComponentKey comp_key(&object->id, type);
   deg::DepsNodeHandle *deg_node_handle = get_node_handle(node_handle);
   deg_node_handle->builder->add_node_handle_relation(comp_key, deg_node_handle, description);
-
-  if (component == DEG_OB_COMP_GEOMETRY) {
-    DEG_add_special_eval_flag(node_handle, &object->id, DAG_EVAL_NEED_SUBDIVISION_MESH);
-  }
 }
 
 bool DEG_object_has_geometry_component(Object *object)

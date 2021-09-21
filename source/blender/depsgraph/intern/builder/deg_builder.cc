@@ -197,12 +197,38 @@ void deg_graph_build_flush_visibility(Depsgraph *graph)
   BLI_stack_free(stack);
 }
 
+void deg_graph_build_flush_need_subdivision(Depsgraph *graph)
+{
+  for (IDNode *id_node : graph->id_nodes) {
+    const ID_Type id_type = GS(id_node->id_orig->name);
+    if (id_type != ID_OB) {
+      continue;
+    }
+
+    ComponentNode *comp_node = id_node->find_component(NodeType::GEOMETRY);
+    if (!comp_node) {
+      continue;
+    }
+
+    OperationNode *op_node = comp_node->get_exit_operation();
+    if (!op_node) {
+      continue;
+    }
+
+    if (!op_node->outlinks.is_empty()) {
+      id_node->eval_flags |= DAG_EVAL_NEED_SUBDIVISION_MESH;
+    }
+  }
+}
+
 }  // namespace
 
 void deg_graph_build_finalize(Main *bmain, Depsgraph *graph)
 {
   /* Make sure dependencies of visible ID datablocks are visible. */
   deg_graph_build_flush_visibility(graph);
+  /* Make sure subdivision is evaluated on the CPU side if requested. */
+  deg_graph_build_flush_need_subdivision(graph);
   deg_graph_remove_unused_noops(graph);
 
   /* Re-tag IDs for update if it was tagged before the relations
