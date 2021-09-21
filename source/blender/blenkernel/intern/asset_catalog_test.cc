@@ -78,6 +78,34 @@ class AssetCatalogTest : public testing::Test {
     return temp_library_path_;
   }
 
+  int count_path_parents(const fs::path &path)
+  {
+    int counter = 0;
+    for (const fs::path &segment : path.parent_path()) {
+      counter++;
+      UNUSED_VARS(segment);
+    }
+    return counter;
+  }
+
+  void assert_expected_tree_items(AssetCatalogTree *tree,
+                                  const std::vector<fs::path> &expected_paths)
+  {
+    int i = 0;
+    tree->foreach_item([&](const AssetCatalogTreeItem &actual_item) {
+      ASSERT_LT(i, expected_paths.size())
+          << "More catalogs in tree than expected; did not expect " << actual_item.catalog_path();
+
+      /* Is the catalog name as expected? "character", "Ellie", ... */
+      EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
+      /* Does the number of parents match? */
+      EXPECT_EQ(count_path_parents(expected_paths[i]), actual_item.count_parents());
+      EXPECT_EQ(expected_paths[i].generic_string(), actual_item.catalog_path());
+
+      i++;
+    });
+  }
+
   void TearDown() override
   {
     if (!temp_library_path_.empty()) {
@@ -121,16 +149,6 @@ TEST_F(AssetCatalogTest, load_single_file)
   EXPECT_EQ("POSES_RUŽENA", poses_ruzena->simple_name);
 }
 
-static int count_path_parents(const fs::path &path)
-{
-  int counter = 0;
-  for (const fs::path &segment : path.parent_path()) {
-    counter++;
-    UNUSED_VARS(segment);
-  }
-  return counter;
-}
-
 TEST_F(AssetCatalogTest, load_single_file_into_tree)
 {
   AssetCatalogService service(asset_library_root_);
@@ -153,20 +171,7 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
   };
 
   AssetCatalogTree *tree = service.get_catalog_tree();
-
-  int i = 0;
-  tree->foreach_item([&](const AssetCatalogTreeItem &actual_item) {
-    ASSERT_LT(i, expected_paths.size())
-        << "More catalogs in tree than expected; did not expect " << actual_item.catalog_path();
-
-    /* Is the catalog name as expected? "character", "Ellie", ... */
-    EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
-    /* Does the number of parents match? */
-    EXPECT_EQ(count_path_parents(expected_paths[i]), actual_item.count_parents());
-    EXPECT_EQ(expected_paths[i].generic_string(), actual_item.catalog_path());
-
-    i++;
-  });
+  assert_expected_tree_items(tree, expected_paths);
 }
 
 TEST_F(AssetCatalogTest, write_single_file)
