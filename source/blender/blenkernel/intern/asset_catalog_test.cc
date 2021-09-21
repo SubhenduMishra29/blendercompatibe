@@ -108,6 +108,8 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
   AssetCatalogService service(asset_library_root_);
   service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
 
+  /* Contains not only paths from the CDF but also the missing parents (implicitly defined
+   * catalogs). */
   std::vector<fs::path> expected_paths{
       "character",
       "character/Elly",
@@ -125,7 +127,7 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
   tree->foreach_item([&](const AssetCatalogTreeItem &actual_item) {
     /* Is the catalog name as expected? "character", "Elly", ... */
     EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
-    /* Does the amount of parents match? */
+    /* Does the number of parents match? */
     EXPECT_EQ(count_path_parents(expected_paths[i]), actual_item.count_parents());
     EXPECT_EQ(expected_paths[i].generic_string(), actual_item.catalog_path());
 
