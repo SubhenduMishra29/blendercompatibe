@@ -43,7 +43,7 @@ void BKE_asset_library_free(struct AssetLibrary *asset_library)
 
 namespace blender::bke {
 
-void AssetLibrary::load(const fs::path &library_root_directory)
+void AssetLibrary::load(StringRefNull library_root_directory)
 {
   auto catalog_service = std::make_unique<AssetCatalogService>(library_root_directory);
   catalog_service->load_from_disk();

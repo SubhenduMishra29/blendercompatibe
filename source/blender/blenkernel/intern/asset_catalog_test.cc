@@ -21,12 +21,9 @@
 #include "BKE_asset_catalog.hh"
 
 #include "BLI_fileops.h"
+#include "BLI_path_util.h"
 
 #include "testing/testing.h"
-
-#include <filesystem>
-
-namespace fs = blender::filesystem;
 
 namespace blender::bke::tests {
 
@@ -61,12 +58,12 @@ class AssetCatalogTest : public testing::Test {
 
   void SetUp() override
   {
-    const fs::path test_files_dir = blender::tests::flags_test_asset_dir();
+    const std::string test_files_dir = blender::tests::flags_test_asset_dir();
     if (test_files_dir.empty()) {
       FAIL();
     }
 
-    asset_library_root_ = test_files_dir / "asset_library";
+    asset_library_root_ = test_files_dir + "/" + "asset_library";
     temp_library_path_ = "";
   }
 
@@ -74,33 +71,31 @@ class AssetCatalogTest : public testing::Test {
   CatalogFilePath use_temp_path()
   {
     const CatalogFilePath tempdir = BKE_tempdir_session();
-    temp_library_path_ = tempdir / "test-temporary-path";
+    temp_library_path_ = tempdir + "test-temporary-path";
     return temp_library_path_;
   }
 
-  int count_path_parents(const fs::path &path)
-  {
-    int counter = 0;
-    for (const fs::path &segment : path.parent_path()) {
-      counter++;
-      UNUSED_VARS(segment);
-    }
-    return counter;
-  }
+  struct CatalogPathInfo {
+    StringRef name;
+    int parent_count;
+  };
 
   void assert_expected_tree_items(AssetCatalogTree *tree,
-                                  const std::vector<fs::path> &expected_paths)
+                                  const std::vector<CatalogPathInfo> &expected_paths)
   {
     int i = 0;
     tree->foreach_item([&](const AssetCatalogTreeItem &actual_item) {
       ASSERT_LT(i, expected_paths.size())
           << "More catalogs in tree than expected; did not expect " << actual_item.catalog_path();
 
+      char expected_filename[FILE_MAXFILE];
       /* Is the catalog name as expected? "character", "Ellie", ... */
-      EXPECT_EQ(expected_paths[i].filename().string(), actual_item.get_name());
-      /* Does the number of parents match? */
-      EXPECT_EQ(count_path_parents(expected_paths[i]), actual_item.count_parents());
-      EXPECT_EQ(expected_paths[i].generic_string(), actual_item.catalog_path());
+      BLI_split_file_part(
+          expected_paths[i].name.data(), expected_filename, sizeof(expected_filename));
+      EXPECT_EQ(expected_filename, actual_item.get_name());
+      /* Does the computed number of parents match? */
+      EXPECT_EQ(expected_paths[i].parent_count, actual_item.count_parents());
+      EXPECT_EQ(expected_paths[i].name, actual_item.catalog_path());
 
       i++;
     });
@@ -109,7 +104,7 @@ class AssetCatalogTest : public testing::Test {
   void TearDown() override
   {
     if (!temp_library_path_.empty()) {
-      fs::remove_all(temp_library_path_);
+      BLI_delete(temp_library_path_.c_str(), true, true);
       temp_library_path_ = "";
     }
   }
@@ -118,7 +113,7 @@ class AssetCatalogTest : public testing::Test {
 TEST_F(AssetCatalogTest, load_single_file)
 {
   AssetCatalogService service(asset_library_root_);
-  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+  service.load_from_disk(asset_library_root_ + "/" + "blender_assets.cats.txt");
 
   // Test getting a non-existant catalog ID.
   EXPECT_EQ(nullptr, service.find_catalog(BLI_uuid_generate_random()));
@@ -152,22 +147,22 @@ TEST_F(AssetCatalogTest, load_single_file)
 TEST_F(AssetCatalogTest, load_single_file_into_tree)
 {
   AssetCatalogService service(asset_library_root_);
-  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+  service.load_from_disk(asset_library_root_ + "/" + "blender_assets.cats.txt");
 
   /* Contains not only paths from the CDF but also the missing parents (implicitly defined
    * catalogs). */
-  std::vector<fs::path> expected_paths{
-      "character",
-      "character/Ellie",
-      "character/Ellie/poselib",
-      "character/Ellie/poselib/white space",
-      "character/Ružena",
-      "character/Ružena/poselib",
-      "character/Ružena/poselib/face",
-      "character/Ružena/poselib/hand",
-      "path",                     // Implicit.
-      "path/without",             // Implicit.
-      "path/without/simplename",  // From CDF.
+  std::vector<CatalogPathInfo> expected_paths{
+      {"character", 0},
+      {"character/Ellie", 1},
+      {"character/Ellie/poselib", 2},
+      {"character/Ellie/poselib/white space", 3},
+      {"character/Ružena", 1},
+      {"character/Ružena/poselib", 2},
+      {"character/Ružena/poselib/face", 3},
+      {"character/Ružena/poselib/hand", 3},
+      {"path", 0},                     // Implicit.
+      {"path/without", 1},             // Implicit.
+      {"path/without/simplename", 2},  // From CDF.
   };
 
   AssetCatalogTree *tree = service.get_catalog_tree();
@@ -177,7 +172,7 @@ TEST_F(AssetCatalogTest, load_single_file_into_tree)
 TEST_F(AssetCatalogTest, write_single_file)
 {
   TestableAssetCatalogService service(asset_library_root_);
-  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+  service.load_from_disk(asset_library_root_ + "/" + "blender_assets.cats.txt");
 
   const CatalogFilePath save_to_path = use_temp_path();
   AssetCatalogDefinitionFile *cdf = service.get_catalog_definition_file();
@@ -207,7 +202,7 @@ TEST_F(AssetCatalogTest, create_first_catalog_from_scratch)
   AssetCatalogService service(temp_lib_root);
 
   /* Just creating the service should NOT create the path. */
-  EXPECT_FALSE(fs::exists(temp_lib_root));
+  EXPECT_FALSE(BLI_exists(temp_lib_root.c_str()));
 
   AssetCatalog *cat = service.create_catalog("some/catalog/path");
   ASSERT_NE(nullptr, cat);
@@ -215,11 +210,11 @@ TEST_F(AssetCatalogTest, create_first_catalog_from_scratch)
   EXPECT_EQ(cat->simple_name, "some-catalog-path");
 
   /* Creating a new catalog should create the directory + the default file. */
-  EXPECT_TRUE(fs::is_directory(temp_lib_root));
+  EXPECT_TRUE(BLI_is_dir(temp_lib_root.c_str()));
 
-  const CatalogFilePath definition_file_path = temp_lib_root /
+  const CatalogFilePath definition_file_path = temp_lib_root + "/" +
                                                AssetCatalogService::DEFAULT_CATALOG_FILENAME;
-  EXPECT_TRUE(fs::is_regular_file(definition_file_path));
+  EXPECT_TRUE(BLI_is_file(definition_file_path.c_str()));
 
   AssetCatalogService loaded_service(temp_lib_root);
   loaded_service.load_from_disk();
@@ -237,7 +232,7 @@ TEST_F(AssetCatalogTest, create_catalog_after_loading_file)
 
   /* Copy the asset catalog definition files to a separate location, so that we can test without
    * overwriting the test file in SVN. */
-  fs::copy(asset_library_root_, temp_lib_root, fs::copy_options::recursive);
+  BLI_copy(asset_library_root_.c_str(), temp_lib_root.c_str());
 
   AssetCatalogService service(temp_lib_root);
   service.load_from_disk();
@@ -283,7 +278,7 @@ TEST_F(AssetCatalogTest, create_catalog_simple_name)
 TEST_F(AssetCatalogTest, delete_catalog_leaf)
 {
   AssetCatalogService service(asset_library_root_);
-  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+  service.load_from_disk(asset_library_root_ + "/" + "blender_assets.cats.txt");
 
   /* Delete a leaf catalog, i.e. one that is not a parent of another catalog.
    * This keeps this particular test easy. */
@@ -292,18 +287,18 @@ TEST_F(AssetCatalogTest, delete_catalog_leaf)
 
   /* Contains not only paths from the CDF but also the missing parents (implicitly defined
    * catalogs). This is why a leaf catalog was deleted. */
-  std::vector<fs::path> expected_paths{
-      "character",
-      "character/Ellie",
-      "character/Ellie/poselib",
-      "character/Ellie/poselib/white space",
-      "character/Ružena",
-      "character/Ružena/poselib",
-      "character/Ružena/poselib/face",
-      // "character/Ružena/poselib/hand", // this is the deleted one
-      "path",
-      "path/without",
-      "path/without/simplename",
+  std::vector<CatalogPathInfo> expected_paths{
+      {"character", 0},
+      {"character/Ellie", 1},
+      {"character/Ellie/poselib", 2},
+      {"character/Ellie/poselib/white space", 3},
+      {"character/Ružena", 1},
+      {"character/Ružena/poselib", 2},
+      {"character/Ružena/poselib/face", 3},
+      // {"character/Ružena/poselib/hand", 3}, // this is the deleted one
+      {"path", 0},
+      {"path/without", 1},
+      {"path/without/simplename", 2},
   };
 
   AssetCatalogTree *tree = service.get_catalog_tree();
@@ -313,7 +308,7 @@ TEST_F(AssetCatalogTest, delete_catalog_leaf)
 TEST_F(AssetCatalogTest, delete_catalog_write_to_disk)
 {
   TestableAssetCatalogService service(asset_library_root_);
-  service.load_from_disk(asset_library_root_ / "blender_assets.cats.txt");
+  service.load_from_disk(asset_library_root_ + "/" + "blender_assets.cats.txt");
 
   service.delete_catalog(UUID_POSES_ELLIE);
 

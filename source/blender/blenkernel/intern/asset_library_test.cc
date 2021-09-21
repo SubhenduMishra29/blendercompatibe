@@ -23,22 +23,18 @@
 
 #include "testing/testing.h"
 
-#include <filesystem>
-
-namespace fs = std::filesystem;
-
 namespace blender::bke::tests {
 
 TEST(AssetLibraryTest, load_and_free_c_functions)
 {
-  const fs::path test_files_dir = blender::tests::flags_test_asset_dir();
+  const std::string test_files_dir = blender::tests::flags_test_asset_dir();
   if (test_files_dir.empty()) {
     FAIL();
   }
 
   /* Load the asset library. */
-  const fs::path library_path = test_files_dir / "asset_library";
-  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.string().c_str());
+  const std::string library_path = test_files_dir + "/" + "asset_library";
+  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.data());
   ASSERT_NE(nullptr, library_c_ptr);
 
   /* Check that it can be cast to the C++ type and has a Catalog Service. */
@@ -60,14 +56,15 @@ TEST(AssetLibraryTest, load_and_free_c_functions)
 
 TEST(AssetLibraryTest, load_nonexistent_directory)
 {
-  const fs::path test_files_dir = blender::tests::flags_test_asset_dir();
+  const std::string test_files_dir = blender::tests::flags_test_asset_dir();
   if (test_files_dir.empty()) {
     FAIL();
   }
 
   /* Load the asset library. */
-  const fs::path library_path = test_files_dir / "asset_library/this/subdir/does/not/exist";
-  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.string().c_str());
+  const std::string library_path = test_files_dir + "/" +
+                                   "asset_library/this/subdir/does/not/exist";
+  ::AssetLibrary *library_c_ptr = BKE_asset_library_load(library_path.data());
   ASSERT_NE(nullptr, library_c_ptr);
 
   /* Check that it can be cast to the C++ type and has a Catalog Service. */

@@ -20,13 +20,11 @@
 
 #include "BKE_asset_catalog.hh"
 
-#include "BLI_filesystem.hh"
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 #include "BLI_string_ref.hh"
 
-#include <filesystem>
 #include <fstream>
-
-namespace fs = blender::filesystem;
 
 namespace blender::bke {
 
@@ -95,6 +93,16 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   return catalog_ptr;
 }
 
+static std::string asset_definition_default_file_path_from_dir(StringRef asset_library_root)
+{
+  char file_path[PATH_MAX];
+  BLI_join_dirfile(file_path,
+                   sizeof(file_path),
+                   asset_library_root.data(),
+                   AssetCatalogService::DEFAULT_CATALOG_FILENAME.data());
+  return file_path;
+}
+
 void AssetCatalogService::ensure_catalog_definition_file()
 {
   if (catalog_definition_file_) {
@@ -102,7 +110,7 @@ void AssetCatalogService::ensure_catalog_definition_file()
   }
 
   auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
-  cdf->file_path = asset_library_root_ / DEFAULT_CATALOG_FILENAME;
+  cdf->file_path = asset_definition_default_file_path_from_dir(asset_library_root_);
   catalog_definition_file_ = std::move(cdf);
 }
 
@@ -117,8 +125,8 @@ bool AssetCatalogService::ensure_asset_library_root()
     return false;
   }
 
-  if (fs::exists(asset_library_root_)) {
-    if (!fs::is_directory(asset_library_root_)) {
+  if (BLI_exists(asset_library_root_.data())) {
+    if (!BLI_is_dir(asset_library_root_.data())) {
       std::cerr << "AssetCatalogService: " << asset_library_root_
                 << " exists but is not a directory, this is not a supported situation."
                 << std::endl;
@@ -131,7 +139,7 @@ bool AssetCatalogService::ensure_asset_library_root()
 
   /* Ensure the root directory exists. */
   std::error_code err_code;
-  if (!fs::create_directories(asset_library_root_, err_code)) {
+  if (!BLI_dir_create_recursive(asset_library_root_.data())) {
     std::cerr << "AssetCatalogService: error creating directory " << asset_library_root_ << ": "
               << err_code << std::endl;
     return false;
@@ -148,17 +156,20 @@ void AssetCatalogService::load_from_disk()
 
 void AssetCatalogService::load_from_disk(const CatalogFilePath &file_or_directory_path)
 {
-  fs::file_status status = fs::status(file_or_directory_path);
-  switch (status.type()) {
-    case fs::file_type::regular:
-      load_single_file(file_or_directory_path);
-      break;
-    case fs::file_type::directory:
-      load_directory_recursive(file_or_directory_path);
-      break;
-    default:
-      // TODO(@sybren): throw an appropriate exception.
-      return;
+  BLI_stat_t status;
+  if (BLI_stat(file_or_directory_path.data(), &status) == -1) {
+    // TODO(@sybren): throw an appropriate exception.
+    return;
+  }
+
+  if (S_ISREG(status.st_mode)) {
+    load_single_file(file_or_directory_path);
+  }
+  else if (S_ISDIR(status.st_mode)) {
+    load_directory_recursive(file_or_directory_path);
+  }
+  else {
+    // TODO(@sybren): throw an appropriate exception.
   }
 
   /* TODO: Should there be a sanitize step? E.g. to remove catalogs with identical paths? */
@@ -170,13 +181,13 @@ void AssetCatalogService::load_directory_recursive(const CatalogFilePath &direct
 {
   // TODO(@sybren): implement proper multi-file support. For now, just load
   // the default file if it is there.
-  CatalogFilePath file_path = directory_path / DEFAULT_CATALOG_FILENAME;
-  fs::file_status fs_status = fs::status(file_path);
+  CatalogFilePath file_path = asset_definition_default_file_path_from_dir(directory_path);
 
-  if (!fs::exists(fs_status)) {
+  if (!BLI_exists(file_path.data())) {
     /* No file to be loaded is perfectly fine. */
     return;
   }
+
   this->load_single_file(file_path);
 }
 
@@ -289,18 +300,25 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
   /* Go through the catalogs, insert each path component into the tree where needed. */
   for (auto &catalog : catalogs_.values()) {
-    /* #fs::path adds useful behavior to the path. Remember that on Windows it uses "\" as
-     * separator! For catalogs it should always be "/". Use #fs::path::generic_string if needed. */
-    fs::path catalog_path = catalog->path;
-
     const AssetCatalogTreeItem *parent = nullptr;
     AssetCatalogTreeItem::ChildMap *insert_to_map = &tree->children_;
 
-    BLI_assert_msg(catalog_path.is_relative() && !catalog_path.has_root_path(),
-                   "Malformed catalog path: Path should be a relative path, with no root-name or "
-                   "root-directory as defined by std::filesystem::path.");
-    for (const fs::path &component : catalog_path) {
-      std::string component_name = component.string();
+    BLI_assert_msg(!ELEM(catalog->path[0], '/', '\\'),
+                   "Malformed catalog path: Path should be formatted like a relative path");
+
+    const char *next_slash_ptr;
+    /* Looks more complicated than it is, this just iterates over path components. E.g.
+     * "just/some/path" iterates over "just", then "some" then "path". */
+    for (const char *name_begin = catalog->path.data(); name_begin && name_begin[0];
+         /* Jump to one after the next slash if there is any. */
+         name_begin = next_slash_ptr ? next_slash_ptr + 1 : nullptr) {
+      next_slash_ptr = BLI_path_slash_find(name_begin);
+
+      /* Note that this won't be null terminated. */
+      StringRef component_name = next_slash_ptr ?
+                                     StringRef(name_begin, next_slash_ptr - name_begin) :
+                                     /* Last component in the path. */
+                                     name_begin;
 
       /* Insert new tree element - if no matching one is there yet! */
       auto [item, was_inserted] = insert_to_map->emplace(
