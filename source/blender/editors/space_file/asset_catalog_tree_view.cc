@@ -60,8 +60,8 @@ class AssetCatalogTreeView : public uiAbstractTreeView {
   void build_tree() override;
 
  private:
-  uiBasicTreeViewItem &build_recursive(uiTreeViewItemContainer &view_parent_item,
-                                       AssetCatalogTreeItem &catalog);
+  static uiBasicTreeViewItem &build_recursive(uiTreeViewItemContainer &view_parent_item,
+                                              AssetCatalogTreeItem &catalog);
 };
 /* ---------------------------------------------------------------------- */
 
@@ -127,12 +127,12 @@ void AssetCatalogTreeView::build_tree()
   if (library_) {
     AssetCatalogTree *catalog_tree = library_->catalog_service->get_catalog_tree();
 
-    for (AssetCatalogTreeItem &item : catalog_tree->children()) {
+    catalog_tree->foreach_child([this](AssetCatalogTreeItem &item) {
       uiBasicTreeViewItem &child_view_item = build_recursive(*this, item);
 
       /* Open root-level items by default. */
       child_view_item.set_collapsed(false);
-    }
+    });
   }
 
   add_tree_item<uiBasicTreeViewItem>(
@@ -148,10 +148,8 @@ uiBasicTreeViewItem &AssetCatalogTreeView::build_recursive(
   uiBasicTreeViewItem &view_item = view_parent_item.add_tree_item<AssetCatalogTreeViewItem>(
       catalog);
 
-  for (AssetCatalogTreeItem &child : catalog.children()) {
-    build_recursive(view_item, child);
-  }
-
+  catalog.foreach_child(
+      [&view_item](AssetCatalogTreeItem &child) { build_recursive(view_item, child); });
   return view_item;
 }
 

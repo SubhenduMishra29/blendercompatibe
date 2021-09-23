@@ -46,7 +46,6 @@ using CatalogFilePath = std::string;
 class AssetCatalog;
 class AssetCatalogDefinitionFile;
 class AssetCatalogTree;
-class AssetCatalogTreeItemIterator;
 
 /* Manages the asset catalogs of a single asset library (i.e. of catalogs defined in a single
  * directory hierarchy). */
@@ -129,18 +128,16 @@ class AssetCatalogService {
 };
 
 class AssetCatalogTreeItem {
-  friend class AssetCatalogService;
   friend class AssetCatalogTree;
 
  public:
   using ChildMap = std::map<std::string, AssetCatalogTreeItem>;
-  using ItemIterFn = FunctionRef<void(const AssetCatalogTreeItem &)>;
+  using ItemIterFn = FunctionRef<void(AssetCatalogTreeItem &)>;
 
   AssetCatalogTreeItem(StringRef name,
                        const CatalogID &catalog_id,
                        const AssetCatalogTreeItem *parent = nullptr);
 
-  AssetCatalogTreeItemIterator children();
   const CatalogID &get_catalog_id() const;
   StringRef get_name() const;
   /** Return the full catalog path, defined as the name of this catalog prefixed by the full
@@ -149,7 +146,11 @@ class AssetCatalogTreeItem {
   int count_parents() const;
   bool has_children() const;
 
-  static void foreach_item_recursive(const ChildMap &children_, const ItemIterFn callback);
+  static void foreach_item_recursive(ChildMap &children_, const ItemIterFn callback);
+
+  /** Iterate over children calling \a callback for each of them, but do not recurse into their
+   * children. */
+  void foreach_child(const ItemIterFn callback);
 
  protected:
   /** Child tree items, ordered by their names. */
@@ -169,47 +170,21 @@ class AssetCatalogTreeItem {
  * There is no single root tree element, the #AssetCatalogTree instance itself represents the root.
  */
 class AssetCatalogTree {
-  friend class AssetCatalogService;
   using ChildMap = AssetCatalogTreeItem::ChildMap;
+  using ItemIterFn = AssetCatalogTreeItem::ItemIterFn;
 
  public:
   /** Ensure an item representing \a path is in the tree, adding it if necessary. */
   void insert_item(AssetCatalog &catalog);
 
-  AssetCatalogTreeItemIterator children();
-  void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const;
+  void foreach_item(const AssetCatalogTreeItem::ItemIterFn callback);
+  /** Iterate over children calling \a callback for each of them, but do not recurse into their
+   * children. */
+  void foreach_child(const ItemIterFn callback);
 
  protected:
   /** Child tree items, ordered by their names. */
   ChildMap children_;
-};
-
-/* TODO mostly boilerplate code. Is that worth it? Could alternatively expose the ChildMap
- * directly, and let users iterate over the map and its (key, value) pairs directly. */
-class AssetCatalogTreeItemIterator
-    : public std::iterator<std::forward_iterator_tag, AssetCatalogTreeItem> {
-  /** #AssetCatalogTreeItemIterator is just a wrapper around the child-maps iterator. That is so we
-   * can iterate over the values only of the map's (key, value) pairs. */
-  using WrappedIterator = AssetCatalogTreeItem::ChildMap::iterator;
-
-  WrappedIterator wrapped_iterator_;
-  WrappedIterator wrapped_end_iterator_;
-
- public:
-  AssetCatalogTreeItemIterator(WrappedIterator wrapped_iterator,
-                               WrappedIterator wrapped_end_iterator);
-
-  AssetCatalogTreeItemIterator begin() const;
-  AssetCatalogTreeItemIterator end() const;
-
-  AssetCatalogTreeItem &operator*() const;
-  AssetCatalogTreeItem *operator->() const;
-
-  AssetCatalogTreeItemIterator &operator++();
-  AssetCatalogTreeItemIterator operator++(int);
-
-  friend bool operator==(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b);
-  friend bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b);
 };
 
 /** Keeps track of which catalogs are defined in a certain file on disk.

@@ -94,8 +94,6 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   /* So we can std::move(catalog) and still use the non-owning pointer: */
   AssetCatalog *const catalog_ptr = catalog.get();
 
-  BLI_assert_msg(find_catalog_from_path(catalog_path) == nullptr,
-                 "duplicate catalog path not supported");
   /* TODO(@sybren): move the `AssetCatalog::from_path()` function to another place, that can reuse
    * catalogs when a catalog with the given path is already known, and avoid duplicate catalog IDs.
    */
@@ -298,11 +296,6 @@ AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name,
 {
 }
 
-AssetCatalogTreeItemIterator AssetCatalogTreeItem::children()
-{
-  return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
-}
-
 const CatalogID &AssetCatalogTreeItem::get_catalog_id() const
 {
   return catalog_id_;
@@ -334,54 +327,6 @@ int AssetCatalogTreeItem::count_parents() const
 bool AssetCatalogTreeItem::has_children() const
 {
   return !children_.empty();
-}
-
-/* ---------------------------------------------------------------------- */
-
-AssetCatalogTreeItemIterator::AssetCatalogTreeItemIterator(WrappedIterator wrapped_iterator,
-                                                           WrappedIterator wrapped_end_iterator)
-    : wrapped_iterator_(wrapped_iterator), wrapped_end_iterator_(wrapped_end_iterator)
-{
-}
-
-AssetCatalogTreeItemIterator AssetCatalogTreeItemIterator::begin() const
-{
-  return *this;
-}
-
-AssetCatalogTreeItemIterator AssetCatalogTreeItemIterator::end() const
-{
-  return AssetCatalogTreeItemIterator(wrapped_end_iterator_, wrapped_end_iterator_);
-}
-
-AssetCatalogTreeItem &AssetCatalogTreeItemIterator::operator*() const
-{
-  return wrapped_iterator_->second;
-}
-AssetCatalogTreeItem *AssetCatalogTreeItemIterator::operator->() const
-{
-  return &wrapped_iterator_->second;
-}
-
-AssetCatalogTreeItemIterator &AssetCatalogTreeItemIterator::operator++()
-{
-  ++wrapped_iterator_;
-  return *this;
-}
-AssetCatalogTreeItemIterator AssetCatalogTreeItemIterator::operator++(int)
-{
-  AssetCatalogTreeItemIterator copy(*this);
-  ++wrapped_iterator_;
-  return copy;
-}
-
-bool operator==(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
-{
-  return a.wrapped_iterator_ == b.wrapped_iterator_;
-}
-bool operator!=(AssetCatalogTreeItemIterator a, AssetCatalogTreeItemIterator b)
-{
-  return a.wrapped_iterator_ != b.wrapped_iterator_;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -428,22 +373,31 @@ void AssetCatalogTree::insert_item(AssetCatalog &catalog)
   }
 }
 
-AssetCatalogTreeItemIterator AssetCatalogTree::children()
-{
-  return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
-}
-
-void AssetCatalogTree::foreach_item(const AssetCatalogTreeItem::ItemIterFn callback) const
+void AssetCatalogTree::foreach_item(AssetCatalogTreeItem::ItemIterFn callback)
 {
   AssetCatalogTreeItem::foreach_item_recursive(children_, callback);
 }
 
-void AssetCatalogTreeItem::foreach_item_recursive(const AssetCatalogTreeItem::ChildMap &children,
+void AssetCatalogTreeItem::foreach_item_recursive(AssetCatalogTreeItem::ChildMap &children,
                                                   const ItemIterFn callback)
 {
-  for (const auto &[key, item] : children) {
+  for (auto &[key, item] : children) {
     callback(item);
     foreach_item_recursive(item.children_, callback);
+  }
+}
+
+void AssetCatalogTree::foreach_child(const ItemIterFn callback)
+{
+  for (auto &[key, item] : children_) {
+    callback(item);
+  }
+}
+
+void AssetCatalogTreeItem::foreach_child(const ItemIterFn callback)
+{
+  for (auto &[key, item] : children_) {
+    callback(item);
   }
 }
 
