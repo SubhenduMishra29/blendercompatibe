@@ -31,7 +31,7 @@ struct AssetLibraryReference;
 struct BlendHandle;
 struct FileList;
 struct FileSelection;
-struct UUID;
+struct bUUID;
 struct wmWindowManager;
 
 struct FileDirEntry;
@@ -75,7 +75,7 @@ void filelist_setfilter_options(struct FileList *filelist,
 void filelist_set_asset_catalog_filter_options(
     struct FileList *filelist,
     eFileSel_Params_AssetCatalogVisibility catalog_visibility,
-    const struct UUID *catalog_id);
+    const struct bUUID *catalog_id);
 void filelist_filter(struct FileList *filelist);
 void filelist_setlibrary(struct FileList *filelist,
                          const struct AssetLibraryReference *asset_library_ref);

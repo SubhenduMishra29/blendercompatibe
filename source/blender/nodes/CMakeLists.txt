@@ -139,6 +139,9 @@ set(SRC
   function/nodes/node_fn_input_string.cc
   function/nodes/node_fn_input_vector.cc
   function/nodes/node_fn_random_float.cc
+  function/nodes/node_fn_string_length.cc
+  function/nodes/node_fn_string_substring.cc
+  function/nodes/node_fn_value_to_string.cc
   function/node_function_util.cc
 
   geometry/nodes/legacy/node_geo_material_assign.cc
@@ -174,6 +177,7 @@ set(SRC
   geometry/nodes/node_geo_curve_endpoints.cc
   geometry/nodes/node_geo_curve_fill.cc
   geometry/nodes/node_geo_curve_length.cc
+  geometry/nodes/node_geo_curve_parameter.cc
   geometry/nodes/node_geo_curve_primitive_bezier_segment.cc
   geometry/nodes/node_geo_curve_primitive_circle.cc
   geometry/nodes/node_geo_curve_primitive_line.cc
@@ -187,6 +191,7 @@ set(SRC
   geometry/nodes/node_geo_curve_set_handles.cc
   geometry/nodes/node_geo_curve_spline_type.cc
   geometry/nodes/node_geo_curve_subdivide.cc
+  geometry/nodes/node_geo_curve_fillet.cc
   geometry/nodes/node_geo_curve_to_mesh.cc
   geometry/nodes/node_geo_curve_to_points.cc
   geometry/nodes/node_geo_curve_trim.cc
@@ -195,6 +200,7 @@ set(SRC
   geometry/nodes/node_geo_input_material.cc
   geometry/nodes/node_geo_input_normal.cc
   geometry/nodes/node_geo_input_position.cc
+  geometry/nodes/node_geo_input_tangent.cc
   geometry/nodes/node_geo_input_index.cc
   geometry/nodes/node_geo_is_viewport.cc
   geometry/nodes/node_geo_join_geometry.cc
@@ -223,6 +229,7 @@ set(SRC
   geometry/nodes/node_geo_realize_instances.cc
   geometry/nodes/node_geo_separate_components.cc
   geometry/nodes/node_geo_set_position.cc
+  geometry/nodes/node_geo_string_join.cc
   geometry/nodes/node_geo_subdivision_surface.cc
   geometry/nodes/node_geo_switch.cc
   geometry/nodes/node_geo_transform.cc

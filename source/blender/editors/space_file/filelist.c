@@ -372,7 +372,7 @@ typedef struct FileListFilter {
   short flags;
 
   eFileSel_Params_AssetCatalogVisibility asset_catalog_visibility;
-  UUID asset_catalog_id;
+  bUUID asset_catalog_id;
 } FileListFilter;
 
 /* FileListFilter.flags */
@@ -1054,7 +1054,7 @@ void filelist_setfilter_options(FileList *filelist,
 void filelist_set_asset_catalog_filter_options(
     FileList *filelist,
     eFileSel_Params_AssetCatalogVisibility catalog_visibility,
-    const UUID *catalog_id)
+    const bUUID *catalog_id)
 {
   bool update = false;
 

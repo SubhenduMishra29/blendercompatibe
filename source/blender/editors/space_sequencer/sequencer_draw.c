@@ -1328,13 +1328,13 @@ static bool check_seq_need_thumbnails(Sequence *seq, rctf *view_area)
   if (min_ii(seq->startdisp, seq->start) > view_area->xmax) {
     return false;
   }
-  else if (max_ii(seq->enddisp, seq->start + seq->len) < view_area->xmin) {
+  if (max_ii(seq->enddisp, seq->start + seq->len) < view_area->xmin) {
     return false;
   }
-  else if (seq->machine + 1.0f < view_area->ymin) {
+  if (seq->machine + 1.0f < view_area->ymin) {
     return false;
   }
-  else if (seq->machine > view_area->ymax) {
+  if (seq->machine > view_area->ymax) {
     return false;
   }
 
@@ -1393,7 +1393,10 @@ static float seq_thumbnail_get_start_frame(Sequence *seq, float frame_step, rctf
   return ((no_invisible_thumbs - 1) * frame_step) + seq->start;
 }
 
-static void thumbnail_start_job(void *data, short *stop, short *do_update, float *progress)
+static void thumbnail_start_job(void *data,
+                                short *stop,
+                                short *UNUSED(do_update),
+                                float *UNUSED(progress))
 {
   ThumbnailDrawJob *tj = data;
   float start_frame, frame_step;
@@ -1414,7 +1417,6 @@ static void thumbnail_start_job(void *data, short *stop, short *do_update, float
     }
     BLI_ghashIterator_step(&gh_iter);
   }
-  UNUSED_VARS(do_update, progress);
 }
 
 static SeqRenderData sequencer_thumbnail_context_init(const bContext *C)
@@ -1627,24 +1629,28 @@ static ImBuf *sequencer_thumbnail_closest_from_memory(const SeqRenderData *conte
   int frame_guaranteed = sequencer_thumbnail_closest_guaranteed_frame_get(seq, timeline_frame);
   ImBuf *ibuf_guaranteed = SEQ_get_thumbnail(context, seq, frame_guaranteed, crop, clipped);
 
-  if (ibuf_previous && ibuf_guaranteed &&
-      abs(frame_previous - timeline_frame) < abs(frame_guaranteed - timeline_frame)) {
+  ImBuf *closest_in_memory = NULL;
 
-    IMB_freeImBuf(ibuf_guaranteed);
-    return ibuf_previous;
-  }
-  else {
-    IMB_freeImBuf(ibuf_previous);
-    return ibuf_guaranteed;
+  if (ibuf_previous && ibuf_guaranteed) {
+    if (abs(frame_previous - timeline_frame) < abs(frame_guaranteed - timeline_frame)) {
+      IMB_freeImBuf(ibuf_guaranteed);
+      closest_in_memory = ibuf_previous;
+    }
+    else {
+      IMB_freeImBuf(ibuf_previous);
+      closest_in_memory = ibuf_guaranteed;
+    }
   }
 
   if (ibuf_previous == NULL) {
-    return ibuf_guaranteed;
+    closest_in_memory = ibuf_guaranteed;
   }
 
   if (ibuf_guaranteed == NULL) {
-    return ibuf_previous;
+    closest_in_memory = ibuf_previous;
   }
+
+  return closest_in_memory;
 }
 
 static void draw_seq_strip_thumbnail(View2D *v2d,
@@ -1751,7 +1757,7 @@ static void draw_seq_strip_thumbnail(View2D *v2d,
     }
     /* Store recently rendered frames, so they can be reused when zooming. */
     else if (!sequencer_thumbnail_v2d_is_navigating(C)) {
-      /* Clear images in frame range occupied bynew thumbnail. */
+      /* Clear images in frame range occupied by new thumbnail. */
       last_displayed_thumbnails_list_cleanup(
           last_displayed_thumbnails, thumb_x_start, thumb_x_end);
       /* Insert new thumbnail frame to list. */

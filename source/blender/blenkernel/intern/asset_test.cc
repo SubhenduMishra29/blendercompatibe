@@ -30,7 +30,7 @@ namespace blender::bke::tests {
 TEST(AssetMetadataTest, set_catalog_id)
 {
   AssetMetaData meta;
-  const UUID uuid = BLI_uuid_generate_random();
+  const bUUID uuid = BLI_uuid_generate_random();
 
   /* Test trivial values. */
   BKE_asset_metadata_catalog_id_clear(&meta);

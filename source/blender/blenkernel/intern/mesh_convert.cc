@@ -237,7 +237,7 @@ static int mesh_nurbs_displist_to_mdata(const Curve *cu,
   int a, b, ofs, vertcount, startvert, totvert = 0, totedge = 0, totloop = 0, totpoly = 0;
   int p1, p2, p3, p4, *index;
   const bool conv_polys = (
-      /* 2d polys are filled with DL_INDEX3 displists */
+      /* 2D polys are filled with #DispList.type == #DL_INDEX3. */
       (CU_DO_2DFILL(cu) == false) ||
       /* surf polys are never filled */
       BKE_curve_type_get(cu) == OB_SURF);
@@ -1118,7 +1118,7 @@ static Mesh *mesh_new_from_mball_object(Object *object)
    * balls and all evaluated child meta balls (since polygonization is only stored in the mother
    * ball).
    *
-   * We create empty mesh so scripters don't run into None objects. */
+   * Create empty mesh so script-authors don't run into None objects. */
   if (!DEG_is_evaluated_object(object) || object->runtime.curve_cache == nullptr ||
       BLI_listbase_is_empty(&object->runtime.curve_cache->disp)) {
     return (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)object->data)->name + 2);

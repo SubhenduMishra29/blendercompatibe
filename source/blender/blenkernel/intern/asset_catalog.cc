@@ -24,6 +24,11 @@
 #include "BLI_path_util.h"
 #include "BLI_string_ref.hh"
 
+/* For S_ISREG() and S_ISDIR() on Windows. */
+#ifdef WIN32
+#  include "BLI_winstuff.h"
+#endif
+
 #include <fstream>
 
 namespace blender::bke {
@@ -97,11 +102,11 @@ AssetCatalog *AssetCatalogService::create_catalog(const CatalogPath &catalog_pat
   BLI_assert_msg(!catalogs_.contains(catalog->catalog_id), "duplicate catalog ID not supported");
   catalogs_.add_new(catalog->catalog_id, std::move(catalog));
 
-  /* Ensure the new catalog gets written to disk. */
-  this->ensure_asset_library_root();
-  this->ensure_catalog_definition_file();
-  catalog_definition_file_->add_new(catalog_ptr);
-  catalog_definition_file_->write_to_disk();
+  if (catalog_definition_file_) {
+    /* Ensure the new catalog gets written to disk at some point. If there is no CDF in memory yet,
+     * it's enough to have the catalog known to the service as it'll be saved to a new file. */
+    catalog_definition_file_->add_new(catalog_ptr);
+  }
 
   /* Null when the service only writes, but didn't load anything
    * (#AssetCatalogService::load_from_disk() not called). */
@@ -120,52 +125,6 @@ static std::string asset_definition_default_file_path_from_dir(StringRef asset_l
                    asset_library_root.data(),
                    AssetCatalogService::DEFAULT_CATALOG_FILENAME.data());
   return file_path;
-}
-
-void AssetCatalogService::ensure_catalog_definition_file()
-{
-  if (catalog_definition_file_) {
-    return;
-  }
-
-  auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
-  cdf->file_path = asset_definition_default_file_path_from_dir(asset_library_root_);
-  catalog_definition_file_ = std::move(cdf);
-}
-
-bool AssetCatalogService::ensure_asset_library_root()
-{
-  /* TODO(@sybren): design a way to get such errors presented to users (or ensure that they never
-   * occur). */
-  if (asset_library_root_.empty()) {
-    std::cerr
-        << "AssetCatalogService: no asset library root configured, unable to ensure it exists."
-        << std::endl;
-    return false;
-  }
-
-  if (BLI_exists(asset_library_root_.data())) {
-    if (!BLI_is_dir(asset_library_root_.data())) {
-      std::cerr << "AssetCatalogService: " << asset_library_root_
-                << " exists but is not a directory, this is not a supported situation."
-                << std::endl;
-      return false;
-    }
-
-    /* Root directory exists, work is done. */
-    return true;
-  }
-
-  /* Ensure the root directory exists. */
-  std::error_code err_code;
-  if (!BLI_dir_create_recursive(asset_library_root_.data())) {
-    std::cerr << "AssetCatalogService: error creating directory " << asset_library_root_ << ": "
-              << err_code << std::endl;
-    return false;
-  }
-
-  /* Root directory has been created, work is done. */
-  return true;
 }
 
 void AssetCatalogService::load_from_disk()
@@ -252,8 +211,13 @@ void AssetCatalogService::merge_from_disk_before_writing()
 {
   /* TODO(Sybren): expand to support multiple CDFs. */
 
+  if (!catalog_definition_file_ || catalog_definition_file_->file_path.empty() ||
+      !BLI_is_file(catalog_definition_file_->file_path.c_str())) {
+    return;
+  }
+
   auto catalog_parsed_callback = [this](std::unique_ptr<AssetCatalog> catalog) {
-    const UUID catalog_id = catalog->catalog_id;
+    const bUUID catalog_id = catalog->catalog_id;
 
     /* The following two conditions could be or'ed together. Keeping them separated helps when
      * adding debug prints, breakpoints, etc. */
@@ -311,47 +275,37 @@ void AssetCatalogDefinitionFile::parse_catalog_file(
   }
 }
 
-std::unique_ptr<AssetCatalog> AssetCatalogDefinitionFile::parse_catalog_line(const StringRef line)
+bool AssetCatalogService::write_to_disk(const CatalogFilePath &directory_for_new_files)
 {
-  const char delim = ':';
-  const int64_t first_delim = line.find_first_of(delim);
-  if (first_delim == StringRef::not_found) {
-    std::cerr << "Invalid line in " << this->file_path << ": " << line << std::endl;
-    return std::unique_ptr<AssetCatalog>(nullptr);
+  /* TODO(Sybren): expand to support multiple CDFs. */
+
+  if (!catalog_definition_file_) {
+    if (catalogs_.is_empty() && deleted_catalogs_.is_empty()) {
+      /* Avoid saving anything, when there is nothing to save. */
+      return true; /* Writing nothing when there is nothing to write is still a success. */
+    }
+
+    /* A CDF has to be created to contain all current in-memory catalogs. */
+    const CatalogFilePath cdf_path = asset_definition_default_file_path_from_dir(
+        directory_for_new_files);
+    catalog_definition_file_ = construct_cdf_in_memory(cdf_path);
   }
 
-  /* Parse the catalog ID. */
-  const std::string id_as_string = line.substr(0, first_delim).trim();
-  UUID catalog_id;
-  const bool uuid_parsed_ok = BLI_uuid_parse_string(&catalog_id, id_as_string.c_str());
-  if (!uuid_parsed_ok) {
-    std::cerr << "Invalid UUID in " << this->file_path << ": " << line << std::endl;
-    return std::unique_ptr<AssetCatalog>(nullptr);
+  merge_from_disk_before_writing();
+  return catalog_definition_file_->write_to_disk();
+}
+
+std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::construct_cdf_in_memory(
+    const CatalogFilePath &file_path)
+{
+  auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
+  cdf->file_path = file_path;
+
+  for (auto &catalog : catalogs_.values()) {
+    cdf->add_new(catalog.get());
   }
 
-  /* Parse the path and simple name. */
-  const StringRef path_and_simple_name = line.substr(first_delim + 1);
-  const int64_t second_delim = path_and_simple_name.find_first_of(delim);
-
-  CatalogPath catalog_path;
-  std::string simple_name;
-  if (second_delim == 0) {
-    /* Delimiter as first character means there is no path. These lines are to be ignored. */
-    return std::unique_ptr<AssetCatalog>(nullptr);
-  }
-
-  if (second_delim == StringRef::not_found) {
-    /* No delimiter means no simple name, just treat it as all "path". */
-    catalog_path = path_and_simple_name;
-    simple_name = "";
-  }
-  else {
-    catalog_path = path_and_simple_name.substr(0, second_delim);
-    simple_name = path_and_simple_name.substr(second_delim + 1).trim();
-  }
-
-  catalog_path = AssetCatalog::cleanup_path(catalog_path);
-  return std::make_unique<AssetCatalog>(catalog_id, catalog_path, simple_name);
+  return cdf;
 }
 
 std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
@@ -366,6 +320,11 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
   return tree;
 }
 
+void AssetCatalogService::rebuild_tree()
+{
+  this->catalog_tree_ = read_into_tree();
+}
+
 /* ---------------------------------------------------------------------- */
 
 AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name,
@@ -378,11 +337,6 @@ AssetCatalogTreeItem::AssetCatalogTreeItem(StringRef name,
 AssetCatalogTreeItemIterator AssetCatalogTreeItem::children()
 {
   return AssetCatalogTreeItemIterator(children_.begin(), children_.end());
-}
-
-void AssetCatalogService::rebuild_tree()
-{
-  this->catalog_tree_ = read_into_tree();
 }
 
 const CatalogID &AssetCatalogTreeItem::get_catalog_id() const
@@ -476,7 +430,7 @@ void AssetCatalogTree::insert_item(AssetCatalog &catalog)
   BLI_assert_msg(!ELEM(catalog.path[0], '/', '\\'),
                  "Malformed catalog path: Path should be formatted like a relative path");
 
-  CatalogID unset_id = bke::UUID();
+  CatalogID unset_id = bke::bUUID();
   const char *next_slash_ptr;
   /* Looks more complicated than it is, this just iterates over path components. E.g.
    * "just/some/path" iterates over "just", then "some" then "path". */
@@ -544,15 +498,88 @@ void AssetCatalogDefinitionFile::add_new(AssetCatalog *catalog)
   catalogs_.add_new(catalog->catalog_id, catalog);
 }
 
-void AssetCatalogDefinitionFile::write_to_disk() const
+std::unique_ptr<AssetCatalog> AssetCatalogDefinitionFile::parse_catalog_line(const StringRef line)
 {
-  this->write_to_disk(this->file_path);
+  const char delim = ':';
+  const int64_t first_delim = line.find_first_of(delim);
+  if (first_delim == StringRef::not_found) {
+    std::cerr << "Invalid line in " << this->file_path << ": " << line << std::endl;
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
+
+  /* Parse the catalog ID. */
+  const std::string id_as_string = line.substr(0, first_delim).trim();
+  bUUID catalog_id;
+  const bool uuid_parsed_ok = BLI_uuid_parse_string(&catalog_id, id_as_string.c_str());
+  if (!uuid_parsed_ok) {
+    std::cerr << "Invalid UUID in " << this->file_path << ": " << line << std::endl;
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
+
+  /* Parse the path and simple name. */
+  const StringRef path_and_simple_name = line.substr(first_delim + 1);
+  const int64_t second_delim = path_and_simple_name.find_first_of(delim);
+
+  CatalogPath catalog_path;
+  std::string simple_name;
+  if (second_delim == 0) {
+    /* Delimiter as first character means there is no path. These lines are to be ignored. */
+    return std::unique_ptr<AssetCatalog>(nullptr);
+  }
+
+  if (second_delim == StringRef::not_found) {
+    /* No delimiter means no simple name, just treat it as all "path". */
+    catalog_path = path_and_simple_name;
+    simple_name = "";
+  }
+  else {
+    catalog_path = path_and_simple_name.substr(0, second_delim);
+    simple_name = path_and_simple_name.substr(second_delim + 1).trim();
+  }
+
+  catalog_path = AssetCatalog::cleanup_path(catalog_path);
+  return std::make_unique<AssetCatalog>(catalog_id, catalog_path, simple_name);
 }
 
-void AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &file_path) const
+bool AssetCatalogDefinitionFile::write_to_disk() const
 {
-  // TODO(@sybren): create a backup of the original file, if it exists.
-  std::ofstream output(file_path);
+  BLI_assert_msg(!this->file_path.empty(), "Writing to CDF requires its file path to be known");
+  return this->write_to_disk(this->file_path);
+}
+
+bool AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &dest_file_path) const
+{
+  const CatalogFilePath writable_path = dest_file_path + ".writing";
+  const CatalogFilePath backup_path = dest_file_path + "~";
+
+  if (!this->write_to_disk_unsafe(writable_path)) {
+    /* TODO: communicate what went wrong. */
+    return false;
+  }
+  if (BLI_exists(dest_file_path.c_str())) {
+    if (BLI_rename(dest_file_path.c_str(), backup_path.c_str())) {
+      /* TODO: communicate what went wrong. */
+      return false;
+    }
+  }
+  if (BLI_rename(writable_path.c_str(), dest_file_path.c_str())) {
+    /* TODO: communicate what went wrong. */
+    return false;
+  }
+
+  return true;
+}
+
+bool AssetCatalogDefinitionFile::write_to_disk_unsafe(const CatalogFilePath &dest_file_path) const
+{
+  char directory[PATH_MAX];
+  BLI_split_dir_part(dest_file_path.c_str(), directory, sizeof(directory));
+  if (!ensure_directory_exists(directory)) {
+    /* TODO(Sybren): pass errors to the UI somehow. */
+    return false;
+  }
+
+  std::ofstream output(dest_file_path);
 
   // TODO(@sybren): remember the line ending style that was originally read, then use that to write
   // the file again.
@@ -562,7 +589,8 @@ void AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &file_path)
   output << "# This is an Asset Catalog Definition file for Blender." << std::endl;
   output << "#" << std::endl;
   output << "# Empty lines and lines starting with `#` will be ignored." << std::endl;
-  output << "# Other lines are of the format \"CATALOG_ID /catalog/path/for/assets\"" << std::endl;
+  output << "# Other lines are of the format \"UUID:catalog/path/for/assets:simple catalog name\""
+         << std::endl;
   output << "" << std::endl;
 
   // Write the catalogs.
@@ -574,6 +602,44 @@ void AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &file_path)
     output << catalog->catalog_id << ":" << catalog->path << ":" << catalog->simple_name
            << std::endl;
   }
+  output.close();
+  return !output.bad();
+}
+
+bool AssetCatalogDefinitionFile::ensure_directory_exists(
+    const CatalogFilePath directory_path) const
+{
+  /* TODO(@sybren): design a way to get such errors presented to users (or ensure that they never
+   * occur). */
+  if (directory_path.empty()) {
+    std::cerr
+        << "AssetCatalogService: no asset library root configured, unable to ensure it exists."
+        << std::endl;
+    return false;
+  }
+
+  if (BLI_exists(directory_path.data())) {
+    if (!BLI_is_dir(directory_path.data())) {
+      std::cerr << "AssetCatalogService: " << directory_path
+                << " exists but is not a directory, this is not a supported situation."
+                << std::endl;
+      return false;
+    }
+
+    /* Root directory exists, work is done. */
+    return true;
+  }
+
+  /* Ensure the root directory exists. */
+  std::error_code err_code;
+  if (!BLI_dir_create_recursive(directory_path.data())) {
+    std::cerr << "AssetCatalogService: error creating directory " << directory_path << ": "
+              << err_code << std::endl;
+    return false;
+  }
+
+  /* Root directory has been created, work is done. */
+  return true;
 }
 
 AssetCatalog::AssetCatalog(const CatalogID catalog_id,

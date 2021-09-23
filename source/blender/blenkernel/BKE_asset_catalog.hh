@@ -36,7 +36,7 @@
 
 namespace blender::bke {
 
-using CatalogID = UUID;
+using CatalogID = bUUID;
 using CatalogPath = std::string;
 using CatalogPathComponent = std::string;
 /* Would be nice to be able to use `std::filesystem::path` for this, but it's currently not
@@ -56,12 +56,22 @@ class AssetCatalogService {
   static const CatalogFilePath DEFAULT_CATALOG_FILENAME;
 
  public:
+  AssetCatalogService() = default;
   explicit AssetCatalogService(const CatalogFilePath &asset_library_root);
 
   /** Load asset catalog definitions from the files found in the asset library. */
   void load_from_disk();
   /** Load asset catalog definitions from the given file or directory. */
   void load_from_disk(const CatalogFilePath &file_or_directory_path);
+
+  /**
+   * Write the catalog definitions to disk.
+   * The provided directory path is only used when there is no CDF loaded from disk yet but assets
+   * still have to be saved.
+   *
+   * Return true on success, which either means there were no in-memory categories to save, or the
+   * save was succesfful. */
+  bool write_to_disk(const CatalogFilePath &directory_for_new_files);
 
   /**
    * Merge on-disk changes into the in-memory asset catalogs.
@@ -109,15 +119,10 @@ class AssetCatalogService {
       const CatalogFilePath &catalog_definition_file_path);
 
   /**
-   * Ensure that an #AssetCatalogDefinitionFile exists in memory.
-   * This is used when no such file has been loaded, and a new catalog is to be created. */
-  void ensure_catalog_definition_file();
-
-  /**
-   * Ensure the asset library root directory exists, so that it can be written to.
-   * TODO(@sybren): this might move to the #AssetLibrary class instead, and just assumed to exist
-   * in this class. */
-  bool ensure_asset_library_root();
+   * Construct an in-memory catalog definition file (CDF) from the currently known catalogs.
+   * This object can then be processed further before saving to disk. */
+  std::unique_ptr<AssetCatalogDefinitionFile> construct_cdf_in_memory(
+      const CatalogFilePath &file_path);
 
   std::unique_ptr<AssetCatalogTree> read_into_tree();
   void rebuild_tree();
@@ -216,10 +221,19 @@ class AssetCatalogDefinitionFile {
 
   AssetCatalogDefinitionFile() = default;
 
-  /** Write the catalog definitions to the same file they were read from. */
-  void write_to_disk() const;
-  /** Write the catalog definitions to an arbitrary file path. */
-  void write_to_disk(const CatalogFilePath &) const;
+  /**
+   * Write the catalog definitions to the same file they were read from.
+   * Return true when the file was written correctly, false when there was a problem.
+   */
+  bool write_to_disk() const;
+  /**
+   * Write the catalog definitions to an arbitrary file path.
+   *
+   * Any existing file is backed up to "filename~". Any previously existing backup is overwritten.
+   *
+   * Return true when the file was written correctly, false when there was a problem.
+   */
+  bool write_to_disk(const CatalogFilePath &dest_file_path) const;
 
   bool contains(CatalogID catalog_id) const;
   /* Add a new catalog. Undefined behaviour if a catalog with the same ID was already added. */
@@ -235,6 +249,13 @@ class AssetCatalogDefinitionFile {
   Map<CatalogID, AssetCatalog *> catalogs_;
 
   std::unique_ptr<AssetCatalog> parse_catalog_line(StringRef line);
+
+  /**
+   * Write the catalog definitions to the given file path.
+   * Return true when the file was written correctly, false when there was a problem.
+   */
+  bool write_to_disk_unsafe(const CatalogFilePath &dest_file_path) const;
+  bool ensure_directory_exists(const CatalogFilePath directory_path) const;
 };
 
 /** Asset Catalog definition, containing a symbolic ID and a path that points to a node in the

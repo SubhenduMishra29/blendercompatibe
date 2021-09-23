@@ -64,7 +64,7 @@ typedef struct AssetMetaData {
    * Mapped to a path in the asset catalog hierarchy by an #AssetCatalogService.
    * Use #BKE_asset_metadata_catalog_id_set() to ensure a valid ID is set.
    */
-  struct UUID catalog_id;
+  struct bUUID catalog_id;
   /**
    * Short name of the asset's catalog. This is for debugging purposes only, to allow (partial)
    * reconstruction of asset catalogs in the unfortunate case that the mapping from catalog UUID to
