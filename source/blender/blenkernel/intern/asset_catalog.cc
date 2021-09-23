@@ -476,6 +476,7 @@ void AssetCatalogTree::insert_item(AssetCatalog &catalog)
   BLI_assert_msg(!ELEM(catalog.path[0], '/', '\\'),
                  "Malformed catalog path: Path should be formatted like a relative path");
 
+  CatalogID unset_id = bke::UUID();
   const char *next_slash_ptr;
   /* Looks more complicated than it is, this just iterates over path components. E.g.
    * "just/some/path" iterates over "just", then "some" then "path". */
@@ -484,19 +485,28 @@ void AssetCatalogTree::insert_item(AssetCatalog &catalog)
        name_begin = next_slash_ptr ? next_slash_ptr + 1 : nullptr) {
     next_slash_ptr = BLI_path_slash_find(name_begin);
 
+    const bool is_last_component = next_slash_ptr == nullptr;
     /* Note that this won't be null terminated. */
-    StringRef component_name = next_slash_ptr ?
-                                   StringRef(name_begin, next_slash_ptr - name_begin) :
-                                   /* Last component in the path. */
-                                   name_begin;
+    StringRef component_name = is_last_component ?
+                                   name_begin :
+                                   StringRef(name_begin, next_slash_ptr - name_begin);
 
     /* Insert new tree element - if no matching one is there yet! */
-    auto [item, was_inserted] = insert_to_map->emplace(
-        component_name, AssetCatalogTreeItem(component_name, catalog.catalog_id, parent));
+    auto [key_and_item, was_inserted] = insert_to_map->emplace(
+        component_name,
+        AssetCatalogTreeItem(
+            component_name, is_last_component ? catalog.catalog_id : unset_id, parent));
+    AssetCatalogTreeItem &item = key_and_item->second;
+
+    /* If full path of this catalog already exists as parent path of a previously read catalog, we
+     * can ensure this tree item's UUID is set here. */
+    if (is_last_component && (item.catalog_id_ == unset_id)) {
+      item.catalog_id_ = catalog.catalog_id;
+    }
 
     /* Walk further into the path (no matter if a new item was created or not). */
-    parent = &item->second;
-    insert_to_map = &item->second.children_;
+    parent = &item;
+    insert_to_map = &item.children_;
   }
 }
 

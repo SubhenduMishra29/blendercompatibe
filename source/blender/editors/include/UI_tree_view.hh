@@ -186,6 +186,7 @@ class uiAbstractTreeViewItem : public uiTreeViewItemContainer {
    * last redraw to this item. If sub-classes introduce more advanced state they should override
    * this and make update their state accordingly. */
   virtual void update_from_old(uiAbstractTreeViewItem &old);
+  virtual bool matches(const uiAbstractTreeViewItem &other) const;
 
   const uiAbstractTreeView &get_tree_view() const;
   int count_parents() const;

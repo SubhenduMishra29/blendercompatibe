@@ -30,3 +30,5 @@ struct AssetLibrary;
 blender::bke::AssetCatalog *ED_asset_catalog_add(blender::bke::AssetLibrary *library,
                                                  blender::StringRefNull name,
                                                  blender::StringRef parent_path = nullptr);
+void ED_asset_catalog_remove(blender::bke::AssetLibrary *library,
+                             const blender::bke::CatalogID &catalog_id);

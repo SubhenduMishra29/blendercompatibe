@@ -303,7 +303,7 @@ static void ASSET_OT_list_refresh(struct wmOperatorType *ot)
 
 /* -------------------------------------------------------------------- */
 
-static bool asset_catalog_new_poll(bContext *C)
+static bool asset_catalog_operator_poll(bContext *C)
 {
   const SpaceFile *sfile = CTX_wm_space_file(C);
   return asset_operation_poll(C) && sfile && ED_fileselect_active_asset_library_get(sfile);
@@ -320,6 +320,8 @@ static int asset_catalog_new_exec(bContext *C, wmOperator *op)
 
   MEM_freeN(parent_path);
 
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+
   return OPERATOR_FINISHED;
 }
 
@@ -332,7 +334,7 @@ static void ASSET_OT_catalog_new(struct wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = asset_catalog_new_exec;
-  ot->poll = asset_catalog_new_poll;
+  ot->poll = asset_catalog_operator_poll;
 
   RNA_def_string(ot->srna,
                  "parent_path",
@@ -340,6 +342,43 @@ static void ASSET_OT_catalog_new(struct wmOperatorType *ot)
                  0,
                  "Parent Path",
                  "Optional path defining the location to put the new catalog under");
+}
+
+static int asset_catalog_delete_exec(bContext *C, wmOperator *op)
+{
+  SpaceFile *sfile = CTX_wm_space_file(C);
+  struct AssetLibrary *asset_library = ED_fileselect_active_asset_library_get(sfile);
+  char *catalog_id_str = RNA_string_get_alloc(op->ptr, "catalog_id", nullptr, 0, nullptr);
+  bke::CatalogID catalog_id;
+  if (!BLI_uuid_parse_string(&catalog_id, catalog_id_str)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  ED_asset_catalog_remove(reinterpret_cast<blender::bke::AssetLibrary *>(asset_library),
+                          catalog_id);
+
+  MEM_freeN(catalog_id_str);
+
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+static void ASSET_OT_catalog_delete(struct wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Delete Asset Catalog";
+  ot->description =
+      "Remove an asset catalog from the asset library (contained assets will not be affected and "
+      "show up as unassigned)";
+  ot->idname = "ASSET_OT_catalog_delete";
+
+  /* api callbacks */
+  ot->exec = asset_catalog_delete_exec;
+  ot->invoke = WM_operator_confirm;
+  ot->poll = asset_catalog_operator_poll;
+
+  RNA_def_string(ot->srna, "catalog_id", nullptr, 0, "Catalog ID", "ID of the catalog to delete");
 }
 
 /* -------------------------------------------------------------------- */
@@ -350,6 +389,7 @@ void ED_operatortypes_asset(void)
   WM_operatortype_append(ASSET_OT_clear);
 
   WM_operatortype_append(ASSET_OT_catalog_new);
+  WM_operatortype_append(ASSET_OT_catalog_delete);
 
   WM_operatortype_append(ASSET_OT_list_refresh);
 }

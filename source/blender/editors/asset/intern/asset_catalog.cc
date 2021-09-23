@@ -81,3 +81,12 @@ AssetCatalog *ED_asset_catalog_add(blender::bke::AssetLibrary *library,
 
   return library->catalog_service->create_catalog(fullpath);
 }
+
+void ED_asset_catalog_remove(blender::bke::AssetLibrary *library, const CatalogID &catalog_id)
+{
+  if (!library || !library->catalog_service) {
+    return;
+  }
+
+  library->catalog_service->delete_catalog(catalog_id);
+}
