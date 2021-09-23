@@ -239,42 +239,6 @@ void AssetCatalogService::merge_from_disk_before_writing()
                                                catalog_parsed_callback);
 }
 
-void AssetCatalogDefinitionFile::parse_catalog_file(
-    const CatalogFilePath &catalog_definition_file_path,
-    AssetCatalogParsedFn catalog_loaded_callback)
-{
-  std::fstream infile(catalog_definition_file_path);
-  std::string line;
-  while (std::getline(infile, line)) {
-    const StringRef trimmed_line = StringRef(line).trim();
-    if (trimmed_line.is_empty() || trimmed_line[0] == '#') {
-      continue;
-    }
-
-    std::unique_ptr<AssetCatalog> catalog = this->parse_catalog_line(trimmed_line);
-    if (!catalog) {
-      continue;
-    }
-
-    AssetCatalog *non_owning_ptr = catalog.get();
-    const bool keep_catalog = catalog_loaded_callback(std::move(catalog));
-    if (!keep_catalog) {
-      continue;
-    }
-
-    if (this->contains(non_owning_ptr->catalog_id)) {
-      std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
-                << non_owning_ptr->catalog_id << " in the same file, using first occurrence."
-                << std::endl;
-      /* Don't store 'catalog'; unique_ptr will free its memory. */
-      continue;
-    }
-
-    /* The AssetDefinitionFile should include this catalog when writing it back to disk. */
-    this->add_new(non_owning_ptr);
-  }
-}
-
 bool AssetCatalogService::write_to_disk(const CatalogFilePath &directory_for_new_files)
 {
   /* TODO(Sybren): expand to support multiple CDFs. */
@@ -496,6 +460,42 @@ bool AssetCatalogDefinitionFile::contains(const CatalogID catalog_id) const
 void AssetCatalogDefinitionFile::add_new(AssetCatalog *catalog)
 {
   catalogs_.add_new(catalog->catalog_id, catalog);
+}
+
+void AssetCatalogDefinitionFile::parse_catalog_file(
+    const CatalogFilePath &catalog_definition_file_path,
+    AssetCatalogParsedFn catalog_loaded_callback)
+{
+  std::fstream infile(catalog_definition_file_path);
+  std::string line;
+  while (std::getline(infile, line)) {
+    const StringRef trimmed_line = StringRef(line).trim();
+    if (trimmed_line.is_empty() || trimmed_line[0] == '#') {
+      continue;
+    }
+
+    std::unique_ptr<AssetCatalog> catalog = this->parse_catalog_line(trimmed_line);
+    if (!catalog) {
+      continue;
+    }
+
+    AssetCatalog *non_owning_ptr = catalog.get();
+    const bool keep_catalog = catalog_loaded_callback(std::move(catalog));
+    if (!keep_catalog) {
+      continue;
+    }
+
+    if (this->contains(non_owning_ptr->catalog_id)) {
+      std::cerr << catalog_definition_file_path << ": multiple definitions of catalog "
+                << non_owning_ptr->catalog_id << " in the same file, using first occurrence."
+                << std::endl;
+      /* Don't store 'catalog'; unique_ptr will free its memory. */
+      continue;
+    }
+
+    /* The AssetDefinitionFile should include this catalog when writing it back to disk. */
+    this->add_new(non_owning_ptr);
+  }
 }
 
 std::unique_ptr<AssetCatalog> AssetCatalogDefinitionFile::parse_catalog_line(const StringRef line)
