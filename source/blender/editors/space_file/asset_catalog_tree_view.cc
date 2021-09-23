@@ -92,21 +92,20 @@ class AssetCatalogTreeViewItem : public uiBasicTreeViewItem {
     }
 
     PointerRNA *props;
-    char uuid_buffer[UUID_STRING_LEN] = "";
+    char catalog_id_str_buffer[UUID_STRING_LEN] = "";
     CatalogID catalog_id = catalog_.get_catalog_id();
-    if (BLI_uuid_is_nil(catalog_id)) {
-      /* There's not much we can do without a catalog ID. */
-      return;
-    }
 
-    BLI_uuid_format(uuid_buffer, catalog_id);
+    BLI_uuid_format(catalog_id_str_buffer, catalog_id);
 
     props = UI_but_extra_operator_icon_add(
         button(), "ASSET_OT_catalog_new", WM_OP_INVOKE_DEFAULT, ICON_ADD);
-    RNA_string_set(props, "parent_path", uuid_buffer);
-    props = UI_but_extra_operator_icon_add(
-        button(), "ASSET_OT_catalog_delete", WM_OP_INVOKE_DEFAULT, ICON_X);
-    RNA_string_set(props, "catalog_id", uuid_buffer);
+    RNA_string_set(props, "parent_path", catalog_.catalog_path().c_str());
+    /* Can't actually delete items without catalog ID. */
+    if (!BLI_uuid_is_nil(catalog_id)) {
+      props = UI_but_extra_operator_icon_add(
+          button(), "ASSET_OT_catalog_delete", WM_OP_INVOKE_DEFAULT, ICON_X);
+      RNA_string_set(props, "catalog_id", catalog_id_str_buffer);
+    }
   }
 };
 
