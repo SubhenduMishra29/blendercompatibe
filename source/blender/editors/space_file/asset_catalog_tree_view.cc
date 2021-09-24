@@ -124,9 +124,8 @@ void AssetCatalogTreeView::build_tree()
     WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
   });
 
-  if (library_) {
-    AssetCatalogTree *catalog_tree = library_->catalog_service->get_catalog_tree();
-
+  if (AssetCatalogTree *catalog_tree = library_ ? library_->catalog_service->get_catalog_tree() :
+                                                  nullptr) {
     catalog_tree->foreach_child([this](AssetCatalogTreeItem &item) {
       uiBasicTreeViewItem &child_view_item = build_recursive(*this, item);
 
