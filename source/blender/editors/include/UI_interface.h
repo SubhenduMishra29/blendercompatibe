@@ -84,9 +84,9 @@ typedef struct uiBlock uiBlock;
 typedef struct uiBut uiBut;
 typedef struct uiLayout uiLayout;
 typedef struct uiPopupBlockHandle uiPopupBlockHandle;
-/* C handle for C++ #uiAbstractTreeView type. */
+/* C handle for C++ #ui::AbstractTreeView type. */
 typedef struct uiTreeViewHandle uiTreeViewHandle;
-/* C handle for C++ #uiAbstractTreeViewItem type. */
+/* C handle for C++ #ui::AbstractTreeViewItem type. */
 typedef struct uiTreeViewItemHandle uiTreeViewItemHandle;
 
 /* Defines */

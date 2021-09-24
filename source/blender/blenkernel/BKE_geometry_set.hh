@@ -25,6 +25,7 @@
 
 #include "BLI_float3.hh"
 #include "BLI_float4x4.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_hash.hh"
 #include "BLI_map.hh"
 #include "BLI_set.hh"
@@ -292,6 +293,21 @@ struct GeometrySet {
 
   bool owns_direct_data() const;
   void ensure_owns_direct_data();
+
+  using AttributeForeachCallback =
+      blender::FunctionRef<void(const blender::bke::AttributeIDRef &attribute_id,
+                                const AttributeMetaData &meta_data,
+                                const GeometryComponent &component)>;
+
+  void attribute_foreach(blender::Span<GeometryComponentType> component_types,
+                         bool include_instances,
+                         AttributeForeachCallback callback) const;
+
+  void gather_attributes_for_propagation(
+      blender::Span<GeometryComponentType> component_types,
+      GeometryComponentType dst_component_type,
+      bool include_instances,
+      blender::Map<blender::bke::AttributeIDRef, AttributeKind> &r_attributes) const;
 
   /* Utility methods for creation. */
   static GeometrySet create_with_mesh(
@@ -597,6 +613,9 @@ class InstancesComponent : public GeometryComponent {
 
   int attribute_domain_size(const AttributeDomain domain) const final;
 
+  void foreach_referenced_geometry(
+      blender::FunctionRef<void(const GeometrySet &geometry_set)> callback) const;
+
   bool is_empty() const final;
 
   bool owns_direct_data() const override;
@@ -694,6 +713,14 @@ class AnonymousAttributeFieldInput : public fn::FieldInput {
   AnonymousAttributeFieldInput(StrongAnonymousAttributeID anonymous_id, const CPPType &type)
       : fn::FieldInput(type, anonymous_id.debug_name()), anonymous_id_(std::move(anonymous_id))
   {
+  }
+
+  template<typename T> static fn::Field<T> Create(StrongAnonymousAttributeID anonymous_id)
+  {
+    const CPPType &type = CPPType::get<T>();
+    auto field_input = std::make_shared<AnonymousAttributeFieldInput>(std::move(anonymous_id),
+                                                                      type);
+    return fn::Field<T>{field_input};
   }
 
   const GVArray *get_varray_for_context(const fn::FieldContext &context,

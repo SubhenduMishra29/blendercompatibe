@@ -18,6 +18,7 @@
  * \ingroup bli
  */
 
+#include "BLI_assert.h"
 #include "BLI_uuid.h"
 
 #include <cstdio>
@@ -26,6 +27,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <tuple>
 
 /* Ensure the UUID struct doesn't have any padding, to be compatible with memcmp(). */
 static_assert(sizeof(bUUID) == 16, "expect UUIDs to be 128 bit exactly");
@@ -139,7 +141,22 @@ std::ostream &operator<<(std::ostream &stream, bUUID uuid)
   return stream;
 }
 
-namespace blender::bke {
+namespace blender {
+
+bUUID::bUUID(const std::initializer_list<uint32_t> field_values)
+{
+  BLI_assert_msg(field_values.size() == 11, "bUUID requires 5 regular fields + 6 `node` values");
+
+  const auto *field_iter = field_values.begin();
+
+  this->time_low = *field_iter++;
+  this->time_mid = static_cast<uint16_t>(*field_iter++);
+  this->time_hi_and_version = static_cast<uint16_t>(*field_iter++);
+  this->clock_seq_hi_and_reserved = static_cast<uint8_t>(*field_iter++);
+  this->clock_seq_low = static_cast<uint8_t>(*field_iter++);
+
+  std::copy(field_iter, field_values.end(), this->node);
+}
 
 bUUID::bUUID(const std::string &string_formatted_uuid)
 {
@@ -163,9 +180,32 @@ uint64_t bUUID::hash() const
   return uuid_as_int64[0] ^ uuid_as_int64[1];
 }
 
-bool operator==(bUUID uuid1, bUUID uuid2)
+bool operator==(const bUUID uuid1, const bUUID uuid2)
 {
   return BLI_uuid_equal(uuid1, uuid2);
 }
 
-}  // namespace blender::bke
+bool operator!=(const bUUID uuid1, const bUUID uuid2)
+{
+  return !(uuid1 == uuid2);
+}
+
+bool operator<(const bUUID uuid1, const bUUID uuid2)
+{
+  auto simple_fields1 = std::tie(uuid1.time_low,
+                                 uuid1.time_mid,
+                                 uuid1.time_hi_and_version,
+                                 uuid1.clock_seq_hi_and_reserved,
+                                 uuid1.clock_seq_low);
+  auto simple_fields2 = std::tie(uuid2.time_low,
+                                 uuid2.time_mid,
+                                 uuid2.time_hi_and_version,
+                                 uuid2.clock_seq_hi_and_reserved,
+                                 uuid2.clock_seq_low);
+  if (simple_fields1 == simple_fields2) {
+    return std::memcmp(uuid1.node, uuid2.node, sizeof(uuid1.node)) < 0;
+  }
+  return simple_fields1 < simple_fields2;
+}
+
+}  // namespace blender

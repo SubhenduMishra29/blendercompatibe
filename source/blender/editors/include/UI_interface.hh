@@ -26,10 +26,10 @@
 
 struct uiBlock;
 namespace blender::ui {
-class uiAbstractTreeView;
+class AbstractTreeView;
 }
 
-blender::ui::uiAbstractTreeView *UI_block_add_view(
-    uiBlock *block,
+blender::ui::AbstractTreeView *UI_block_add_view(
+    uiBlock &block,
     blender::StringRef idname,
-    std::unique_ptr<blender::ui::uiAbstractTreeView> tree_view);
+    std::unique_ptr<blender::ui::AbstractTreeView> tree_view);

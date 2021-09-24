@@ -445,6 +445,7 @@ typedef struct bNodeLink {
 #define NODE_LINK_TEST (1 << 2)           /* free test flag, undefined */
 #define NODE_LINK_TEMP_HIGHLIGHT (1 << 3) /* Link is highlighted for picking. */
 #define NODE_LINK_MUTED (1 << 4)          /* Link is muted. */
+#define NODE_LINK_DRAGGED (1 << 5)        /* Node link is being dragged by the user. */
 
 /* tree->edit_quality/tree->render_quality */
 #define NTREE_QUALITY_HIGH 0
@@ -458,6 +459,8 @@ typedef struct bNodeLink {
 #define NTREE_CHUNKSIZE_256 256
 #define NTREE_CHUNKSIZE_512 512
 #define NTREE_CHUNKSIZE_1024 1024
+
+struct FieldInferencingInterface;
 
 /* the basis for a Node tree, all links and nodes reside internal here */
 /* only re-usable node trees are in the library though,
@@ -481,6 +484,8 @@ typedef struct bNodeTree {
   float view_center[2];
 
   ListBase nodes, links;
+  /** Information about how inputs and outputs of the node group interact with fields. */
+  struct FieldInferencingInterface *field_inferencing_interface;
 
   /** Set init on fileread. */
   int type, init;
@@ -575,6 +580,9 @@ typedef enum eNodeTreeUpdate {
   NTREE_UPDATE_NODES = (1 << 1),     /* nodes or sockets have been added or removed */
   NTREE_UPDATE_GROUP_IN = (1 << 4),  /* group inputs have changed */
   NTREE_UPDATE_GROUP_OUT = (1 << 5), /* group outputs have changed */
+  /* The field interface has changed. So e.g. an output that was always a field before is not
+   * anymore. This implies that the field type inferencing has to be done again. */
+  NTREE_UPDATE_FIELD_INFERENCING = (1 << 6),
   /* group has changed (generic flag including all other group flags) */
   NTREE_UPDATE_GROUP = (NTREE_UPDATE_GROUP_IN | NTREE_UPDATE_GROUP_OUT),
 } eNodeTreeUpdate;
@@ -1494,6 +1502,16 @@ typedef struct NodeGeometryAttributeCapture {
   int8_t domain;
 } NodeGeometryAttributeCapture;
 
+typedef struct NodeGeometryStringToCurves {
+  /* GeometryNodeStringToCurvesOverflowMode */
+  uint8_t overflow;
+  /* GeometryNodeStringToCurvesAlignXMode */
+  uint8_t align_x;
+  /* GeometryNodeStringToCurvesAlignYMode */
+  uint8_t align_y;
+  char _pad[1];
+} NodeGeometryStringToCurves;
+
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0
 #define NODE_SCRIPT_EXTERNAL 1
@@ -1972,6 +1990,11 @@ typedef enum GeometryNodePointDistributeMode {
   GEO_NODE_POINT_DISTRIBUTE_POISSON = 1,
 } GeometryNodePointDistributeMode;
 
+typedef enum GeometryNodeDistributePointsOnFacesMode {
+  GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM = 0,
+  GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON = 1,
+} GeometryNodeDistributePointsOnFacesMode;
+
 typedef enum GeometryNodeRotatePointsType {
   GEO_NODE_POINT_ROTATE_TYPE_EULER = 0,
   GEO_NODE_POINT_ROTATE_TYPE_AXIS_ANGLE = 1,
@@ -2084,6 +2107,28 @@ typedef enum GeometryNodeCurveFillMode {
   GEO_NODE_CURVE_FILL_MODE_TRIANGULATED = 0,
   GEO_NODE_CURVE_FILL_MODE_NGONS = 1,
 } GeometryNodeCurveFillMode;
+
+typedef enum GeometryNodeStringToCurvesOverflowMode {
+  GEO_NODE_STRING_TO_CURVES_MODE_OVERFLOW = 0,
+  GEO_NODE_STRING_TO_CURVES_MODE_SCALE_TO_FIT = 1,
+  GEO_NODE_STRING_TO_CURVES_MODE_TRUNCATE = 2,
+} GeometryNodeStringToCurvesOverflowMode;
+
+typedef enum GeometryNodeStringToCurvesAlignXMode {
+  GEO_NODE_STRING_TO_CURVES_ALIGN_X_LEFT = 0,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_X_CENTER = 1,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_X_RIGHT = 2,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_X_JUSTIFY = 3,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_X_FLUSH = 4,
+} GeometryNodeStringToCurvesAlignXMode;
+
+typedef enum GeometryNodeStringToCurvesAlignYMode {
+  GEO_NODE_STRING_TO_CURVES_ALIGN_Y_TOP_BASELINE = 0,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_Y_TOP = 1,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_Y_MIDDLE = 2,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_Y_BOTTOM_BASELINE = 3,
+  GEO_NODE_STRING_TO_CURVES_ALIGN_Y_BOTTOM = 4,
+} GeometryNodeStringToCurvesAlignYMode;
 
 #ifdef __cplusplus
 }

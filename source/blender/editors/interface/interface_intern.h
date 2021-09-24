@@ -496,7 +496,7 @@ struct uiBlock {
 
   ListBase contexts;
 
-  /** A block contain store "views" on data-sets. Currently tree-views (#uiAbstractTreeView) only.
+  /** A block can store "views" on data-sets. Currently tree-views (#AbstractTreeView) only.
    * Others are imaginable, e.g. table-views, grid-views, etc. These are stored here to support
    * state that is persistent over redraws (e.g. collapsed tree-view items). */
   ListBase views;

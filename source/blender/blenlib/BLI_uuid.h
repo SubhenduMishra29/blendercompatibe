@@ -68,24 +68,41 @@ bool BLI_uuid_parse_string(bUUID *uuid, const char *buffer) ATTR_NONNULL();
 #ifdef __cplusplus
 }
 
+#  include <initializer_list>
 #  include <ostream>
 
 /** Output the UUID as formatted ASCII string, see #BLI_uuid_format(). */
 std::ostream &operator<<(std::ostream &stream, bUUID uuid);
 
-namespace blender::bke {
+namespace blender {
 
 class bUUID : public ::bUUID {
  public:
+  /**
+   * Default constructor, used with `bUUID value{};`, will initialize to the nil UUID.
+   */
   bUUID() = default;
+
+  /** Initialize from the bUUID DNA struct. */
   bUUID(const ::bUUID &struct_uuid);
+
+  /** Initialize from 11 integers, 5 for the regular fields and 6 for the `node` array. */
+  bUUID(std::initializer_list<uint32_t> field_values);
+
+  /** Initialize by parsing the string; undefined behavior when the string is invalid. */
   explicit bUUID(const std::string &string_formatted_uuid);
 
   uint64_t hash() const;
-};
+};  // namespace blender
 
 bool operator==(bUUID uuid1, bUUID uuid2);
+bool operator!=(bUUID uuid1, bUUID uuid2);
 
-}  // namespace blender::bke
+/**
+ * Lexicographic comparison of the UUIDs.
+ * Equivalent to string comparison on the formatted UUIDs. */
+bool operator<(bUUID uuid1, bUUID uuid2);
+
+}  // namespace blender
 
 #endif

@@ -136,6 +136,7 @@ set(SRC
   function/nodes/node_fn_boolean_math.cc
   function/nodes/node_fn_float_compare.cc
   function/nodes/node_fn_float_to_int.cc
+  function/nodes/node_fn_input_special_characters.cc
   function/nodes/node_fn_input_string.cc
   function/nodes/node_fn_input_vector.cc
   function/nodes/node_fn_random_float.cc
@@ -146,6 +147,7 @@ set(SRC
 
   geometry/nodes/legacy/node_geo_material_assign.cc
   geometry/nodes/legacy/node_geo_select_by_material.cc
+  geometry/nodes/legacy/node_geo_point_distribute.cc
 
   geometry/nodes/node_geo_align_rotation_to_vector.cc
   geometry/nodes/node_geo_attribute_capture.cc
@@ -196,6 +198,7 @@ set(SRC
   geometry/nodes/node_geo_curve_to_points.cc
   geometry/nodes/node_geo_curve_trim.cc
   geometry/nodes/node_geo_delete_geometry.cc
+  geometry/nodes/node_geo_distribute_points_on_faces.cc
   geometry/nodes/node_geo_edge_split.cc
   geometry/nodes/node_geo_input_material.cc
   geometry/nodes/node_geo_input_normal.cc
@@ -218,7 +221,6 @@ set(SRC
   geometry/nodes/node_geo_mesh_subdivide.cc
   geometry/nodes/node_geo_mesh_to_curve.cc
   geometry/nodes/node_geo_object_info.cc
-  geometry/nodes/node_geo_point_distribute.cc
   geometry/nodes/node_geo_point_instance.cc
   geometry/nodes/node_geo_point_rotate.cc
   geometry/nodes/node_geo_point_scale.cc
@@ -230,6 +232,7 @@ set(SRC
   geometry/nodes/node_geo_separate_components.cc
   geometry/nodes/node_geo_set_position.cc
   geometry/nodes/node_geo_string_join.cc
+  geometry/nodes/node_geo_string_to_curves.cc
   geometry/nodes/node_geo_subdivision_surface.cc
   geometry/nodes/node_geo_switch.cc
   geometry/nodes/node_geo_transform.cc

@@ -31,11 +31,11 @@ namespace blender::ui {
 /* ---------------------------------------------------------------------- */
 
 /**
- * Add a tree to the container. This is the only place where items should be added, it handles
+ * Add a tree-item to the container. This is the only place where items should be added, it handles
  * important invariants!
  */
-uiAbstractTreeViewItem &uiTreeViewItemContainer::add_tree_item(
-    std::unique_ptr<uiAbstractTreeViewItem> item)
+AbstractTreeViewItem &TreeViewItemContainer::add_tree_item(
+    std::unique_ptr<AbstractTreeViewItem> item)
 {
   children_.append(std::move(item));
 
@@ -44,20 +44,20 @@ uiAbstractTreeViewItem &uiTreeViewItemContainer::add_tree_item(
     root_ = this;
   }
 
-  uiAbstractTreeViewItem &added_item = *children_.last();
+  AbstractTreeViewItem &added_item = *children_.last();
   added_item.root_ = root_;
   if (root_ != this) {
-    /* Any item that isn't the root can be assumed to the a #uiAbstractTreeViewItem. Not entirely
+    /* Any item that isn't the root can be assumed to the a #AbstractTreeViewItem. Not entirely
      * nice to static_cast this, but well... */
-    added_item.parent_ = static_cast<uiAbstractTreeViewItem *>(this);
+    added_item.parent_ = static_cast<AbstractTreeViewItem *>(this);
   }
 
   return added_item;
 }
 
-void uiTreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptions options) const
+void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptions options) const
 {
-  for (auto &child : children_) {
+  for (const auto &child : children_) {
     iter_fn(*child);
     if (bool(options & IterOptions::SkipCollapsed) && child->is_collapsed()) {
       continue;
@@ -69,24 +69,24 @@ void uiTreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOpt
 
 /* ---------------------------------------------------------------------- */
 
-void uiAbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) const
+void AbstractTreeView::foreach_item(ItemIterFn iter_fn, IterOptions options) const
 {
   foreach_item_recursive(iter_fn, options);
 }
 
-void uiAbstractTreeView::build_layout_from_tree(const uiTreeViewLayoutBuilder &builder)
+void AbstractTreeView::build_layout_from_tree(const TreeViewLayoutBuilder &builder)
 {
   uiLayout *prev_layout = builder.current_layout();
 
   uiLayoutColumn(prev_layout, true);
 
-  foreach_item([&builder](uiAbstractTreeViewItem &item) { builder.build_row(item); },
+  foreach_item([&builder](AbstractTreeViewItem &item) { builder.build_row(item); },
                IterOptions::SkipCollapsed);
 
   UI_block_layout_set_current(&builder.block(), prev_layout);
 }
 
-void uiAbstractTreeView::update_from_old(uiBlock &new_block)
+void AbstractTreeView::update_from_old(uiBlock &new_block)
 {
   uiBlock *old_block = new_block.oldblock;
   if (!old_block) {
@@ -99,15 +99,15 @@ void uiAbstractTreeView::update_from_old(uiBlock &new_block)
     return;
   }
 
-  uiAbstractTreeView &old_view = reinterpret_cast<uiAbstractTreeView &>(*old_view_handle);
+  AbstractTreeView &old_view = reinterpret_cast<AbstractTreeView &>(*old_view_handle);
   update_children_from_old_recursive(*this, old_view);
 }
 
-void uiAbstractTreeView::update_children_from_old_recursive(
-    const uiTreeViewItemContainer &new_items, const uiTreeViewItemContainer &old_items)
+void AbstractTreeView::update_children_from_old_recursive(const TreeViewItemContainer &new_items,
+                                                          const TreeViewItemContainer &old_items)
 {
   for (const auto &new_item : new_items.children_) {
-    uiAbstractTreeViewItem *matching_old_item = find_matching_child(*new_item, old_items);
+    AbstractTreeViewItem *matching_old_item = find_matching_child(*new_item, old_items);
     if (!matching_old_item) {
       continue;
     }
@@ -119,11 +119,11 @@ void uiAbstractTreeView::update_children_from_old_recursive(
   }
 }
 
-uiAbstractTreeViewItem *uiAbstractTreeView::find_matching_child(
-    const uiAbstractTreeViewItem &lookup_item, const uiTreeViewItemContainer &items)
+AbstractTreeViewItem *AbstractTreeView::find_matching_child(
+    const AbstractTreeViewItem &lookup_item, const TreeViewItemContainer &items)
 {
   for (const auto &iter_item : items.children_) {
-    if (lookup_item.matches(*iter_item)) {
+    if (lookup_item.label_ == iter_item->label_) {
       /* We have a matching item! */
       return iter_item.get();
     }
@@ -134,91 +134,86 @@ uiAbstractTreeViewItem *uiAbstractTreeView::find_matching_child(
 
 /* ---------------------------------------------------------------------- */
 
-void uiAbstractTreeViewItem::onActivate()
+void AbstractTreeViewItem::on_activate()
 {
   /* Do nothing by default. */
 }
 
-void uiAbstractTreeViewItem::update_from_old(uiAbstractTreeViewItem &old)
+void AbstractTreeViewItem::update_from_old(const AbstractTreeViewItem &old)
 {
   is_open_ = old.is_open_;
   is_active_ = old.is_active_;
 }
 
-bool uiAbstractTreeViewItem::matches(const uiAbstractTreeViewItem &other) const
+const AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
 {
-  return label_ == other.label_;
+  return static_cast<AbstractTreeView &>(*root_);
 }
 
-const uiAbstractTreeView &uiAbstractTreeViewItem::get_tree_view() const
-{
-  return static_cast<uiAbstractTreeView &>(*root_);
-}
-
-int uiAbstractTreeViewItem::count_parents() const
+int AbstractTreeViewItem::count_parents() const
 {
   int i = 0;
-  for (uiTreeViewItemContainer *parent = parent_; parent; parent = parent->parent_) {
+  for (TreeViewItemContainer *parent = parent_; parent; parent = parent->parent_) {
     i++;
   }
   return i;
 }
 
-void uiAbstractTreeViewItem::set_active(bool value)
+void AbstractTreeViewItem::set_active(bool value)
 {
   if (value && !is_active()) {
     /* Deactivate other items in the tree. */
     get_tree_view().foreach_item([](auto &item) { item.set_active(false); });
-    onActivate();
+    on_activate();
   }
   is_active_ = value;
 }
 
-bool uiAbstractTreeViewItem::is_active() const
+bool AbstractTreeViewItem::is_active() const
 {
   return is_active_;
 }
 
-bool uiAbstractTreeViewItem::is_collapsed() const
+bool AbstractTreeViewItem::is_collapsed() const
 {
   return is_collapsible() && !is_open_;
 }
 
-void uiAbstractTreeViewItem::toggle_collapsed()
+void AbstractTreeViewItem::toggle_collapsed()
 {
   is_open_ = !is_open_;
 }
 
-void uiAbstractTreeViewItem::set_collapsed(bool collapsed)
+void AbstractTreeViewItem::set_collapsed(bool collapsed)
 {
   is_open_ = !collapsed;
 }
 
-bool uiAbstractTreeViewItem::is_collapsible() const
+bool AbstractTreeViewItem::is_collapsible() const
 {
   return !children_.is_empty();
 }
 
 /* ---------------------------------------------------------------------- */
 
-uiTreeViewBuilder::uiTreeViewBuilder(uiBlock &block) : block_(block)
+TreeViewBuilder::TreeViewBuilder(uiBlock &block) : block_(block)
 {
 }
 
-void uiTreeViewBuilder::build_tree_view(uiAbstractTreeView &tree_view)
+void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view)
 {
   tree_view.build_tree();
   tree_view.update_from_old(block_);
-  tree_view.build_layout_from_tree(uiTreeViewLayoutBuilder(block_));
+  tree_view.build_layout_from_tree(TreeViewLayoutBuilder(block_));
 }
 
 /* ---------------------------------------------------------------------- */
 
-uiTreeViewLayoutBuilder::uiTreeViewLayoutBuilder(uiBlock &block) : block_(block)
+TreeViewLayoutBuilder::TreeViewLayoutBuilder(uiBlock &block) : block_(block)
 {
 }
 
-void uiTreeViewLayoutBuilder::build_row(uiAbstractTreeViewItem &item) const
+void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
 {
   uiLayout *prev_layout = current_layout();
   uiLayout *row = uiLayoutRow(prev_layout, false);
@@ -228,19 +223,19 @@ void uiTreeViewLayoutBuilder::build_row(uiAbstractTreeViewItem &item) const
   UI_block_layout_set_current(&block(), prev_layout);
 }
 
-uiBlock &uiTreeViewLayoutBuilder::block() const
+uiBlock &TreeViewLayoutBuilder::block() const
 {
   return block_;
 }
 
-uiLayout *uiTreeViewLayoutBuilder::current_layout() const
+uiLayout *TreeViewLayoutBuilder::current_layout() const
 {
   return block().curlayout;
 }
 
 /* ---------------------------------------------------------------------- */
 
-uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label, BIFIconID icon_, ActivateFn activate_fn)
+BasicTreeViewItem::BasicTreeViewItem(StringRef label, BIFIconID icon_, ActivateFn activate_fn)
     : icon(icon_), activate_fn_(activate_fn)
 {
   label_ = label;
@@ -249,7 +244,7 @@ uiBasicTreeViewItem::uiBasicTreeViewItem(StringRef label, BIFIconID icon_, Activ
 static void tree_row_click_fn(struct bContext *UNUSED(C), void *but_arg1, void *UNUSED(arg2))
 {
   uiButTreeRow *tree_row_but = (uiButTreeRow *)but_arg1;
-  uiAbstractTreeViewItem &tree_item = reinterpret_cast<uiAbstractTreeViewItem &>(
+  AbstractTreeViewItem &tree_item = reinterpret_cast<AbstractTreeViewItem &>(
       *tree_row_but->tree_item);
 
   /* Let a click on an opened item activate it, a second click will close it then.
@@ -260,13 +255,13 @@ static void tree_row_click_fn(struct bContext *UNUSED(C), void *but_arg1, void *
   tree_item.set_active();
 }
 
-void uiBasicTreeViewItem::build_row(uiLayout &row)
+void BasicTreeViewItem::build_row(uiLayout &row)
 {
   uiBlock *block = uiLayoutGetBlock(&row);
   tree_row_but_ = (uiButTreeRow *)uiDefIconTextBut(block,
                                                    UI_BTYPE_TREEROW,
                                                    0,
-                                                   /* TODO allow icon despite the chevron icon? */
+                                                   /* TODO allow icon besides the chevron icon? */
                                                    get_draw_icon(),
                                                    label_.data(),
                                                    0,
@@ -285,14 +280,14 @@ void uiBasicTreeViewItem::build_row(uiLayout &row)
   UI_but_treerow_indentation_set(&tree_row_but_->but, count_parents());
 }
 
-void uiBasicTreeViewItem::onActivate()
+void BasicTreeViewItem::on_activate()
 {
   if (activate_fn_) {
     activate_fn_(*this);
   }
 }
 
-BIFIconID uiBasicTreeViewItem::get_draw_icon() const
+BIFIconID BasicTreeViewItem::get_draw_icon() const
 {
   if (icon) {
     return icon;
@@ -305,7 +300,7 @@ BIFIconID uiBasicTreeViewItem::get_draw_icon() const
   return ICON_NONE;
 }
 
-uiBut *uiBasicTreeViewItem::button()
+uiBut *BasicTreeViewItem::button()
 {
   return &tree_row_but_->but;
 }
@@ -314,9 +309,9 @@ uiBut *uiBasicTreeViewItem::button()
 
 using namespace blender::ui;
 
-bool UI_tree_view_item_is_active(const uiTreeViewItemHandle *item_)
+bool UI_tree_view_item_is_active(uiTreeViewItemHandle *item_)
 {
-  const uiAbstractTreeViewItem &item = reinterpret_cast<const uiAbstractTreeViewItem &>(*item_);
+  AbstractTreeViewItem &item = reinterpret_cast<AbstractTreeViewItem &>(*item_);
   return item.is_active();
 }
 

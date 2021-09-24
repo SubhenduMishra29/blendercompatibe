@@ -40,48 +40,48 @@ using namespace blender::ui;
  * Wrapper to store views in a #ListBase. There's no `uiView` base class, we just store views as a
  * #std::variant.
  */
-struct uiViewLink : public Link {
-  using TreeViewPtr = std::unique_ptr<uiAbstractTreeView>;
+struct ViewLink : public Link {
+  using TreeViewPtr = std::unique_ptr<AbstractTreeView>;
 
   std::string idname;
   /* Note: Can't use std::get() on this until minimum macOS deployment target is 10.14. */
   std::variant<TreeViewPtr> view;
 };
 
-template<class T> T *get_view_from_link(uiViewLink &link)
+template<class T> T *get_view_from_link(ViewLink &link)
 {
   auto *t_uptr = std::get_if<std::unique_ptr<T>>(&link.view);
   return t_uptr ? t_uptr->get() : nullptr;
 }
 
 /**
- * Override this for all available tree types available.
+ * Override this for all available tree types.
  */
-uiAbstractTreeView *UI_block_add_view(uiBlock *block,
-                                      StringRef idname,
-                                      std::unique_ptr<uiAbstractTreeView> tree_view)
+AbstractTreeView *UI_block_add_view(uiBlock &block,
+                                    StringRef idname,
+                                    std::unique_ptr<AbstractTreeView> tree_view)
 {
-  uiViewLink *view_link = OBJECT_GUARDED_NEW(uiViewLink);
-  BLI_addtail(&block->views, view_link);
+  ViewLink *view_link = OBJECT_GUARDED_NEW(ViewLink);
+  BLI_addtail(&block.views, view_link);
 
   view_link->view = std::move(tree_view);
   view_link->idname = idname;
 
-  return get_view_from_link<uiAbstractTreeView>(*view_link);
+  return get_view_from_link<AbstractTreeView>(*view_link);
 }
 
 void ui_block_free_views(uiBlock *block)
 {
-  LISTBASE_FOREACH_MUTABLE (uiViewLink *, link, &block->views) {
-    OBJECT_GUARDED_DELETE(link, uiViewLink);
+  LISTBASE_FOREACH_MUTABLE (ViewLink *, link, &block->views) {
+    OBJECT_GUARDED_DELETE(link, ViewLink);
   }
 }
 
-static StringRef ui_block_view_find_idname(const uiBlock &block, const uiAbstractTreeView &view)
+static StringRef ui_block_view_find_idname(const uiBlock &block, const AbstractTreeView &view)
 {
   /* First get the idname the of the view we're looking for. */
-  LISTBASE_FOREACH (uiViewLink *, view_link, &block.views) {
-    if (get_view_from_link<uiAbstractTreeView>(*view_link) == &view) {
+  LISTBASE_FOREACH (ViewLink *, view_link, &block.views) {
+    if (get_view_from_link<AbstractTreeView>(*view_link) == &view) {
       return view_link->idname;
     }
   }
@@ -92,7 +92,7 @@ static StringRef ui_block_view_find_idname(const uiBlock &block, const uiAbstrac
 uiTreeViewHandle *ui_block_view_find_matching_in_old_block(const uiBlock *new_block,
                                                            const uiTreeViewHandle *new_view_handle)
 {
-  const uiAbstractTreeView &needle_view = reinterpret_cast<const uiAbstractTreeView &>(
+  const AbstractTreeView &needle_view = reinterpret_cast<const AbstractTreeView &>(
       *new_view_handle);
 
   uiBlock *old_block = new_block->oldblock;
@@ -105,10 +105,10 @@ uiTreeViewHandle *ui_block_view_find_matching_in_old_block(const uiBlock *new_bl
     return nullptr;
   }
 
-  LISTBASE_FOREACH (uiViewLink *, old_view_link, &old_block->views) {
+  LISTBASE_FOREACH (ViewLink *, old_view_link, &old_block->views) {
     if (old_view_link->idname == idname) {
       return reinterpret_cast<uiTreeViewHandle *>(
-          get_view_from_link<uiAbstractTreeView>(*old_view_link));
+          get_view_from_link<AbstractTreeView>(*old_view_link));
     }
   }
 

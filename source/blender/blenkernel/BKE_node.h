@@ -480,7 +480,7 @@ bool ntreeHasType(const struct bNodeTree *ntree, int type);
 bool ntreeHasTree(const struct bNodeTree *ntree, const struct bNodeTree *lookup);
 void ntreeUpdateTree(struct Main *main, struct bNodeTree *ntree);
 void ntreeUpdateAllNew(struct Main *main);
-void ntreeUpdateAllUsers(struct Main *main, struct ID *id);
+void ntreeUpdateAllUsers(struct Main *main, struct ID *id, int tree_update_flag);
 
 void ntreeGetDependencyList(struct bNodeTree *ntree,
                             struct bNode ***r_deplist,
@@ -1500,6 +1500,8 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 #define GEO_NODE_STRING_JOIN 1087
 #define GEO_NODE_CURVE_PARAMETER 1088
 #define GEO_NODE_CURVE_FILLET 1089
+#define GEO_NODE_DISTRIBUTE_POINTS_ON_FACES 1090
+#define GEO_NODE_STRING_TO_CURVES 1091
 
 /** \} */
 
@@ -1516,6 +1518,7 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 #define FN_NODE_VALUE_TO_STRING 1210
 #define FN_NODE_STRING_LENGTH 1211
 #define FN_NODE_STRING_SUBSTRING 1212
+#define FN_NODE_INPUT_SPECIAL_CHARACTERS 1213
 
 /** \} */
 
