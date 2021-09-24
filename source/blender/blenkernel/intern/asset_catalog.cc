@@ -348,7 +348,7 @@ void AssetCatalogTree::insert_item(AssetCatalog &catalog)
   BLI_assert_msg(!ELEM(catalog.path[0], '/', '\\'),
                  "Malformed catalog path; should not start with a separator");
 
-  CatalogID unset_id = bke::bUUID();
+  CatalogID unset_id = blender::bUUID();
   const char *next_slash_ptr;
   /* Looks more complicated than it is, this just iterates over path components. E.g.
    * "just/some/path" iterates over "just", then "some" then "path". */

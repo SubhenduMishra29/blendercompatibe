@@ -123,7 +123,7 @@ AbstractTreeViewItem *AbstractTreeView::find_matching_child(
     const AbstractTreeViewItem &lookup_item, const TreeViewItemContainer &items)
 {
   for (const auto &iter_item : items.children_) {
-    if (lookup_item.label_ == iter_item->label_) {
+    if (lookup_item.matches(*iter_item)) {
       /* We have a matching item! */
       return iter_item.get();
     }
@@ -143,6 +143,11 @@ void AbstractTreeViewItem::update_from_old(const AbstractTreeViewItem &old)
 {
   is_open_ = old.is_open_;
   is_active_ = old.is_active_;
+}
+
+bool AbstractTreeViewItem::matches(const AbstractTreeViewItem &other) const
+{
+  return label_ == other.label_;
 }
 
 const AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
@@ -309,15 +314,15 @@ uiBut *BasicTreeViewItem::button()
 
 using namespace blender::ui;
 
-bool UI_tree_view_item_is_active(uiTreeViewItemHandle *item_)
+bool UI_tree_view_item_is_active(const uiTreeViewItemHandle *item_)
 {
-  AbstractTreeViewItem &item = reinterpret_cast<AbstractTreeViewItem &>(*item_);
+  const AbstractTreeViewItem &item = reinterpret_cast<const AbstractTreeViewItem &>(*item_);
   return item.is_active();
 }
 
 bool UI_tree_view_item_matches(const uiTreeViewItemHandle *a_, const uiTreeViewItemHandle *b_)
 {
-  const uiAbstractTreeViewItem &a = reinterpret_cast<const uiAbstractTreeViewItem &>(*a_);
-  const uiAbstractTreeViewItem &b = reinterpret_cast<const uiAbstractTreeViewItem &>(*b_);
+  const AbstractTreeViewItem &a = reinterpret_cast<const AbstractTreeViewItem &>(*a_);
+  const AbstractTreeViewItem &b = reinterpret_cast<const AbstractTreeViewItem &>(*b_);
   return a.matches(b);
 }
