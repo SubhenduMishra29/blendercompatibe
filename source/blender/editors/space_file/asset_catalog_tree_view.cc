@@ -59,8 +59,8 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
   void build_tree() override;
 
  private:
-  static ui::BasicTreeViewItem &build_recursive(ui::TreeViewItemContainer &view_parent_item,
-                                                AssetCatalogTreeItem &catalog);
+  ui::BasicTreeViewItem &build_recursive(ui::TreeViewItemContainer &view_parent_item,
+                                         AssetCatalogTreeItem &catalog);
 };
 /* ---------------------------------------------------------------------- */
 
@@ -137,13 +137,17 @@ AssetCatalogTreeView::AssetCatalogTreeView(bke::AssetLibrary *library,
 
 void AssetCatalogTreeView::build_tree()
 {
+  ui::AbstractTreeViewItem *item = nullptr;
   FileAssetSelectParams *params = params_;
 
-  add_tree_item<AssetCatalogTreeViewAllItem>(
+  item = &add_tree_item<AssetCatalogTreeViewAllItem>(
       IFACE_("All"), ICON_HOME, [params](ui::BasicTreeViewItem &) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_ALL_CATALOGS;
         WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
       });
+  if (params->asset_catalog_visibility == FILE_SHOW_ASSETS_ALL_CATALOGS) {
+    item->set_active();
+  }
 
   if (AssetCatalogTree *catalog_tree = library_ ? library_->catalog_service->get_catalog_tree() :
                                                   nullptr) {
@@ -155,11 +159,14 @@ void AssetCatalogTreeView::build_tree()
     });
   }
 
-  add_tree_item<ui::BasicTreeViewItem>(
+  item = &add_tree_item<ui::BasicTreeViewItem>(
       IFACE_("Unassigned"), ICON_FILE_HIDDEN, [params](ui::BasicTreeViewItem &) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_WITHOUT_CATALOG;
         WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
       });
+  if (params->asset_catalog_visibility == FILE_SHOW_ASSETS_WITHOUT_CATALOG) {
+    item->set_active();
+  }
 }
 
 ui::BasicTreeViewItem &AssetCatalogTreeView::build_recursive(
@@ -167,9 +174,13 @@ ui::BasicTreeViewItem &AssetCatalogTreeView::build_recursive(
 {
   ui::BasicTreeViewItem &view_item = view_parent_item.add_tree_item<AssetCatalogTreeViewItem>(
       catalog);
+  if ((params_->asset_catalog_visibility == FILE_SHOW_ASSETS_FROM_CATALOG) &&
+      (params_->catalog_id == catalog.get_catalog_id())) {
+    view_item.set_active();
+  }
 
   catalog.foreach_child(
-      [&view_item](AssetCatalogTreeItem &child) { build_recursive(view_item, child); });
+      [&view_item, this](AssetCatalogTreeItem &child) { build_recursive(view_item, child); });
   return view_item;
 }
 
