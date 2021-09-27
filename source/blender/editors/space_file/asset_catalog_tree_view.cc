@@ -108,6 +108,27 @@ class AssetCatalogTreeViewItem : public ui::BasicTreeViewItem {
   }
 };
 
+/** Only reason this isn't just `BasicTreeViewItem` is to add a '+' icon for adding a root level
+ * catalog. */
+class AssetCatalogTreeViewAllItem : public ui::BasicTreeViewItem {
+  using BasicTreeViewItem::BasicTreeViewItem;
+
+  void build_row(uiLayout &row) override
+  {
+    ui::BasicTreeViewItem::build_row(row);
+
+    if (!is_active()) {
+      return;
+    }
+
+    PointerRNA *props;
+    props = UI_but_extra_operator_icon_add(
+        button(), "ASSET_OT_catalog_new", WM_OP_INVOKE_DEFAULT, ICON_ADD);
+    /* No parent path to use the root level. */
+    RNA_string_set(props, "parent_path", nullptr);
+  }
+};
+
 AssetCatalogTreeView::AssetCatalogTreeView(bke::AssetLibrary *library,
                                            FileAssetSelectParams *params)
     : library_(library), params_(params)
@@ -118,7 +139,7 @@ void AssetCatalogTreeView::build_tree()
 {
   FileAssetSelectParams *params = params_;
 
-  add_tree_item<ui::BasicTreeViewItem>(
+  add_tree_item<AssetCatalogTreeViewAllItem>(
       IFACE_("All"), ICON_HOME, [params](ui::BasicTreeViewItem &) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_ALL_CATALOGS;
         WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
