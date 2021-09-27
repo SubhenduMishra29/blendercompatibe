@@ -147,7 +147,7 @@ void AssetCatalogTreeView::build_tree()
 
   if (AssetCatalogTree *catalog_tree = library_ ? library_->catalog_service->get_catalog_tree() :
                                                   nullptr) {
-    catalog_tree->foreach_child([this](AssetCatalogTreeItem &item) {
+    catalog_tree->foreach_root_item([this](AssetCatalogTreeItem &item) {
       ui::BasicTreeViewItem &child_view_item = build_recursive(*this, item);
 
       /* Open root-level items by default. */

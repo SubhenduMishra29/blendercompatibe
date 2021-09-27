@@ -44,7 +44,7 @@ static bool catalog_name_is_not_unique_fn(void *arg, const char *name)
 {
   CatalogUniqueNameFnData &fn_data = *static_cast<CatalogUniqueNameFnData *>(arg);
   std::string fullpath = to_full_path(fn_data.parent_path, name);
-  if (fn_data.catalog_service.find_catalog_from_path(fullpath)) {
+  if (fn_data.catalog_service.find_catalog_by_path(fullpath)) {
     return true;
   }
   return false;
