@@ -46,12 +46,6 @@ typedef struct bUUID {
  */
 #define UUID_STRING_LEN 37
 
-/**
- * Memory required for a string representation of a UUID according to RFC4122.
- * This is 36 characters for the string + a trailing zero byte.
- */
-#define UUID_STRING_LEN 37
-
 #ifdef __cplusplus
 }
 #endif
