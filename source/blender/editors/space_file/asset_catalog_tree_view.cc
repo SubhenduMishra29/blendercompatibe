@@ -79,7 +79,7 @@ class AssetCatalogTreeViewItem : public ui::BasicTreeViewItem {
         get_tree_view());
     tree_view.params_->asset_catalog_visibility = FILE_SHOW_ASSETS_FROM_CATALOG;
     tree_view.params_->catalog_id = catalog_.get_catalog_id();
-    WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+    WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
   }
 
   void build_row(uiLayout &row) override
@@ -143,7 +143,7 @@ void AssetCatalogTreeView::build_tree()
   item = &add_tree_item<AssetCatalogTreeViewAllItem>(
       IFACE_("All"), ICON_HOME, [params](ui::BasicTreeViewItem &) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_ALL_CATALOGS;
-        WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+        WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
       });
   if (params->asset_catalog_visibility == FILE_SHOW_ASSETS_ALL_CATALOGS) {
     item->set_active();
@@ -162,7 +162,7 @@ void AssetCatalogTreeView::build_tree()
   item = &add_tree_item<ui::BasicTreeViewItem>(
       IFACE_("Unassigned"), ICON_FILE_HIDDEN, [params](ui::BasicTreeViewItem &) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_WITHOUT_CATALOG;
-        WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+        WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
       });
   if (params->asset_catalog_visibility == FILE_SHOW_ASSETS_WITHOUT_CATALOG) {
     item->set_active();
