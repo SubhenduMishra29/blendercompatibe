@@ -320,7 +320,7 @@ static int asset_catalog_new_exec(bContext *C, wmOperator *op)
 
   MEM_freeN(parent_path);
 
-  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -359,7 +359,7 @@ static int asset_catalog_delete_exec(bContext *C, wmOperator *op)
 
   MEM_freeN(catalog_id_str);
 
-  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, NULL);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 
   return OPERATOR_FINISHED;
 }

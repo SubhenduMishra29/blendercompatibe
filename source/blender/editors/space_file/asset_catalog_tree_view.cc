@@ -141,7 +141,7 @@ void AssetCatalogTreeView::build_tree()
   FileAssetSelectParams *params = params_;
 
   item = &add_tree_item<AssetCatalogTreeViewAllItem>(
-      IFACE_("All"), ICON_HOME, [params](ui::BasicTreeViewItem &) {
+      IFACE_("All"), ICON_HOME, [params](ui::BasicTreeViewItem & /*item*/) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_ALL_CATALOGS;
         WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
       });
@@ -160,7 +160,7 @@ void AssetCatalogTreeView::build_tree()
   }
 
   item = &add_tree_item<ui::BasicTreeViewItem>(
-      IFACE_("Unassigned"), ICON_FILE_HIDDEN, [params](ui::BasicTreeViewItem &) {
+      IFACE_("Unassigned"), ICON_FILE_HIDDEN, [params](ui::BasicTreeViewItem & /*item*/) {
         params->asset_catalog_visibility = FILE_SHOW_ASSETS_WITHOUT_CATALOG;
         WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
       });
