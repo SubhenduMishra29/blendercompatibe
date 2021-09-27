@@ -76,7 +76,14 @@ class Params:
         "select_mouse_value_fallback",
         # Shorthand for: `('CLICK_DRAG' if params.use_pie_click_drag else 'PRESS')`
         "pie_value",
+        # Shorthand for: `{"type": params.tool_tweak, "value": 'ANY'}`.
+        "tool_tweak_event",
         # Shorthand for: `{"type": params.tool_maybe_tweak, "value": params.tool_maybe_tweak_value}`.
+        #
+        # NOTE: This is typically used for active tool key-map items however it should never
+        # be used for selection tools (the default box-select tool for example).
+        # Since this means with RMB select enabled in edit-mode for e.g.
+        # `Ctrl-LMB` would be caught by box-select instead of add/extrude.
         "tool_maybe_tweak_event",
     )
 
@@ -187,6 +194,7 @@ class Params:
         self.use_fallback_tool_rmb = self.use_fallback_tool if self.select_mouse == 'RIGHT' else False
         self.select_mouse_value_fallback = 'CLICK' if self.use_fallback_tool_rmb else self.select_mouse_value
         self.pie_value = 'CLICK_DRAG' if use_pie_click_drag else 'PRESS'
+        self.tool_tweak_event = {"type": self.tool_tweak, "value": 'ANY'}
         self.tool_maybe_tweak_event = {"type": self.tool_maybe_tweak, "value": self.tool_maybe_tweak_value}
 
 
@@ -5669,6 +5677,9 @@ def km_knife_tool_modal_map(_params):
         ("IGNORE_SNAP_OFF", {"type": 'LEFT_CTRL', "value": 'RELEASE', "any": True}, None),
         ("IGNORE_SNAP_ON", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
         ("IGNORE_SNAP_OFF", {"type": 'RIGHT_CTRL', "value": 'RELEASE', "any": True}, None),
+        ("X_AXIS", {"type": 'X', "value": 'PRESS'}, None),
+        ("Y_AXIS", {"type": 'Y', "value": 'PRESS'}, None),
+        ("Z_AXIS", {"type": 'Z', "value": 'PRESS'}, None),
         ("ANGLE_SNAP_TOGGLE", {"type": 'A', "value": 'PRESS'}, None),
         ("CYCLE_ANGLE_SNAP_EDGE", {"type": 'R', "value": 'PRESS'}, None),
         ("CUT_THROUGH_TOGGLE", {"type": 'C', "value": 'PRESS'}, None),
@@ -6125,12 +6136,9 @@ def km_image_editor_tool_uv_cursor(params):
         "Image Editor Tool: Uv, Cursor",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            ("uv.cursor_set",
-             {"type": params.tool_mouse, "value": 'PRESS'},
-             None),
+            ("uv.cursor_set", {"type": params.tool_mouse, "value": 'PRESS'}, None),
             # Don't use `tool_maybe_tweak_event` since it conflicts with `PRESS` that places the cursor.
-            ("transform.translate",
-             {"type": params.tool_tweak, "value": 'ANY'},
+            ("transform.translate", params.tool_tweak_event,
              {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
         ]},
     )
@@ -6155,7 +6163,8 @@ def km_image_editor_tool_uv_select_box(params, *, fallback):
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions_simple(
                 "uv.select_box",
-                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_maybe_tweak_event))),
+                # Don't use `tool_maybe_tweak_event`, see comment for this slot.
+                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_tweak_event))),
             *_template_uv_select_for_fallback(params, fallback),
         ]},
     )
@@ -6184,7 +6193,7 @@ def km_image_editor_tool_uv_select_lasso(params, *, fallback):
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions_simple(
                 "uv.select_lasso",
-                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_maybe_tweak_event))),
+                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_tweak_event))),
             *_template_uv_select_for_fallback(params, fallback),
         ]},
     )
@@ -6321,7 +6330,7 @@ def km_3d_view_tool_cursor(params):
         {"items": [
             ("view3d.cursor3d", {"type": params.tool_mouse, "value": 'PRESS'}, None),
             # Don't use `tool_maybe_tweak_event` since it conflicts with `PRESS` that places the cursor.
-            ("transform.translate", {"type": params.tool_tweak, "value": 'ANY'},
+            ("transform.translate", params.tool_tweak_event,
              {"properties": [("release_confirm", True), ("cursor_transform", True)]}),
         ]},
     )
@@ -6347,7 +6356,8 @@ def km_3d_view_tool_select_box(params, *, fallback):
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions(
                 "view3d.select_box",
-                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_maybe_tweak_event))),
+                # Don't use `tool_maybe_tweak_event`, see comment for this slot.
+                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_tweak_event))),
             *_template_view3d_select_for_fallback(params, fallback),
         ]},
     )
@@ -6377,7 +6387,7 @@ def km_3d_view_tool_select_lasso(params, *, fallback):
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions(
                 "view3d.select_lasso",
-                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_maybe_tweak_event))),
+                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_tweak_event))),
             *_template_view3d_select_for_fallback(params, fallback),
         ]}
     )
@@ -7032,10 +7042,8 @@ def km_3d_view_tool_sculpt_mask_by_color(params):
         "3D View Tool: Sculpt, Mask by Color",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("sculpt.mask_by_color", {"type": params.tool_mouse, "value": 'ANY'},
-             None),
-            ("sculpt.mask_by_color", {"type": params.tool_tweak, "value": 'ANY'},
-             None),
+            ("sculpt.mask_by_color", {"type": params.tool_mouse, "value": 'ANY'}, None),
+            ("sculpt.mask_by_color", params.tool_tweak_event, None),
         ]},
     )
 
@@ -7045,8 +7053,7 @@ def km_3d_view_tool_sculpt_face_set_edit(params):
         "3D View Tool: Sculpt, Face Set Edit",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("sculpt.face_set_edit", {"type": params.tool_mouse, "value": 'PRESS'},
-             None),
+            ("sculpt.face_set_edit", {"type": params.tool_mouse, "value": 'PRESS'}, None),
         ]},
     )
 
@@ -7235,7 +7242,8 @@ def km_3d_view_tool_edit_gpencil_select_box(params, *, fallback):
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions(
                 "gpencil.select_box",
-                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_maybe_tweak_event))),
+                # Don't use `tool_maybe_tweak_event`, see comment for this slot.
+                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_tweak_event))),
             *_template_view3d_gpencil_select_for_fallback(params, fallback),
         ]},
     )
@@ -7265,7 +7273,7 @@ def km_3d_view_tool_edit_gpencil_select_lasso(params, *, fallback):
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions(
                 "gpencil.select_lasso",
-                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_maybe_tweak_event))),
+                **({"type": params.select_tweak, "value": 'ANY'} if fallback else params.tool_tweak_event))),
             *_template_view3d_gpencil_select_for_fallback(params, fallback),
         ]}
     )
@@ -7364,7 +7372,7 @@ def km_3d_view_tool_sculpt_gpencil_select_box(params):
     return (
         "3D View Tool: Sculpt Gpencil, Select Box",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": _template_items_tool_select_actions("gpencil.select_box", **params.tool_maybe_tweak_event)},
+        {"items": _template_items_tool_select_actions("gpencil.select_box", **params.tool_tweak_event)},
     )
 
 
@@ -7383,7 +7391,7 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
     return (
         "3D View Tool: Sculpt Gpencil, Select Lasso",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": _template_items_tool_select_actions("gpencil.select_lasso", **params.tool_maybe_tweak_event)},
+        {"items": _template_items_tool_select_actions("gpencil.select_lasso", **params.tool_tweak_event)},
     )
 
 
@@ -7405,8 +7413,9 @@ def km_sequencer_editor_tool_select_box(params, *, fallback):
         _fallback_id("Sequencer Tool: Select Box", fallback),
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
+            # Don't use `tool_maybe_tweak_event`, see comment for this slot.
             *_template_items_tool_select_actions_simple(
-                "sequencer.select_box", **params.tool_maybe_tweak_event,
+                "sequencer.select_box", **params.tool_tweak_event,
                 properties=[("tweak", params.select_mouse == 'LEFTMOUSE')],
             ),
             # RMB select can already set the frame, match the tweak tool.

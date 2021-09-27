@@ -2092,6 +2092,19 @@ static const EnumPropertyItem *rna_GeometryNodeAttributeRandom_type_itemf(
   return itemf_function_check(rna_enum_attribute_type_items, attribute_random_type_supported);
 }
 
+static bool random_value_type_supported(const EnumPropertyItem *item)
+{
+  return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_BOOL, CD_PROP_INT32);
+}
+static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext *UNUSED(C),
+                                                                      PointerRNA *UNUSED(ptr),
+                                                                      PropertyRNA *UNUSED(prop),
+                                                                      bool *r_free)
+{
+  *r_free = true;
+  return itemf_function_check(rna_enum_attribute_type_items, random_value_type_supported);
+}
+
 static const EnumPropertyItem *rna_GeometryNodeAttributeRandomize_operation_itemf(
     bContext *UNUSED(C), PointerRNA *ptr, PropertyRNA *UNUSED(prop), bool *r_free)
 {
@@ -3729,7 +3742,7 @@ static void rna_Node_image_layer_update(Main *bmain, Scene *scene, PointerRNA *p
 
   rna_Node_update(bmain, scene, ptr);
 
-  if (scene->nodetree != NULL) {
+  if (scene != NULL && scene->nodetree != NULL) {
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 }
@@ -3901,7 +3914,7 @@ static const EnumPropertyItem *rna_Node_view_layer_itemf(bContext *UNUSED(C),
 static void rna_Node_view_layer_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Node_update(bmain, scene, ptr);
-  if (scene->nodetree != NULL) {
+  if (scene != NULL && scene->nodetree != NULL) {
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 }
@@ -4336,7 +4349,7 @@ static void rna_ShaderNodeScript_update(Main *bmain, Scene *scene, PointerRNA *p
 {
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
   bNode *node = (bNode *)ptr->data;
-  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
+  RenderEngineType *engine_type = (scene != NULL) ? RE_engines_find(scene->r.engine) : NULL;
 
   if (engine_type && engine_type->update_script_node) {
     /* auto update node */
@@ -9166,6 +9179,21 @@ static void def_geo_subdivision_surface(StructRNA *srna)
   RNA_def_property_enum_default(prop, SUBSURF_BOUNDARY_SMOOTH_ALL);
   RNA_def_property_ui_text(prop, "Boundary Smooth", "Controls how open boundaries are smoothed");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_fn_random_value(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeRandomValue", "storage");
+
+  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "data_type");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_FunctionNodeRandomValue_type_itemf");
+  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
+  RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
 static void def_geo_attribute_randomize(StructRNA *srna)

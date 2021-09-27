@@ -1502,6 +1502,7 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 #define GEO_NODE_CURVE_FILLET 1089
 #define GEO_NODE_DISTRIBUTE_POINTS_ON_FACES 1090
 #define GEO_NODE_STRING_TO_CURVES 1091
+#define GEO_NODE_INSTANCE_ON_POINTS 1092
 
 /** \} */
 
@@ -1511,7 +1512,7 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 
 #define FN_NODE_BOOLEAN_MATH 1200
 #define FN_NODE_FLOAT_COMPARE 1202
-#define FN_NODE_RANDOM_FLOAT 1206
+#define FN_NODE_LEGACY_RANDOM_FLOAT 1206
 #define FN_NODE_INPUT_VECTOR 1207
 #define FN_NODE_INPUT_STRING 1208
 #define FN_NODE_FLOAT_TO_INT 1209
@@ -1519,6 +1520,7 @@ int ntreeTexExecTree(struct bNodeTree *ntree,
 #define FN_NODE_STRING_LENGTH 1211
 #define FN_NODE_STRING_SUBSTRING 1212
 #define FN_NODE_INPUT_SPECIAL_CHARACTERS 1213
+#define FN_NODE_RANDOM_VALUE 1214
 
 /** \} */
 
